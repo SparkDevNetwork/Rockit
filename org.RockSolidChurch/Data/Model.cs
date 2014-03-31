@@ -1,7 +1,4 @@
-﻿//
-// Copyright (C) Rock Solid Church - All Rights Reserved
-//
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 
 namespace org.RockSolidChurch.Data
 {

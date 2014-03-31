@@ -1,7 +1,4 @@
-﻿//
-// Copyright (C) Spark Development Network - All Rights Reserved
-//
-using System.Data.Entity;
+﻿using System.Data.Entity;
 using System.Data.Entity.ModelConfiguration.Conventions;
 using System.Web;
 
@@ -17,7 +14,7 @@ namespace org.RockSolidChurch.SampleProject.Data
 
         #region Models
 
-        //public DbSet<Book> Books { get; set; }
+        public DbSet<Book> Books { get; set; }
 
         #endregion
 
@@ -27,7 +24,7 @@ namespace org.RockSolidChurch.SampleProject.Data
         public SampleProjectContext()
             : base( "RockContext" )
         {
-            // intentionally left blank
+             //intentionally left blank
         }
 
         /// <summary>
@@ -49,7 +46,7 @@ namespace org.RockSolidChurch.SampleProject.Data
         {
             Rock.Data.ContextHelper.AddConfigurations( modelBuilder );
 
-            //modelBuilder.Configurations.Add( new BookConfiguration() );
+            modelBuilder.Configurations.Add( new BookConfiguration() );
         }
 
         /// <summary>
