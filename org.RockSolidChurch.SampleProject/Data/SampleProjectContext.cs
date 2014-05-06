@@ -9,7 +9,7 @@ namespace org.RockSolidChurch.SampleProject.Data
     /// <summary>
     /// 
     /// </summary>
-    public partial class SampleProjectContext : DbContext
+    public partial class SampleProjectContext : Rock.Data.DbContext
     {
 
         #region Models
@@ -45,20 +45,7 @@ namespace org.RockSolidChurch.SampleProject.Data
         protected override void OnModelCreating( DbModelBuilder modelBuilder )
         {
             Rock.Data.ContextHelper.AddConfigurations( modelBuilder );
-
-            modelBuilder.Configurations.Add( new BookConfiguration() );
-        }
-
-        /// <summary>
-        /// Saves all changes made in this context to the underlying database.
-        /// </summary>
-        /// <returns>
-        /// The number of objects written to the underlying database.
-        /// </returns>
-        public override int SaveChanges()
-        {
-            Rock.Data.ContextHelper.AddAuditData( this.ChangeTracker, HttpContext.Current );
-            return base.SaveChanges();
+            modelBuilder.Configurations.AddFromAssembly( System.Reflection.Assembly.GetExecutingAssembly() );
         }
 
     }

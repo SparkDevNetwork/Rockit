@@ -20,10 +20,10 @@ using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
-
 using Rock;
 using Rock.Attribute;
 using Rock.Constants;
+using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
 using Rock.Web.UI;
@@ -68,14 +68,9 @@ namespace RockWeb.Blocks.Communication
             var key = PageParameter( "Person" );
             if ( !string.IsNullOrWhiteSpace( key ) )
             {
-                var service = new PersonAliasService();
-                var personAlias = service.GetByUrlEncodedKey( PageParameter( "Person" ) );
-                if ( personAlias != null )
-                {
-                    _person = personAlias.Person;
-                }
+                var service = new PersonService( new RockContext() );
+                _person = service.GetByUrlEncodedKey( key );
             }
-
 
             if ( _person == null && CurrentPerson != null )
             {
@@ -169,8 +164,9 @@ namespace RockWeb.Blocks.Communication
         protected void btnSubmit_Click( object sender, EventArgs e )
         {
             if (_person != null)
-            { 
-                var service = new PersonService();
+            {
+                var rockContext = new RockContext();
+                var service = new PersonService( rockContext );
                 var person = service.Get(_person.Id);
                 if ( person != null )
                 {
@@ -198,16 +194,24 @@ namespace RockWeb.Blocks.Communication
                     {
                         person.RecordStatusValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_INACTIVE ).Id;
                         person.RecordStatusReasonValueId = ddlInactiveReason.SelectedValue.AsInteger().Value;
-                        person.InactiveReasonNote = tbInactiveNote.Text;
+                        person.ReviewReasonValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_REVIEW_REASON_SELF_INACTIVATED ).Id;
+                        if ( string.IsNullOrWhiteSpace( person.ReviewReasonNote ) )
+                        {
+                            person.ReviewReasonNote = tbInactiveNote.Text;
+                        }
+                        else
+                        {
+                            person.ReviewReasonNote += " " + tbInactiveNote.Text;
+                        }
                     }
                     else
                     {
                         person.RecordStatusValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_ACTIVE ).Id;
                         person.RecordStatusReasonValueId = null;
-                        person.InactiveReasonNote = string.Empty;
                     }
 
-                    service.Save( person, CurrentPersonAlias );
+                    rockContext.SaveChanges();
+
                     nbMessage.Visible = true;
                     return;
                 }

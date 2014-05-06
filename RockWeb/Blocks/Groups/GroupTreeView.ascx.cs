@@ -18,9 +18,9 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-
 using Rock;
 using Rock.Attribute;
+using Rock.Data;
 using Rock.Model;
 using Rock.Security;
 using Rock.Web.Cache;
@@ -42,7 +42,6 @@ namespace RockWeb.Blocks.Groups
     [LinkedPage( "Detail Page" )]
     public partial class GroupTreeView : RockBlock
     {
-
         #region Fields
 
         private string _groupId = string.Empty;
@@ -59,14 +58,14 @@ namespace RockWeb.Blocks.Groups
         {
             base.OnInit( e );
 
-            _groupId = PageParameter( "groupId" );
+            _groupId = PageParameter( "GroupId" );
 
             hfPageRouteTemplate.Value = ( this.RockPage.RouteData.Route as System.Web.Routing.Route ).Url;
             hfLimitToSecurityRoleGroups.Value = GetAttributeValue( "LimittoSecurityRoleGroups" );
             hfRootGroupId.Value = GetAttributeValue( "RootGroup" );
 
             bool canEditBlock = IsUserAuthorized( Authorization.EDIT );
-            
+
             // hide all the actions if user doesn't have EDIT to the block
             divTreeviewActions.Visible = canEditBlock;
         }
@@ -101,7 +100,7 @@ namespace RockWeb.Blocks.Groups
                             }
                             else
                             {
-                                redirectUrl = this.Request.Url + "?groupId=" + _groupId.ToString();
+                                redirectUrl = this.Request.Url + "?GroupId=" + _groupId.ToString();
                             }
 
                             this.Response.Redirect( redirectUrl, false );
@@ -121,7 +120,7 @@ namespace RockWeb.Blocks.Groups
                 if ( group == null )
                 {
                     int id = _groupId.AsInteger() ?? 0;
-                    group = new GroupService().Queryable( "GroupType" )
+                    group = new GroupService( new RockContext() ).Queryable( "GroupType" )
                         .Where( g => g.Id == id )
                         .FirstOrDefault();
                     RockPage.SaveSharedItem( key, group );
@@ -160,7 +159,7 @@ namespace RockWeb.Blocks.Groups
                 }
 
                 // also get any additional expanded nodes that were sent in the Post
-                string postedExpandedIds = this.Request.Params["expandedIds"];
+                string postedExpandedIds = this.Request.Params["ExpandedIds"];
                 if ( !string.IsNullOrWhiteSpace( postedExpandedIds ) )
                 {
                     var postedExpandedIdList = postedExpandedIds.Split( ',' ).ToList();
@@ -201,7 +200,7 @@ namespace RockWeb.Blocks.Groups
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
         protected void lbAddGroupRoot_Click( object sender, EventArgs e )
         {
-            NavigateToLinkedPage( "DetailPage", "groupId", 0, "parentGroupId", 0 );
+            NavigateToLinkedPage( "DetailPage", "GroupId", 0, "ParentGroupId", 0 );
         }
 
         /// <summary>
@@ -212,7 +211,7 @@ namespace RockWeb.Blocks.Groups
         protected void lbAddGroupChild_Click( object sender, EventArgs e )
         {
             int groupId = hfSelectedGroupId.ValueAsInt();
-            NavigateToLinkedPage( "DetailPage", "groupId", 0, "parentGroupId", groupId );
+            NavigateToLinkedPage( "DetailPage", "GroupId", 0, "ParentGroupId", groupId );
         }
 
         #endregion
@@ -244,7 +243,7 @@ namespace RockWeb.Blocks.Groups
                 groupTypeIds = string.IsNullOrWhiteSpace( groupTypeIds ) ? "0" : groupTypeIds;
             }
 
-            var groupService = new GroupService();
+            var groupService = new GroupService( new RockContext() );
             var qry = groupService.GetNavigationChildren( 0, hfRootGroupId.ValueAsInt(), hfLimitToSecurityRoleGroups.Value.AsBoolean(), groupTypeIds );
 
             foreach ( var group in qry )

@@ -18,8 +18,6 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data.Entity;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -29,14 +27,17 @@ using System.Web.Caching;
 using System.Web.Http;
 using System.Web.Optimization;
 using System.Web.Routing;
+
 using Quartz;
 using Quartz.Impl;
 using Quartz.Impl.Matchers;
 
 using Rock;
 using Rock.Communication;
+using Rock.Data;
 using Rock.Jobs;
 using Rock.Model;
+using Rock.Plugin;
 using Rock.Transactions;
 using Rock.Web.Cache;
 
@@ -96,67 +97,22 @@ namespace RockWeb
                     System.Diagnostics.Debug.WriteLine( string.Format( "Application_Start: {0}", RockDateTime.Now.ToString( "hh:mm:ss.FFF" ) ) );
                 }
 
-                // Check if database should be auto-migrated for the core and plugins
-                bool autoMigrate = true;
-                if ( !Boolean.TryParse( ConfigurationManager.AppSettings["AutoMigrateDatabase"], out autoMigrate ) )
-                {
-                    autoMigrate = true;
-                }
+                // Run any needed Rock and/or plugin migrations
+                MigrateDatabase();
 
-                if ( autoMigrate )
-                {
-                    try
-                    {
+                // Get a db context
+                var rockContext = new RockContext();
 
-                        Database.SetInitializer( new MigrateDatabaseToLatestVersion<Rock.Data.RockContext, Rock.Migrations.Configuration>() );
-
-                        // explictly check if the database exists, and force create it if doesn't exist
-                        Rock.Data.RockContext rockContext = new Rock.Data.RockContext();
-                        if ( !rockContext.Database.Exists() )
-                        {
-                            rockContext.Database.Initialize( true );
-                        }
-                        else
-                        {
-                            var migrator = new System.Data.Entity.Migrations.DbMigrator( new Rock.Migrations.Configuration() );
-                            migrator.Update();
-                        }
-
-                        // Migrate any plugins that have pending migrations
-                        List<Type> configurationTypeList = Rock.Reflection.FindTypes( typeof( System.Data.Entity.Migrations.DbMigrationsConfiguration ) ).Select( a => a.Value ).ToList();
-
-                        foreach ( var configType in configurationTypeList )
-                        {
-                            if ( configType != typeof( Rock.Migrations.Configuration ) )
-                            {
-                                var config = Activator.CreateInstance( configType ) as System.Data.Entity.Migrations.DbMigrationsConfiguration;
-                                System.Data.Entity.Migrations.DbMigrator pluginMigrator = Activator.CreateInstance( typeof( System.Data.Entity.Migrations.DbMigrator ), config ) as System.Data.Entity.Migrations.DbMigrator;
-                                pluginMigrator.Update();
-                            }
-                        }
-
-                    }
-                    catch ( Exception ex )
-                    {
-                        // if migrations fail, log error and attempt to continue
-                        LogError( ex, null );
-                    }
-
-                }
-                else
-                {
-                    // default Initializer is CreateDatabaseIfNotExists, but we don't want that to happen if automigrate is false, so set it to NULL so that nothing happens
-                    Database.SetInitializer<Rock.Data.RockContext>( null );
-                }
+                RegisterRoutes( rockContext, RouteTable.Routes );
 
                 if ( System.Web.Hosting.HostingEnvironment.IsDevelopmentEnvironment )
                 {
-                    new AttributeService().Get( 0 );
+                    new AttributeService( rockContext ).Get( 0 );
                     System.Diagnostics.Debug.WriteLine( string.Format( "ConnectToDatabase - Connected: {0}", RockDateTime.Now.ToString( "hh:mm:ss.FFF" ) ) );
                 }
 
                 // Preload the commonly used objects
-                LoadCacheObjects();
+                LoadCacheObjects( rockContext );
                 if ( System.Web.Hosting.HostingEnvironment.IsDevelopmentEnvironment )
                 {
                     System.Diagnostics.Debug.WriteLine( string.Format( "LoadCacheObjects - Done: {0}", RockDateTime.Now.ToString( "hh:mm:ss.FFF" ) ) );
@@ -174,7 +130,7 @@ namespace RockWeb
                     sched = sf.GetScheduler();
 
                     // get list of active jobs
-                    ServiceJobService jobService = new ServiceJobService();
+                    ServiceJobService jobService = new ServiceJobService( rockContext );
                     foreach ( ServiceJob job in jobService.GetActiveJobs().ToList() )
                     {
                         try
@@ -190,8 +146,7 @@ namespace RockWeb
                             string message = string.Format( "Error loading the job: {0}.  Ensure that the correct version of the job's assembly ({1}.dll) in the websites App_Code directory. \n\n\n\n{2}", job.Name, job.Assembly, ex.Message );
                             job.LastStatusMessage = message;
                             job.LastStatus = "Error Loading Job";
-
-                            jobService.Save( job, null );
+                            rockContext.SaveChanges();
                         }
                     }
 
@@ -207,27 +162,22 @@ namespace RockWeb
 
                 RegisterFilters( GlobalConfiguration.Configuration.Filters );
 
-                RegisterRoutes( RouteTable.Routes );
+                Rock.Security.Authorization.Load( rockContext );
 
-                Rock.Security.Authorization.Load();
-
-                AddEventHandlers();
-
-                new EntityTypeService().RegisterEntityTypes( Server.MapPath( "~" ) );
-                new FieldTypeService().RegisterFieldTypes( Server.MapPath( "~" ) );
+                EntityTypeService.RegisterEntityTypes( Server.MapPath( "~" ) );
+                FieldTypeService.RegisterFieldTypes( Server.MapPath( "~" ) );
 
                 BundleConfig.RegisterBundles( BundleTable.Bundles );
 
                 // mark any user login stored as 'IsOnline' in the database as offline
                 MarkOnlineUsersOffline();
+
+                SqlServerTypes.Utilities.LoadNativeAssemblies( Server.MapPath( "~" ) );
+
             }
             catch ( Exception ex )
             {
-                try { Session["Exception"] = ex; } // session may not be available if in RESP API or Http Handler
-                catch ( HttpException ) { }
-                Server.ClearError();
-                Response.Clear();
-                Response.Redirect( "~/error.aspx?type=exception&error=66" );  // default error page
+                Error66( ex );
             }
         }
 
@@ -240,18 +190,14 @@ namespace RockWeb
         {
             try
             {
-                new Rock.Model.UserLoginService().UpdateLastLogin( UserLogin.GetCurrentUserName() );
+                UserLoginService.UpdateLastLogin( UserLogin.GetCurrentUserName() );
 
                 // add new session id
                 Session["RockSessionId"] = Guid.NewGuid();
             }
             catch ( Exception ex )
             {
-                try { Session["Exception"] = ex; } // session may not be available if in RESP API or Http Handler
-                catch ( HttpException ) { }
-                Server.ClearError();
-                Response.Clear();
-                Response.Redirect( "~/error.aspx?type=exception&error=66" );  // default error page
+                Error66( ex );
             }
         }
 
@@ -267,23 +213,18 @@ namespace RockWeb
                 // mark user offline
                 if ( this.Session["RockUserId"] != null )
                 {
-
-                    UserLoginService userLoginService = new UserLoginService();
+                    var rockContext = new RockContext();
+                    var userLoginService = new UserLoginService( rockContext );
 
                     var user = userLoginService.Get( Int32.Parse( this.Session["RockUserId"].ToString() ) );
                     user.IsOnLine = false;
 
-                    userLoginService.Save( user, null );
-
+                    rockContext.SaveChanges();
                 }
             }
             catch ( Exception ex )
             {
-                try { Session["Exception"] = ex; } // session may not be available if in RESP API or Http Handler
-                catch ( HttpException ) { }
-                Server.ClearError();
-                Response.Clear();
-                Response.Redirect( "~/error.aspx?type=exception&error=66" );  // default error page
+                Error66( ex );
             }
         }
 
@@ -308,11 +249,7 @@ namespace RockWeb
             }
             catch ( Exception ex )
             {
-                try { Session["Exception"] = ex; } // session may not be available if in RESP API or Http Handler
-                catch ( HttpException ) { }
-                Server.ClearError();
-                Response.Clear();
-                Response.Redirect( "~/error.aspx?type=exception&error=66" );  // default error page
+                Error66( ex );
             }
         }
 
@@ -392,7 +329,7 @@ namespace RockWeb
                             string errorPage = string.Empty;
 
                             // determine error page based on the site
-                            SiteService service = new SiteService();
+                            SiteService service = new SiteService( new RockContext() );
                             string siteName = string.Empty;
 
                             if ( context.Items["Rock:SiteId"] != null )
@@ -461,11 +398,7 @@ namespace RockWeb
             }
             catch ( Exception ex )
             {
-                try { Session["Exception"] = ex; } // session may not be available if in RESP API or Http Handler
-                catch ( HttpException ) { }
-                Server.ClearError();
-                Response.Clear();
-                Response.Redirect( "~/error.aspx?type=exception&error=66" );  // default error page
+                Error66( ex );
             }
         }
 
@@ -515,6 +448,133 @@ namespace RockWeb
 
         #region Methods
 
+        /// <summary>
+        /// Migrates the database.
+        /// </summary>
+        public void MigrateDatabase()
+        {
+            // Check if database should be auto-migrated for the core and plugins
+            if ( ConfigurationManager.AppSettings["AutoMigrateDatabase"].AsBoolean( true ) )
+            {
+                try
+                {
+                    Database.SetInitializer( new MigrateDatabaseToLatestVersion<Rock.Data.RockContext, Rock.Migrations.Configuration>() );
+
+                    var rockContext = new RockContext();
+
+                    // explictly check if the database exists, and force create it if doesn't exist
+                    if ( !rockContext.Database.Exists() )
+                    {
+                        // If database did not exist, initialize a database (which runs existing Rock migrations)
+                        rockContext.Database.Initialize( true );
+                    }
+                    else
+                    {
+                        // If database does exist, run any pending Rock migrations
+                        var migrator = new System.Data.Entity.Migrations.DbMigrator( new Rock.Migrations.Configuration() );
+                        migrator.Update();
+                    }
+
+                    // Migrate any plugins that have pending migrations
+                    List<Type> migrationList = Rock.Reflection.FindTypes( typeof( Migration ) ).Select( a => a.Value ).ToList();
+
+                    // If any plugin migrations types were found
+                    if ( migrationList.Any() )
+                    {
+                        // Create EF service for plugin migrations
+                        var pluginMigrationService = new PluginMigrationService( rockContext );
+
+                        // Get the current rock version
+                        var rockVersion = new Version( Rock.VersionInfo.VersionInfo.GetRockProductVersionNumber() );
+
+                        // Create dictionary for holding migrations specific to an assembly
+                        var assemblies = new Dictionary<string, Dictionary<int, Type>>();
+
+                        // Iterate plugin migrations
+                        foreach ( var migrationType in migrationList )
+                        {
+                            // Get the MigrationNumberAttribute for the migration
+                            var migrationNumberAttr = System.Attribute.GetCustomAttribute( migrationType, typeof( MigrationNumberAttribute ) ) as MigrationNumberAttribute;
+                            if ( migrationNumberAttr != null )
+                            {
+                                // If the migration's minimum Rock version is less than or equal to the current rock version, add it to the list
+                                var minRockVersion = new Version( migrationNumberAttr.MinimumRockVersion );
+                                if ( minRockVersion.CompareTo( rockVersion ) <= 0 )
+                                {
+                                    string assemblyName = migrationType.Assembly.GetName().Name;
+                                    if ( !assemblies.ContainsKey( assemblyName ) )
+                                    {
+                                        assemblies.Add( assemblyName, new Dictionary<int, Type>() );
+                                    }
+                                    assemblies[assemblyName].Add( migrationNumberAttr.Number, migrationType );
+                                }
+                            }
+                        }
+
+                        // Iterate each assembly that contains plugin migrations
+                        foreach ( var assemblyMigrations in assemblies )
+                        {
+                            try
+                            {
+                                // Get the versions that have already been installed
+                                var installedVersions = pluginMigrationService.Queryable()
+                                    .Where( m => m.PluginAssemblyName == assemblyMigrations.Key )
+                                    .ToList();
+
+                                // Wrap the migrations for each assembly in a transaction so that if an error with one migration, none of the migrations are persisted
+                                RockTransactionScope.WrapTransaction( () =>
+                                {
+                                    // Iterate each migration in the assembly in MigrationNumber order 
+                                    foreach ( var migrationType in assemblyMigrations.Value.OrderBy( t => t.Key ) )
+                                    {
+                                        // Check to make sure migration has not already been run
+                                        if ( !installedVersions.Any( v => v.MigrationNumber == migrationType.Key ) )
+                                        {
+                                            try
+                                            {
+                                                // Create an instance of the migration and run the up migration
+                                                var migration = Activator.CreateInstance( migrationType.Value ) as Rock.Plugin.Migration;
+                                                migration.Up();
+
+                                                // Save the plugin migration version so that it is not run again
+                                                var pluginMigration = new PluginMigration();
+                                                pluginMigration.PluginAssemblyName = assemblyMigrations.Key;
+                                                pluginMigration.MigrationNumber = migrationType.Key;
+                                                pluginMigration.MigrationName = migrationType.Value.Name;
+                                                pluginMigrationService.Add( pluginMigration );
+                                                rockContext.SaveChanges();
+                                            }
+                                            catch ( Exception ex )
+                                            {
+                                                throw new Exception( string.Format( "Plugin Migration error occurred in {0}, {1}",
+                                                    assemblyMigrations.Key, migrationType.Value.Name ), ex );
+                                            }
+                                        }
+                                    }
+                                } );
+                            }
+                            catch ( Exception ex )
+                            {
+                                // If an exception occurs in an an assembly, log the error, and continue with next assembly
+                                LogError( ex, null );
+                            }
+                        }
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    // if migrations fail, log error and attempt to continue
+                    LogError( ex, null );
+                }
+
+            }
+            else
+            {
+                // default Initializer is CreateDatabaseIfNotExists, but we don't want that to happen if automigrate is false, so set it to NULL so that nothing happens
+                Database.SetInitializer<Rock.Data.RockContext>( null );
+            }
+        }
+
         /// Formats the exception.
         /// </summary>
         /// <param name="ex">The ex.</param>
@@ -543,18 +603,15 @@ namespace RockWeb
         /// </summary>
         private void MarkOnlineUsersOffline()
         {
-            UserLoginService userLoginService = new UserLoginService();
+            var rockContext = new RockContext();
+            var userLoginService = new UserLoginService( rockContext );
 
-            var usersOnline = userLoginService.Queryable().Where( u => u.IsOnLine == true ).ToList();
-
-            foreach ( var user in usersOnline )
+            foreach ( var user in userLoginService.Queryable().Where( u => u.IsOnLine == true ) )
             {
-                userLoginService.Attach( user );
                 user.IsOnLine = false;
-                userLoginService.Save( user, null );
             }
 
-   
+            rockContext.SaveChanges();
         }
 
         /// <summary>
@@ -571,9 +628,9 @@ namespace RockWeb
         /// Registers the routes.
         /// </summary>
         /// <param name="routes">The routes.</param>
-        private void RegisterRoutes( RouteCollection routes )
+        private void RegisterRoutes( RockContext rockContext, RouteCollection routes )
         {
-            PageRouteService pageRouteService = new PageRouteService();
+            PageRouteService pageRouteService = new PageRouteService( rockContext );
 
             // find each page that has defined a custom routes.
             foreach ( PageRoute pageRoute in pageRouteService.Queryable() )
@@ -668,58 +725,64 @@ namespace RockWeb
         }
 
         /// <summary>
-        /// Adds the event handlers.
-        /// </summary>
-        private void AddEventHandlers()
-        {
-            Rock.Model.Block.Updated += new EventHandler<Rock.Data.ModelUpdatedEventArgs>( Block_Updated );
-            Rock.Model.Block.Deleting += new EventHandler<Rock.Data.ModelUpdatingEventArgs>( Block_Deleting );
-            Rock.Model.Page.Updated += new EventHandler<Rock.Data.ModelUpdatedEventArgs>( Page_Updated );
-            Rock.Model.Page.Deleting += new EventHandler<Rock.Data.ModelUpdatingEventArgs>( Page_Deleting );
-        }
-
-        /// <summary>
         /// Loads the cache objects.
         /// </summary>
-        private void LoadCacheObjects()
+        private void LoadCacheObjects( RockContext rockContext )
         {
-            using ( new Rock.Data.UnitOfWorkScope() )
+            // Read all the qualifiers first so that EF doesn't perform a query for each attribute when it's cached
+            var qualifiers = new Dictionary<int, Dictionary<string, string>>();
+            foreach ( var attributeQualifier in new Rock.Model.AttributeQualifierService( rockContext ).Queryable() )
             {
-                // Read all the qualifiers first so that EF doesn't perform a query for each attribute when it's cached
-                var qualifiers = new Dictionary<int, Dictionary<string, string>>();
-                foreach ( var attributeQualifier in new Rock.Model.AttributeQualifierService().Queryable() )
+                if ( !qualifiers.ContainsKey( attributeQualifier.AttributeId ) )
+                    qualifiers.Add( attributeQualifier.AttributeId, new Dictionary<string, string>() );
+                qualifiers[attributeQualifier.AttributeId].Add( attributeQualifier.Key, attributeQualifier.Value );
+            }
+
+            // Cache all the attributes.
+            foreach ( var attribute in new Rock.Model.AttributeService( rockContext ).Queryable( "Categories" ).ToList() )
+            {
+                if ( qualifiers.ContainsKey( attribute.Id ) )
+                    Rock.Web.Cache.AttributeCache.Read( attribute, qualifiers[attribute.Id] );
+                else
+                    Rock.Web.Cache.AttributeCache.Read( attribute, new Dictionary<string, string>() );
+            }
+
+            // Cache all the Field Types
+            var all = Rock.Web.Cache.FieldTypeCache.All();
+
+            // DT: When running with production CCV Data, this is taking a considerable amount of time 
+
+            // Cache all tha Defined Types
+            var definedTypeService = new Rock.Model.DefinedTypeService( rockContext );
+            foreach ( var definedType in definedTypeService.Queryable().ToList() )
+            {
+                Rock.Web.Cache.DefinedTypeCache.Read( definedType );
+            }
+
+            // Cache all the Defined Values
+            var definedValueService = new Rock.Model.DefinedValueService( rockContext );
+            foreach ( var definedValue in definedValueService.Queryable().ToList() )
+            {
+                Rock.Web.Cache.DefinedValueCache.Read( definedValue );
+            }
+        }
+
+        private void Error66( Exception ex )
+        {
+            if ( HttpContext.Current != null && HttpContext.Current.Session != null )
+            {
+                try { HttpContext.Current.Session["Exception"] = ex; } // session may not be available if in RESP API or Http Handler
+                catch ( HttpException ) { }
+
+                if ( HttpContext.Current.Server != null )
                 {
-                    if ( !qualifiers.ContainsKey( attributeQualifier.AttributeId ) )
-                        qualifiers.Add( attributeQualifier.AttributeId, new Dictionary<string, string>() );
-                    qualifiers[attributeQualifier.AttributeId].Add( attributeQualifier.Key, attributeQualifier.Value );
+                    HttpContext.Current.Server.ClearError();
                 }
 
-                // Cache all the attributes.
-                foreach ( var attribute in new Rock.Model.AttributeService().Queryable( "Categories" ).ToList() )
+                if ( HttpContext.Current.Response != null )
                 {
-                    if ( qualifiers.ContainsKey( attribute.Id ) )
-                        Rock.Web.Cache.AttributeCache.Read( attribute, qualifiers[attribute.Id] );
-                    else
-                        Rock.Web.Cache.AttributeCache.Read( attribute, new Dictionary<string, string>() );
-                }
-
-                // Cache all the Field Types
-                var all = Rock.Web.Cache.FieldTypeCache.All();
-
-                // DT: When running with production CCV Data, this is taking a considerable amount of time 
-
-                // Cache all tha Defined Types
-                var definedTypeService = new Rock.Model.DefinedTypeService();
-                foreach ( var definedType in definedTypeService.Queryable().ToList() )
-                {
-                    Rock.Web.Cache.DefinedTypeCache.Read( definedType );
-                }
-
-                // Cache all the Defined Values
-                var definedValueService = new Rock.Model.DefinedValueService();
-                foreach ( var definedValue in definedValueService.Queryable().ToList() )
-                {
-                    Rock.Web.Cache.DefinedValueCache.Read( definedValue );
+                    HttpContext.Current.Response.Clear();
+                    HttpContext.Current.Response.Redirect( "~/error.aspx?type=exception&error=66" );  // default error page
                 }
             }
         }
@@ -752,24 +815,27 @@ namespace RockWeb
 
                 while ( RockQueue.TransactionQueue.Count != 0 )
                 {
-                    ITransaction transaction = RockQueue.TransactionQueue.Dequeue() as ITransaction;
-                    if ( transaction != null )
+                    ITransaction transaction;
+                    if ( RockQueue.TransactionQueue.TryDequeue( out transaction ) )
                     {
-                        try
+                        if ( transaction != null )
                         {
-                            transaction.Execute();
-                        }
-                        catch ( Exception ex )
-                        {
-                            LogError( new Exception( string.Format( "Exception in Global.DrainTransactionQueue(): {0}", transaction.GetType().Name ), ex ), null );
+                            try
+                            {
+                                transaction.Execute();
+                            }
+                            catch ( Exception ex )
+                            {
+                                LogError( new Exception( string.Format( "Exception in Global.DrainTransactionQueue(): {0}", transaction.GetType().Name ), ex ), null );
+                            }
                         }
                     }
                 }
 
                 Global.QueueInUse = false;
             }
-        }        
-        
+        }
+
         /// <summary>
         /// Logs the error to database
         /// </summary>
@@ -793,7 +859,7 @@ namespace RockWeb
                 var sid = context.Items["Rock:SiteId"];
                 siteId = sid != null ? int.Parse( sid.ToString() ) : (int?)null;
                 var user = UserLoginService.GetCurrentUser();
-                if ( user.Person != null )
+                if ( user != null && user.Person != null )
                 {
                     personAlias = user.Person.PrimaryAlias;
                 }
@@ -807,110 +873,6 @@ namespace RockWeb
         #endregion
 
         #region Event Handlers
-
-        /// <summary>
-        /// Flushes a cached page and it's parent page's list of child pages whenever a page is updated
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="Rock.ModelUpdatedEventArgs"/> instance containing the event data.</param>
-        void Page_Updated( object sender, Rock.Data.ModelUpdatedEventArgs e )
-        {
-            // Get a reference to the updated page
-            Rock.Model.Page page = e.Model as Rock.Model.Page;
-            if ( page != null )
-            {
-                // Check to see if the page being updated is cached
-                System.Runtime.Caching.ObjectCache cache = System.Runtime.Caching.MemoryCache.Default;
-                if ( cache.Contains( Rock.Web.Cache.PageCache.CacheKey( page.Id ) ) )
-                {
-                    // Get the cached page
-                    var cachedPage = Rock.Web.Cache.PageCache.Read( page.Id );
-
-                    // if the parent page has changed, flush the old parent page's list of child pages
-                    if ( cachedPage.ParentPage != null && cachedPage.ParentPage.Id != page.ParentPageId )
-                        cachedPage.ParentPage.FlushChildPages();
-
-                    // Flush the updated page from cache
-                    Rock.Web.Cache.PageCache.Flush( page.Id );
-                }
-
-                // Check to see if updated page has a parent
-                if ( page.ParentPageId.HasValue )
-                {
-                    // If the parent page is cached, flush it's list of child pages
-                    if ( cache.Contains( Rock.Web.Cache.PageCache.CacheKey( page.ParentPageId.Value ) ) )
-                        Rock.Web.Cache.PageCache.Read( page.ParentPageId.Value ).FlushChildPages();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Flushes a cached page and it's parent page's list of child pages whenever a page is being deleted
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="Rock.ModelUpdatingEventArgs"/> instance containing the event data.</param>
-        void Page_Deleting( object sender, Rock.Data.ModelUpdatingEventArgs e )
-        {
-            // Get a reference to the deleted page
-            Rock.Model.Page page = e.Model as Rock.Model.Page;
-            if ( page != null )
-            {
-                // Check to see if the page being updated is cached
-                System.Runtime.Caching.ObjectCache cache = System.Runtime.Caching.MemoryCache.Default;
-                if ( cache.Contains( Rock.Web.Cache.PageCache.CacheKey( page.Id ) ) )
-                {
-                    // Get the cached page
-                    var cachedPage = Rock.Web.Cache.PageCache.Read( page.Id );
-
-                    // if the parent page is not null, flush parent page's list of child pages
-                    if ( cachedPage.ParentPage != null )
-                        cachedPage.ParentPage.FlushChildPages();
-
-                    // Flush the updated page from cache
-                    Rock.Web.Cache.PageCache.Flush( page.Id );
-                }
-            }
-        }
-
-        /// <summary>
-        /// Flushes a block and it's parent page from cache whenever it is updated
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="Rock.ModelUpdatedEventArgs"/> instance containing the event data.</param>
-        void Block_Updated( object sender, Rock.Data.ModelUpdatedEventArgs e )
-        {
-            // Get a reference to the update block instance
-            Rock.Model.Block block = e.Model as Rock.Model.Block;
-            if ( block != null )
-            {
-                // Flush the block instance from cache
-                Rock.Web.Cache.BlockCache.Flush( block.Id );
-
-                // Flush the block instance's parent page 
-                if ( block.PageId.HasValue )
-                    Rock.Web.Cache.PageCache.Flush( block.PageId.Value );
-            }
-        }
-
-        /// <summary>
-        /// Flushes a block and it's parent page from cache whenever it is being deleted
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="Rock.ModelUpdatingEventArgs"/> instance containing the event data.</param>
-        void Block_Deleting( object sender, Rock.Data.ModelUpdatingEventArgs e )
-        {
-            // Get a reference to the deleted block instance
-            Rock.Model.Block block = e.Model as Rock.Model.Block;
-            if ( block != null )
-            {
-                // Flush the block instance from cache
-                Rock.Web.Cache.BlockCache.Flush( block.Id );
-
-                // Flush the block instance's parent page 
-                if ( block.PageId.HasValue )
-                    Rock.Web.Cache.PageCache.Flush( block.PageId.Value );
-            }
-        }
 
         /// <summary>
         /// Caches the item removed.
@@ -940,14 +902,17 @@ namespace RockWeb
                 }
                 else
                 {
-                    throw new Exception( 
-                        string.Format( "The IISCallBack cache object was removed without expiring.  Removed Reason: {0}", 
-                            r.ConvertToString() ) );
+                    if ( r != CacheItemRemovedReason.Removed )
+                    {
+                        throw new Exception(
+                            string.Format( "The IISCallBack cache object was removed without expiring.  Removed Reason: {0}",
+                                r.ConvertToString() ) );
+                    }
                 }
             }
-            catch( Exception ex)
+            catch ( Exception ex )
             {
-                LogError(ex, null);
+                LogError( ex, null );
             }
         }
 

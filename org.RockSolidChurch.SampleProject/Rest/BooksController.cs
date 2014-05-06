@@ -14,7 +14,6 @@ namespace org.RockSolidChurch.SampleProject.Rest
     /// </summary>
     public class BooksController : ApiController<Book>
     {
-        public BooksController() : base( new BookService() ) { }
-
+        public BooksController() : base( new BookService( new Data.SampleProjectContext() ) ) { }
     }
 }

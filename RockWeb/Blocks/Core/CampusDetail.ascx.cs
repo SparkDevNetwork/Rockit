@@ -78,14 +78,15 @@ namespace RockWeb.Blocks.Core
         protected void btnSave_Click( object sender, EventArgs e )
         {
             Campus campus;
-            CampusService campusService = new CampusService();
+            var rockContext = new RockContext();
+            CampusService campusService = new CampusService( rockContext );
 
             int campusId = int.Parse( hfCampusId.Value );
 
             if ( campusId == 0 )
             {
                 campus = new Campus();
-                campusService.Add( campus, CurrentPersonAlias );
+                campusService.Add( campus);
             }
             else
             {
@@ -94,6 +95,11 @@ namespace RockWeb.Blocks.Core
 
             campus.Name = tbCampusName.Text;
             campus.ShortCode = tbCampusCode.Text;
+            campus.PhoneNumber = tbPhoneNumber.Text;
+
+            var personService = new PersonService( rockContext );
+            var leaderPerson = personService.Get( ppCampusLeader.SelectedValue ?? 0 );
+            campus.LeaderPersonAliasId = leaderPerson != null ? leaderPerson.PrimaryAliasId : null;
 
             if ( !campus.IsValid )
             {
@@ -101,10 +107,7 @@ namespace RockWeb.Blocks.Core
                 return;
             }
 
-            RockTransactionScope.WrapTransaction( () =>
-            {
-                campusService.Save( campus, CurrentPersonAlias );
-            } );
+            rockContext.SaveChanges();
 
             Rock.Web.Cache.CampusCache.Flush( campus.Id );
 
@@ -130,7 +133,7 @@ namespace RockWeb.Blocks.Core
             Campus campus = null;
             if ( !itemKeyValue.Equals( 0 ) )
             {
-                campus = new CampusService().Get( itemKeyValue );
+                campus = new CampusService( new RockContext() ).Get( itemKeyValue );
                 lActionTitle.Text = ActionTitle.Edit(Campus.FriendlyTypeName).FormatAsHtmlTitle();
             }
             else
@@ -142,6 +145,8 @@ namespace RockWeb.Blocks.Core
             hfCampusId.Value = campus.Id.ToString();
             tbCampusName.Text = campus.Name;
             tbCampusCode.Text = campus.ShortCode;
+            tbPhoneNumber.Text = campus.PhoneNumber;
+            ppCampusLeader.SetValue( campus.LeaderPersonAlias != null ? campus.LeaderPersonAlias.Person : null );
 
             // render UI based on Authorized and IsSystem
             bool readOnly = false;

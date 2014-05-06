@@ -11,19 +11,21 @@ namespace org.RockSolidChurch.SampleProject.Data
         /// <summary>
         /// Initializes a new instance of the <see cref="DocumentationService{T}"/> class.
         /// </summary>
-        public SampleProjectService()
-            : base( new EFRepository<T>( new SampleProjectContext() ) )
+        public SampleProjectService( SampleProjectContext context )
+            : base( context )
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DocumentationService{T}"/> class.
+        /// Determines whether this instance can delete the specified item.
         /// </summary>
-        /// <param name="context">The context.</param>
-        public SampleProjectService( SampleProjectContext context )
-            : base( new EFRepository<T>( context ) )
+        /// <param name="item">The item.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <returns></returns>
+        public virtual bool CanDelete( T item, out string errorMessage )
         {
-
+            errorMessage = string.Empty;
+            return true;
         }
     }
 }
