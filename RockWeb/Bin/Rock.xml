@@ -2338,6 +2338,417 @@
             Initializes a new instance of the <see cref="T:Rock.Model.PluginMigrationConfiguration"/> class.
             </summary>
         </member>
+        <member name="T:Rock.Plugin.Migration">
+            <summary>
+            Class for defining a plugin migration
+            </summary>
+        </member>
+        <member name="M:Rock.Plugin.Migration.Up">
+            <summary>
+            The commands to run to migrate plugin to the specific version
+            </summary>
+        </member>
+        <member name="M:Rock.Plugin.Migration.Down">
+            <summary>
+            The commands to undo a migration from a specific version
+            </summary>
+        </member>
+        <member name="M:Rock.Plugin.Migration.Sql(System.String)">
+            <summary>
+            Executes a sql statement
+            </summary>
+            <param name="sql">The SQL.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.UpdateEntityType(System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Updates the EntityType by name (if it exists); otherwise it inserts a new record.
+            </summary>
+            <param name="name">The name.</param>
+            <param name="guid">The GUID.</param>
+            <param name="isEntity">if set to <c>true</c> [is entity].</param>
+            <param name="isSecured">if set to <c>true</c> [is secured].</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.UpdateEntityType(System.String,System.String,System.String,System.Boolean,System.Boolean,System.String)">
+            <summary>
+            Updates the EntityType by name (if it exists); otherwise it inserts a new record.
+            </summary>
+            <param name="name">The name.</param>
+            <param name="friendlyName">Name of the friendly.</param>
+            <param name="assemblyName">Name of the assembly.</param>
+            <param name="isEntity">if set to <c>true</c> [is entity].</param>
+            <param name="isSecured">if set to <c>true</c> [is secured].</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteEntityType(System.String)">
+            <summary>
+            Deletes the EntityType.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.UpdateFieldType(System.String,System.String,System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Updates the FieldType by assembly and className (if it exists); otherwise it inserts a new record.
+            </summary>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="assembly">The assembly.</param>
+            <param name="className">Name of the class.</param>
+            <param name="guid">The GUID.</param>
+            <param name="IsSystem">if set to <c>true</c> [is system].</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteFieldType(System.String)">
+            <summary>
+            Deletes the FieldType.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.UpdateBlockType(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Updates the BlockType by path (if it exists);
+            otherwise it inserts a new record. In either case it will be marked IsSystem.
+            </summary>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="path">The path.</param>
+            <param name="category">The category.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddBlockType(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Adds a new BlockType.
+            </summary>
+            <param name="name"></param>
+            <param name="description"></param>
+            <param name="path"></param>
+            <param name="category"></param>
+            <param name="guid"></param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteBlockType(System.String)">
+            <summary>
+            Deletes the BlockType.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddLayout(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Adds a new Layout to the given site.
+            </summary>
+            <param name="siteGuid">The site GUID.</param>
+            <param name="fileName">Name of the file.</param>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteLayout(System.String)">
+            <summary>
+            Deletes the Layout.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddPage(System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Adds a new Page to the given parent page.
+            The new page will be ordered as last child of the parent page.
+            </summary>
+            <param name="parentPageGuid">The parent page GUID.</param>
+            <param name="layoutGuid">The layout GUID.</param>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="guid">The GUID.</param>
+            <param name="iconCssClass">The icon CSS class.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.MovePage(System.String,System.String)">
+            <summary>
+            Moves the Page to the new given parent page.
+            </summary>
+            <param name="pageGuid">The page GUID.</param>
+            <param name="parentPageGuid">The parent page GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeletePage(System.String)">
+            <summary>
+            Deletes the Page and any PageViews that use the page.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddPageRoute(System.String,System.String)">
+            <summary>
+            Adds a new PageRoute to the given page but only if the given route name does not exist.
+            </summary>
+            <param name="pageGuid">The page GUID.</param>
+            <param name="route">The route.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddPageContext(System.String,System.String,System.String)">
+            <summary>
+            Adds a new PageContext to the given page.
+            </summary>
+            <param name="pageGuid">The page GUID.</param>
+            <param name="entity">The entity.</param>
+            <param name="idParameter">The id parameter.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddBlock(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Int32,System.String)">
+            <summary>
+            Adds a new Block of the given block type to the given page (optional) and layout (optional),
+            setting its values with the given parameter values. If only the layout is given,
+            edit/configuration authorization will also be inserted into the Auth table
+            for the admin role (GroupId 2).
+            </summary>
+            <param name="pageGuid">The page GUID.</param>
+            <param name="layoutGuid">The layout GUID.</param>
+            <param name="blockTypeGuid">The block type GUID.</param>
+            <param name="name">The name.</param>
+            <param name="zone">The zone.</param>
+            <param name="preHtml">The pre HTML.</param>
+            <param name="postHtml">The post HTML.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteBlock(System.String)">
+            <summary>
+            Deletes the block and any authorization records that belonged to it.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.UpdateBlockTypeAttribute(System.String,System.String,System.String,System.String,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Updates the BlockType Attribute for the given blocktype and key (if it exists);
+            otherwise it inserts a new record.
+            </summary>
+            <param name="blockTypeGuid"></param>
+            <param name="fieldTypeGuid"></param>
+            <param name="name"></param>
+            <param name="key"></param>
+            <param name="category"></param>
+            <param name="description"></param>
+            <param name="order"></param>
+            <param name="defaultValue"></param>
+            <param name="guid"></param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddBlockTypeAttribute(System.String,System.String,System.String,System.String,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Adds a new BlockType Attribute for the given blocktype and key.
+            </summary>
+            <param name="blockTypeGuid">The block GUID.</param>
+            <param name="fieldTypeGuid">The field type GUID.</param>
+            <param name="name">The name.</param>
+            <param name="key">The key.</param>
+            <param name="category">The category.</param>
+            <param name="description">The description.</param>
+            <param name="order">The order.</param>
+            <param name="defaultValue">The default value.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteBlockAttribute(System.String)">
+            <summary>
+            Deletes the block Attribute.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddEntityAttribute(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Adds a new EntityType Attribute for the given EntityType, FieldType, and name (key).
+            </summary>
+            <param name="entityTypeName">Name of the entity type.</param>
+            <param name="fieldTypeGuid">The field type GUID.</param>
+            <param name="entityTypeQualifierColumn">The entity type qualifier column.</param>
+            <param name="entityTypeQualifierValue">The entity type qualifier value.</param>
+            <param name="name">The name.</param>
+            <param name="category">The category.</param>
+            <param name="description">The description.</param>
+            <param name="order">The order.</param>
+            <param name="defaultValue">The default value.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddGlobalAttribute(System.String,System.String,System.String,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Adds a global Attribute for the given FieldType, entityTypeQualifierColumn, entityTypeQualifierValue and name (key).
+            Note: This method delets the Attribute first if it had already existed.
+            </summary>
+            <param name="fieldTypeGuid">The field type GUID.</param>
+            <param name="entityTypeQualifierColumn">The entity type qualifier column.</param>
+            <param name="entityTypeQualifierValue">The entity type qualifier value.</param>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="order">The order.</param>
+            <param name="defaultValue">The default value.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.EnsureEntityTypeExists(System.String)">
+            <summary>
+            Ensures the entity type exists by adding it by name if it did not already exist.
+            </summary>
+            <param name="entityTypeName">Name of the entity type.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddAttributeValue(System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Adds a new attribute value for the given attributeGuid if it does not already exist.
+            </summary>
+            <param name="attributeGuid">The attribute GUID.</param>
+            <param name="entityId">The entity id.</param>
+            <param name="value">The value.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteAttribute(System.String)">
+            <summary>
+            Deletes the attribute.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddBlockAttributeValue(System.String,System.String,System.String)">
+            <summary>
+            Adds a new block attribute value for the given block guid and attribute guid,
+            deleting any previously existing attribute value first.
+            </summary>
+            <param name="blockGuid">The block GUID.</param>
+            <param name="attributeGuid">The attribute GUID.</param>
+            <param name="value">The value.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteBlockAttributeValue(System.String,System.String)">
+            <summary>
+            Deletes the block attribute value.
+            </summary>
+            <param name="blockGuid">The block GUID.</param>
+            <param name="attributeGuid">The attribute GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddDefinedType(System.String,System.String,System.String,System.String)">
+            <summary>
+            Adds a new DefinedType.
+            </summary>
+            <param name="category">The category.</param>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteDefinedType(System.String)">
+            <summary>
+            Deletes the DefinedType.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddDefinedValue(System.String,System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Adds a new DefinedValue for the given DefinedType.
+            </summary>
+            <param name="definedTypeGuid">The defined type GUID.</param>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="guid">The GUID.</param>
+            <param name="isSystem">if set to <c>true</c> [is system].</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.UpdateDefinedValue(System.String,System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            Updates (or Adds) the defined value for the given DefinedType.
+            </summary>
+            <param name="definedTypeGuid">The defined type GUID.</param>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="guid">The GUID.</param>
+            <param name="isSystem">if set to <c>true</c> [is system].</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteDefinedValue(System.String)">
+            <summary>
+            Deletes the DefinedValue.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddSecurityRoleGroup(System.String,System.String,System.String)">
+            <summary>
+            Adds the security role group.
+            </summary>
+            <param name="name">The name.</param>
+            <param name="description">The description.</param>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteSecurityRoleGroup(System.String)">
+            <summary>
+            Deletes the security role group.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddSecurityAuth(System.String,System.String,System.String,System.String)">
+            <summary>
+            Adds the security auth record for the given entity type and group.
+            </summary>
+            <param name="entityTypeName">Name of the entity type.</param>
+            <param name="action">The action.</param>
+            <param name="groupGuid">The group GUID.</param>
+            <param name="authGuid">The auth GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddSecurityAuthForPage(System.String,System.Int32,System.String,System.Boolean,System.String,System.Int32,System.String)">
+            <summary>
+            Adds the page security authentication. Set GroupGuid to null when setting to a special role
+            </summary>
+            <param name="pageGuid">The page unique identifier.</param>
+            <param name="action">The action.</param>
+            <param name="groupGuid">The group unique identifier.</param>
+            <param name="specialRole">The special role.</param>
+            <param name="authGuid">The authentication unique identifier.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddSecurityAuthForBlock(System.String,System.Int32,System.String,System.Boolean,System.String,System.Int32,System.String)">
+            <summary>
+            Adds the page security authentication. Set GroupGuid to null when setting to a special role
+            </summary>
+            <param name="pageGuid">The page unique identifier.</param>
+            <param name="action">The action.</param>
+            <param name="groupGuid">The group unique identifier.</param>
+            <param name="specialRole">The special role.</param>
+            <param name="authGuid">The authentication unique identifier.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddSecurityAuthForBinaryFileType(System.String,System.Int32,System.String,System.Boolean,System.String,System.Int32,System.String)">
+            <summary>
+            Adds the binaryfiletype security authentication. Set GroupGuid to null when setting to a special role
+            </summary>
+            <param name="binaryFileTypeGuid">The binary file type unique identifier.</param>
+            <param name="order">The order.</param>
+            <param name="action">The action.</param>
+            <param name="allow">if set to <c>true</c> [allow].</param>
+            <param name="groupGuid">The group unique identifier.</param>
+            <param name="specialRole">The special role.</param>
+            <param name="authGuid">The authentication unique identifier.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.DeleteSecurityAuth(System.String)">
+            <summary>
+            Deletes the security auth record.
+            </summary>
+            <param name="guid">The GUID.</param>
+        </member>
+        <member name="M:Rock.Plugin.Migration.AddGroupTypeGroupAttribute(System.String,System.String,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Adds a new GroupType "Group Attribute" for the given GroupType using the given values. 
+            </summary>
+            <param name="groupTypeGuid"></param>
+            <param name="fieldTypeGuid"></param>
+            <param name="name"></param>
+            <param name="description"></param>
+            <param name="order"></param>
+            <param name="defaultValue">a string, empty string, or NULL</param>
+            <param name="guid"></param>
+        </member>
+        <member name="T:Rock.Plugin.MigrationNumberAttribute">
+            <summary>
+            Attribute for defining the a plugin migrations' number.  Migrations are execued in sequential order based on migration number
+            </summary>
+        </member>
+        <member name="M:Rock.Plugin.MigrationNumberAttribute.#ctor(System.Int32,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Rock.Plugin.MigrationNumberAttribute"/> class.
+            </summary>
+            <param name="number">The number.</param>
+            <param name="minimumRockVersion">The minimum rock version.</param>
+        </member>
+        <member name="P:Rock.Plugin.MigrationNumberAttribute.Number">
+            <summary>
+            Gets or sets the number.
+            </summary>
+            <value>
+            The number.
+            </value>
+        </member>
+        <member name="P:Rock.Plugin.MigrationNumberAttribute.MinimumRockVersion">
+            <summary>
+            Gets or sets the minimum rock version for this migration 
+            </summary>
+            <value>
+            The minimum rock version.
+            </value>
+        </member>
         <member name="T:Rock.Reporting.Dashboard.ChartDateTimeJsonConverter">
             <summary>
             Converts DateTime values to 'new Date(..)' instead of a string representation
