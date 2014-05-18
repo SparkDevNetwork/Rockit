@@ -97,11 +97,12 @@
   <ItemGroup>
     <Compile Include="Data\SampleProjectContext.cs" />
     <Compile Include="Data\SampleProjectService.cs" />
+    <Compile Include="Migrations\002_AddSystemData.cs" />
     <Compile Include="Migrations\001_CreateDb.cs" />
-    <Compile Include="Model\Book.cs" />
-    <Compile Include="Model\BookService.cs" />
+    <Compile Include="Model\ReferralAgency.cs" />
+    <Compile Include="Model\ReferralAgencyService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Rest\BooksController.cs" />
+    <Compile Include="Rest\ReferralAgenciesController.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
