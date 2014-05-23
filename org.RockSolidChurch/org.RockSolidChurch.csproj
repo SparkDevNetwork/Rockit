@@ -7,8 +7,8 @@
     <ProjectGuid>{83775A9E-0455-4801-B1EF-DC70D786D09B}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>org.RockSolidChurch</RootNamespace>
-    <AssemblyName>org.RockSolidChurch</AssemblyName>
+    <RootNamespace>org.rocksolidchurch</RootNamespace>
+    <AssemblyName>org.rocksolidchurch</AssemblyName>
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />

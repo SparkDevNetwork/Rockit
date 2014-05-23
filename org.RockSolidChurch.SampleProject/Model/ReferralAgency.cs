@@ -6,19 +6,19 @@ using System.Data.Entity.ModelConfiguration;
 using System.Linq;
 using System.Runtime.Serialization;
 
-using org.RockSolidChurch.Data;
+using org.rocksolidchurch.Data;
 
 using Rock.Data;
 using Rock.Model;
 
-namespace org.RockSolidChurch.SampleProject.Model
+namespace org.rocksolidchurch.SampleProject.Model
 {
     /// <summary>
     /// A Referral Agency
     /// </summary>
-    [Table( "_org_RockSolidChurch_SampleProject_ReferralAgency" )]
+    [Table( "_org_rocksolidchurch_SampleProject_ReferralAgency" )]
     [DataContract]
-    public class ReferralAgency : org.RockSolidChurch.Data.NamedModel<ReferralAgency>
+    public class ReferralAgency : org.rocksolidchurch.Data.NamedModel<ReferralAgency>
     {
         #region Entity Properties
 

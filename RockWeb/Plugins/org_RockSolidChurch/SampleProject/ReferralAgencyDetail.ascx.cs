@@ -6,8 +6,8 @@ using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
-using org.RockSolidChurch.SampleProject.Data;
-using org.RockSolidChurch.SampleProject.Model;
+using org.rocksolidchurch.SampleProject.Data;
+using org.rocksolidchurch.SampleProject.Model;
 
 using Rock;
 using Rock.Constants;
@@ -18,13 +18,13 @@ using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 using Rock.Attribute;
 
-namespace RockWeb.Plugins.org_RockSolidChurch.SampleProject
+namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
 {
     /// <summary>
     /// Displays the details of a Referral Agency.
     /// </summary>
     [DisplayName( "Referral Agency Detail" )]
-    [Category( "RockSolidChurch > Sample Project" )]
+    [Category( "rocksolidchurch > Sample Project" )]
     [Description( "Displays the details of a Referral Agency." )]
 
     public partial class ReferralAgencyDetail : Rock.Web.UI.RockBlock
@@ -49,7 +49,7 @@ namespace RockWeb.Plugins.org_RockSolidChurch.SampleProject
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
 
-            var definedType = DefinedTypeCache.Read( org.RockSolidChurch.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
+            var definedType = DefinedTypeCache.Read( org.rocksolidchurch.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
             if (definedType != null)
             {
                 ddlAgencyType.BindToDefinedType( definedType, true );

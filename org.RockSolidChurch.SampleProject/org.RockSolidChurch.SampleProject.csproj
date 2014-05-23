@@ -7,8 +7,8 @@
     <ProjectGuid>{496EC024-71ED-4AD1-B677-2A3FA60CCD05}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>org.RockSolidChurch.SampleProject</RootNamespace>
-    <AssemblyName>org.RockSolidChurch.SampleProject</AssemblyName>
+    <RootNamespace>org.rocksolidchurch.SampleProject</RootNamespace>
+    <AssemblyName>org.rocksolidchurch.SampleProject</AssemblyName>
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -110,9 +110,9 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="..\org.RockSolidChurch\org.RockSolidChurch.csproj">
+    <ProjectReference Include="..\org.rocksolidchurch\org.rocksolidchurch.csproj">
       <Project>{83775a9e-0455-4801-b1ef-dc70d786d09b}</Project>
-      <Name>org.RockSolidChurch</Name>
+      <Name>org.rocksolidchurch</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

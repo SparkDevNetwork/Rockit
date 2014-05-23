@@ -1,7 +1,7 @@
-﻿using org.RockSolidChurch.SampleProject.Data;
+﻿using org.rocksolidchurch.SampleProject.Data;
 using Rock.Model;
 
-namespace org.RockSolidChurch.SampleProject.Model
+namespace org.rocksolidchurch.SampleProject.Model
 {
     /// <summary>
     /// 

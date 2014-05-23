@@ -1,6 +1,6 @@
 ﻿using Rock.Data;
 
-namespace org.RockSolidChurch.SampleProject.Data
+namespace org.rocksolidchurch.SampleProject.Data
 {
     /// <summary>
     /// 

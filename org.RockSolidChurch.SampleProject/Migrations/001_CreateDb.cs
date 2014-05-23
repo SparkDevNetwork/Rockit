@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using Rock.Plugin;
 
-namespace org.RockSolidChurch.SampleProject.Migrations
+namespace org.rocksolidchurch.SampleProject.Migrations
 {
     [MigrationNumber( 1, "1.0.8" )]
     public class CreateDb : Migration

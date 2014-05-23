@@ -2,12 +2,12 @@
 using System.Net;
 using System.Web.Http;
 
-using org.RockSolidChurch.SampleProject.Model;
+using org.rocksolidchurch.SampleProject.Model;
 
 using Rock.Rest;
 using Rock.Rest.Filters;
 
-namespace org.RockSolidChurch.SampleProject.Rest
+namespace org.rocksolidchurch.SampleProject.Rest
 {
     /// <summary>
     /// REST API for Referral Agencies

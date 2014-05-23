@@ -2,9 +2,9 @@
 using System.Data.Entity.ModelConfiguration.Conventions;
 using System.Web;
 
-using org.RockSolidChurch.SampleProject.Model;
+using org.rocksolidchurch.SampleProject.Model;
 
-namespace org.RockSolidChurch.SampleProject.Data
+namespace org.rocksolidchurch.SampleProject.Data
 {
     /// <summary>
     /// 

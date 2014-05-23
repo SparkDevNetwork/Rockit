@@ -4,8 +4,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
 
-using org.RockSolidChurch.SampleProject.Data;
-using org.RockSolidChurch.SampleProject.Model;
+using org.rocksolidchurch.SampleProject.Data;
+using org.rocksolidchurch.SampleProject.Model;
 
 using Rock;
 using Rock.Attribute;
@@ -14,13 +14,13 @@ using Rock.Model;
 using Rock.Web.Cache;
 using Rock.Web.UI.Controls;
 
-namespace RockWeb.Plugins.org_RockSolidChurch.SampleProject
+namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
 {
     /// <summary>
     /// Lists all the Referral Agencies.
     /// </summary>
     [DisplayName( "Referral Agency List" )]
-    [Category( "RockSolidChurch > Sample Project" )]
+    [Category( "rocksolidchurch > Sample Project" )]
     [Description( "Lists all the Referral Agencies." )]
 
     [LinkedPage( "Detail Page" )]
@@ -210,7 +210,7 @@ namespace RockWeb.Plugins.org_RockSolidChurch.SampleProject
             cpCampus.Campuses = campusi;
             cpCampus.Visible = campusi.Any();
 
-            var definedType = DefinedTypeCache.Read( org.RockSolidChurch.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
+            var definedType = DefinedTypeCache.Read( org.rocksolidchurch.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
             if ( definedType != null )
             {
                 ddlAgencyType.BindToDefinedType( definedType, true );
