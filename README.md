@@ -1,4 +1,4 @@
-RockKit
+Rockit
 =======
 
-Rock Developer Kit
+Rock Software Developer Kit (SDK)
