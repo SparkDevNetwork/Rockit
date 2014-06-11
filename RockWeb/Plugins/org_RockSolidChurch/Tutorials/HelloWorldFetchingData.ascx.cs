@@ -36,6 +36,9 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
     [DisplayName( "Hello World Fetching Data" )]
     [Category( "rocksolidchurch > Tutorials" )]
     [Description( "A simple block to fetch some data from Rock." )]
+
+    [CustomRadioListField( "Gender Filter", "Select in order to list only records for that gender",
+         "1:Male,2:Female", required: false )]
     public partial class HelloWorldFetchingData : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -77,8 +80,17 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
 
             if ( !Page.IsPostBack )
             {
-                var items = new PersonService( new RockContext() ).Queryable().ToList();
-                gPeople.DataSource = items;
+                var genderValue = GetAttributeValue( "GenderFilter" );
+
+                var query = new PersonService( new RockContext() ).Queryable();
+
+                if ( !string.IsNullOrEmpty( genderValue ) )
+                {
+                    Gender gender = genderValue.ConvertToEnum<Gender>();
+                    query = query.Where( p => p.Gender == gender );
+                }
+
+                gPeople.DataSource = query.ToList();
                 gPeople.DataBind();
             }
         }
