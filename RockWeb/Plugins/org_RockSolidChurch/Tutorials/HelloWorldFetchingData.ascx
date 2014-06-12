@@ -4,7 +4,8 @@
 <asp:UpdatePanel ID="upnlContent" runat="server">
     <ContentTemplate>
 
-        <Rock:Grid ID="gPeople" runat="server" AllowSorting="true">
+        <Rock:Grid ID="gPeople" runat="server" AllowSorting="true"
+             OnRowSelected="gPeople_RowSelected" DataKeyNames="Id">
             <Columns>
                 <asp:BoundField DataField="FirstName" HeaderText="First Name" />
                 <asp:BoundField DataField="LastName" HeaderText="Last Name" />

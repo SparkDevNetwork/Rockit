@@ -39,6 +39,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
 
     [CustomRadioListField( "Gender Filter", "Select in order to list only records for that gender",
          "1:Male,2:Female", required: false )]
+    [LinkedPage( "Related Page" )]
     public partial class HelloWorldFetchingData : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -111,6 +112,16 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
 
         }
 
+        /// <summary>
+        /// Event handler that redirects to the related page when a row in the grid is clicked.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
+        protected void gPeople_RowSelected( object sender, RowEventArgs e )
+        {
+            NavigateToLinkedPage( "RelatedPage", "PersonId", (int)e.RowKeyValues["Id"] );
+        }
+  
         #endregion
 
         #region Methods
