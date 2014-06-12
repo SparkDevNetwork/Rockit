@@ -27,6 +27,7 @@ using Rock.Model;
 using Rock.Web.Cache;
 using Rock.Web.UI.Controls;
 using Rock.Attribute;
+using Rock.Security;
 
 namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
 {
@@ -66,6 +67,17 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
         {
             base.OnInit( e );
 
+            if ( IsUserAuthorized( Authorization.EDIT ) )
+            {
+                gPeople.Actions.ShowAdd = true;
+                gPeople.Actions.AddClick += gPeople_Add;
+            }
+
+            // or based on the person's edit rights for the page where this block lives...
+            //
+            //var currentPage = Rock.Web.Cache.PageCache.Read( RockPage.PageId );
+            //currentPage.IsAuthorized( Authorization.EDIT, CurrentPerson );
+
             // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
@@ -81,18 +93,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
 
             if ( !Page.IsPostBack )
             {
-                var genderValue = GetAttributeValue( "GenderFilter" );
-
-                var query = new PersonService( new RockContext() ).Queryable();
-
-                if ( !string.IsNullOrEmpty( genderValue ) )
-                {
-                    Gender gender = genderValue.ConvertToEnum<Gender>();
-                    query = query.Where( p => p.Gender == gender );
-                }
-
-                gPeople.DataSource = query.ToList();
-                gPeople.DataBind();
+                BindGrid();
             }
         }
 
@@ -109,7 +110,17 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void Block_BlockUpdated( object sender, EventArgs e )
         {
+            BindGrid();
+        }
 
+        /// <summary>
+        /// Handles the Add event of the grid.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void gPeople_Add( object sender, EventArgs e )
+        {
+            Response.Redirect( "~/NewFamily/" );
         }
 
         /// <summary>
@@ -126,7 +137,21 @@ namespace RockWeb.Plugins.org_rocksolidchurch.Tutorials
 
         #region Methods
 
-        // helper functional methods (like BindGrid(), etc.)
+        protected void BindGrid()
+        {
+            var genderValue = GetAttributeValue( "GenderFilter" );
+
+            var query = new PersonService( new RockContext() ).Queryable();
+
+            if ( !string.IsNullOrEmpty( genderValue ) )
+            {
+                Gender gender = genderValue.ConvertToEnum<Gender>();
+                query = query.Where( p => p.Gender == gender );
+            }
+
+            gPeople.DataSource = query.ToList();
+            gPeople.DataBind();
+        }
 
         #endregion
     }
