@@ -130,16 +130,16 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             var dataContext = new SampleProjectContext();
             var service = new ReferralAgencyService( dataContext );
 
-            int campusId = int.Parse( hfReferralAgencyId.Value );
+            int referralAgencyId = int.Parse( hfReferralAgencyId.Value );
 
-            if ( campusId == 0 )
+            if ( referralAgencyId == 0 )
             {
                 referralAgency = new ReferralAgency();
                 service.Add( referralAgency );
             }
             else
             {
-                referralAgency = service.Get( campusId );
+                referralAgency = service.Get( referralAgencyId );
             }
 
             referralAgency.Name = tbName.Text;
