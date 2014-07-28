@@ -3,15 +3,17 @@
 <asp:Content ID="ctMain" ContentPlaceHolderID="main" runat="server">
 
     <main class="container">
-
+                
         <!-- Start Content Area -->
-
+        
+        <!-- Page Title -->
+        <Rock:PageIcon ID="PageIcon" runat="server" /> <h1><Rock:PageTitle ID="PageTitle" runat="server" /></h1>
         <Rock:PageBreadCrumbs ID="PageBreadCrumbs" runat="server" />
                     
         <!-- Ajax Error -->
         <div class="alert alert-danger ajax-error" style="display:none">
             <p><strong>Error</strong></p>
-            <span class="ajax-error-message" / ></span>
+            <span class="ajax-error-message"></span>
         </div>
 
         <div class="row">
@@ -22,36 +24,33 @@
 
         <div class="row">
             <div class="col-md-9">
-                <div class="panel panel-default">
-                    <div class="panel-body">
-                        <Rock:Zone Name="Main" runat="server" />
-                    </div>
-                </div>
+                <Rock:Zone Name="Main" runat="server" />
             </div>
             <div class="col-md-3">
-                <Rock:Zone Name="Sidebar1" runat="server" />
+                <Rock:Zone Name="Sidebar 1" runat="server" />
             </div>
         </div>
 
         <div class="row">
             <div class="col-md-12">
-                <Rock:Zone Name="SectionA" runat="server" />
+                <Rock:Zone Name="Section A" runat="server" />
             </div>
         </div>
 
         <div class="row">
             <div class="col-md-4">
-                <Rock:Zone Name="SectionB" runat="server" />
+                <Rock:Zone Name="Section B" runat="server" />
             </div>
             <div class="col-md-4">
-                <Rock:Zone Name="SectionC" runat="server" />
+                <Rock:Zone Name="Section C" runat="server" />
             </div>
             <div class="col-md-4">
-                <Rock:Zone Name="SectionD" runat="server" />
+                <Rock:Zone Name="Section D" runat="server" />
             </div>
         </div>
 
         <!-- End Content Area -->
+
     </main>
 
 </asp:Content>
