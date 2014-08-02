@@ -49,7 +49,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
 
-            var definedType = DefinedTypeCache.Read( org.rocksolidchurch.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
+            var definedType = DefinedTypeCache.Read( org.rocksolidchurch.SampleProject.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
             if (definedType != null)
             {
                 ddlAgencyType.BindToDefinedType( definedType, true );

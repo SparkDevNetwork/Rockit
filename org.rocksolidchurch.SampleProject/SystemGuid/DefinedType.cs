@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace org.rocksolidchurch.SystemGuid
+namespace org.rocksolidchurch.SampleProject.SystemGuid
 {
     /// <summary>
     /// System Defined Types
