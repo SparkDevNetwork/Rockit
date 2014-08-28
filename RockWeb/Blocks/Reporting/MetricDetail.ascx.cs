@@ -66,6 +66,8 @@ namespace RockWeb.Blocks.Reporting
 
             // Metric supports 0 or more Categories, so the entityType is actually MetricCategory, not Metric
             cpMetricCategories.EntityTypeId = EntityTypeCache.Read( typeof( Rock.Model.MetricCategory ) ).Id;
+
+            lcMetricsChart.Options.SetChartStyle( GetAttributeValue( "ChartStyle" ).AsGuidOrNull() );
         }
 
         /// <summary>
@@ -586,7 +588,7 @@ namespace RockWeb.Blocks.Reporting
             hfMetricId.SetValue( metric.Id );
 
             lcMetricsChart.Visible = GetAttributeValue( "ShowChart" ).AsBooleanOrNull() ?? true;
-            lcMetricsChart.Options.SetChartStyle( GetAttributeValue( "ChartStyle" ).AsGuidOrNull() );
+            
             var chartDateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( GetAttributeValue( "SlidingDateRange" ) ?? "-1||" );
             lcMetricsChart.StartDate = chartDateRange.Start;
             lcMetricsChart.EndDate = chartDateRange.End;
@@ -656,7 +658,7 @@ namespace RockWeb.Blocks.Reporting
             ddlSourceType.Items.Clear();
             foreach ( var item in new DefinedValueService( rockContext ).GetByDefinedTypeGuid( Rock.SystemGuid.DefinedType.METRIC_SOURCE_TYPE.AsGuid() ) )
             {
-                ddlSourceType.Items.Add( new ListItem( item.Name, item.Id.ToString() ) );
+                ddlSourceType.Items.Add( new ListItem( item.Value, item.Id.ToString() ) );
             }
 
             rblScheduleSelect.Items.Clear();

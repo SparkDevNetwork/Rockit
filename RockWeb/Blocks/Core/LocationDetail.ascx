@@ -9,8 +9,11 @@
             <div class="panel panel-block">
                 <div class="panel-heading">
                     <h1 class="panel-title"><i class="fa fa-map-marker"></i> <asp:Literal ID="lReadOnlyTitle" runat="server" /></h1>
-                    <Rock:HighlightLabel ID="hlInactive" runat="server" LabelType="Danger" Text="Inactive" />
-                    <Rock:HighlightLabel ID="hlType" runat="server" LabelType="Type" />
+                    
+                    <div class="panel-labels">
+                        <Rock:HighlightLabel ID="hlInactive" runat="server" LabelType="Danger" Text="Inactive" />
+                        <Rock:HighlightLabel ID="hlType" runat="server" LabelType="Type" />
+                    </div>
                 </div>
                 <div class="panel-body">
 
@@ -23,7 +26,7 @@
                             <div class="col-md-6">
                                 <Rock:LocationPicker ID="gpParentLocation" runat="server" Required="false" Label="Parent Location" AllowedPickerModes="Named" />
                                 <Rock:DataTextBox ID="tbName" runat="server" SourceTypeName="Rock.Model.Location, Rock" PropertyName="Name" />
-                                <Rock:RockDropDownList ID="ddlLocationType" runat="server" DataTextField="Name" DataValueField="Id" Label="Location Type" AutoPostBack="true" OnSelectedIndexChanged="ddlLocationType_SelectedIndexChanged"  />
+                                <Rock:RockDropDownList ID="ddlLocationType" runat="server" DataTextField="Value" DataValueField="Id" Label="Location Type" AutoPostBack="true" OnSelectedIndexChanged="ddlLocationType_SelectedIndexChanged"  />
                                 <Rock:RockDropDownList ID="ddlPrinter" runat="server" Label="Printer" DataTextField="Name" DataValueField="Id" 
                                     Help="The printer that this location should use for printing" />
                                 <Rock:ImageEditor ID="imgImage" runat="server" Label="Image" BinaryFileTypeGuid="DAB74416-3272-4411-BA69-70944B549A4B" />
@@ -31,7 +34,7 @@
                             </div>
                             <div class="col-md-6">
                                 <Rock:RockCheckBox ID="cbIsActive" runat="server" Text="Active" />
-                                <Rock:LocationAddressPicker ID="locapAddress" runat="server" Label="Address" />
+                                <Rock:AddressControl ID="acAddress" runat="server" UseStateAbbreviation="true" />
                                 <asp:Button ID="btnStandardize" runat="server" OnClick="btnStandardize_Click" Text="Verify Address" CssClass="btn btn-action margin-b-md" />
                                 <asp:Literal ID="lStandardizationUpdate" runat="server" />
                                 <Rock:RockCheckBox ID="cbGeoPointLocked" runat="server" Label="Point Locked" Text="Yes" Help="Locks the geocoding to keep the location from being re-geocoding in the future." />
@@ -51,7 +54,7 @@
 
                         <div class="row">
                             <div class="col-md-2">
-                                <div class="photo">
+                                <div class="photo photoframe">
                                     <asp:Literal ID="lImage" runat="server" />
                                 </div>
                             </div>

@@ -31,14 +31,14 @@
                     <div class="row">
                         <div class="col-md-6">
                             <Rock:CategoryPicker ID="cpCategory" runat="server" Required="true" EntityTypeName="Rock.Model.Report" Label="Category" />
-                            <Rock:DataDropDownList ID="ddlEntityType" runat="server" SourceTypeName="Rock.Model.Report, Rock" PropertyName="EntityTypeId" DataTextField="FriendlyName" Label="Applies To" DataValueField="Id" AutoPostBack="true" OnSelectedIndexChanged="ddlEntityType_SelectedIndexChanged" />
-                            <Rock:DataDropDownList ID="ddlDataView" runat="server" DataTextField="Name" DataValueField="Id" SourceTypeName="Rock.Model.DataView, Rock" PropertyName="Name" Label="Data View" />
+                            <Rock:EntityTypePicker ID="etpEntityType" runat="server" Label="Applies To" Required="true" AutoPostBack="true" OnSelectedIndexChanged="etpEntityType_SelectedIndexChanged"/>
+                            <Rock:RockDropDownList ID="ddlDataView" runat="server" Label="Data View" Required="false" />
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6">
-                            <Rock:NumberBox ID="nbFetchTop" runat="server" NumberType="Integer" Required="false" SourceTypeName="Rock.Model.Report, Rock" PropertyName="FetchTop" Label="Result Row Limit" MinimumValue="0" MaxLength="9"
+                            <Rock:NumberBox ID="nbFetchTop" runat="server" NumberType="Integer" Required="false" SourceTypeName="Rock.Model.Report, Rock" PropertyName="FetchTop" Label="Resulting Row Limit" MinimumValue="0" MaxLength="9"
                                 Help="Limits the number of rows returned in the report. Leave blank to show all rows." />
                         </div>
                         <div class="col-md-6">
@@ -48,13 +48,13 @@
                     <section class="panel panel-widget">
                         <header class="panel-heading clearfix">
                             <div class="pull-left">
-                                <h3 class="panel-title">
+                                <h3 class="panel-title margin-t-sm">
                                     <span>Fields</span>
                                 </h3>
                             </div>
                             <div class="pull-right">
-                                <div class="form-control-group">
-                                    <asp:LinkButton runat="server" ID="btnAddField" CssClass="btn btn-primary" Text="Add" CausesValidation="false" OnClick="btnAddField_Click" /></td>
+                                <div class="btn-group btn-group-sm pull-right">
+                                    <asp:LinkButton runat="server" ID="btnAddField" CssClass="btn btn-action" CausesValidation="false" OnClick="btnAddField_Click"><i class="fa fa-plus"></i> Add Field</asp:LinkButton></td>
                                 </div>
                             </div>
                         </header>
@@ -86,7 +86,7 @@
                         <asp:LinkButton ID="btnEdit" runat="server" Text="Edit" CssClass="btn btn-primary" OnClick="btnEdit_Click" />
                         <Rock:ModalAlert ID="mdDeleteWarning" runat="server" />
                         <asp:LinkButton ID="btnDelete" runat="server" Text="Delete" CssClass="btn btn-link" OnClick="btnDelete_Click" />
-                        <Rock:SecurityButton ID="btnSecurity" runat="server" class="btn btn-sm btn-action pull-right" />
+                        <Rock:SecurityButton ID="btnSecurity" runat="server" class="btn btn-sm btn-security pull-right" />
                     </div>
 
                     <h4>Results</h4>
