@@ -175,6 +175,14 @@
                             </div>
                         </div>
                         <div class="row">
+                            
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <fieldset>
+                                    <Rock:RockRadioButtonList ID="rblNewPersonConnectionStatus" runat="server" Label="Connection Status" Required="true" ValidationGroup="AddPerson"/>
+                                </fieldset>
+                            </div>
                             <div class="col-md-4">
                                 <fieldset>
                                     <Rock:RockRadioButtonList ID="rblNewPersonRole" runat="server" DataTextField="Name" DataValueField="Id" RepeatDirection="Horizontal" Label="Role" ValidationGroup="AddPerson"/>
@@ -195,40 +203,44 @@
 
                 <script>
                     Sys.Application.add_load(function () {
-                        
-                        $find('<%=modalAddPerson.ClientID%>').add_shown(function () {
-                            enableRequiredField('<%=ppPerson.ClientID%>_rfv', true)
-                            enableRequiredField('<%=tbNewPersonFirstName.ClientID%>_rfv', false);
-                            enableRequiredField('<%=tbNewPersonLastName.ClientID%>_rfv', false);
-                        });
 
-                        $find('<%=modalAddPerson.ClientID%>').add_hiding(function () {
-                            enableRequiredField('<%=ppPerson.ClientID%>_rfv', false)
-                            enableRequiredField('<%=tbNewPersonFirstName.ClientID%>_rfv', false);
-                            enableRequiredField('<%=tbNewPersonLastName.ClientID%>_rfv', false);
-                        });
+                        $('#<%=modalAddPerson.ServerSaveLink.ClientID%>').on('click', function () {
+
+                            // if Save was clicked, set the fields that should be validated based on what tab they are on
+                            if ($('#ctl00_main_ctl23_bid_255_ctl11_ctl00_modalAddPerson_hfActiveTab').val() == "Existing") {
+                                enableRequiredField('<%=ppPerson.RequiredFieldValidator.ClientID%>', true)
+                                enableRequiredField('<%=tbNewPersonFirstName.RequiredFieldValidator.ClientID%>', false);
+                                enableRequiredField('<%=tbNewPersonLastName.RequiredFieldValidator.ClientID%>', false);
+                                enableRequiredField('<%=rblNewPersonConnectionStatus.RequiredFieldValidator.ClientID%>', false);
+                            }
+                            else {
+                                enableRequiredField('<%=ppPerson.RequiredFieldValidator.ClientID%>', false)
+                                enableRequiredField('<%=tbNewPersonFirstName.RequiredFieldValidator.ClientID%>', true);
+                                enableRequiredField('<%=tbNewPersonLastName.RequiredFieldValidator.ClientID%>', true);
+                                enableRequiredField('<%=rblNewPersonConnectionStatus.RequiredFieldValidator.ClientID%>', true);
+                            }
+
+                            // update the scrollbar since our validation box could show
+                            setTimeout(function () {
+                                Rock.dialogs.updateModalScrollBar('<%=valSummaryAddPerson.ClientID%>');
+                            });
+                        })
 
                         $('a[data-toggle="pill"]').on('shown.bs.tab', function (e) {
                             var tabHref = $(e.target).attr("href");
                             if (tabHref == '#<%=divExistingPerson.ClientID%>') {
                                 $('#<%=hfActiveTab.ClientID%>').val('Existing');
-                                enableRequiredField('<%=ppPerson.ClientID%>_rfv', true)
-                                enableRequiredField('<%=tbNewPersonFirstName.ClientID%>_rfv', false);
-                                enableRequiredField('<%=tbNewPersonLastName.ClientID%>_rfv', false);
                             } else {
                                 $('#<%=hfActiveTab.ClientID%>').val('New');
-                                enableRequiredField('<%=ppPerson.ClientID%>_rfv', false)
-                                enableRequiredField('<%=tbNewPersonFirstName.ClientID%>_rfv', true);
-                                enableRequiredField('<%=tbNewPersonLastName.ClientID%>_rfv', true);
                             }
 
+                            // if the validation error summary is shown, hide it when they switch tabs
                             $('#<%=valSummaryAddPerson.ClientID%>').hide();
                         });
 
                     })
 
                     function enableRequiredField(validatorId, enable) {
-
                         var jqObj = $('#' + validatorId);
 
                         if (jqObj != null) {
@@ -237,7 +249,6 @@
                                 ValidatorEnable(domObj, enable);
                             }
                         }
-
                     }
 
                 </script>

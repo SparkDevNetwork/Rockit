@@ -15,12 +15,14 @@
                 restUrl = this.restUrl,
                 defaultText = this.defaultText;
 
+            var includeBusinesses = $('#' + controlId).find('.js-include-businesses').val() == '1' ? 'true' : 'false';
+
             // TODO: Can we use TypeHead here (already integrated into BootStrap) instead of jQueryUI?
             // Might be a good opportunity to break the dependency on jQueryUI.
             $('#' + controlId + '_personPicker').autocomplete({
                 source: function (request, response) {
                     var promise = $.ajax({
-                        url: restUrl + request.term + "/true",
+                        url: restUrl + request.term + "/true/" + includeBusinesses,
                         dataType: 'json'
                     });
 
@@ -52,8 +54,9 @@
 
             $('#' + controlId + ' a.picker-label').click(function (e) {
                 e.preventDefault();
-                $('#' + controlId).find('.picker-menu').first().toggle();
-                exports.personPickers[controlId].updateScrollbar();
+                $('#' + controlId).find('.picker-menu').first().slideToggle(function () {
+                    exports.personPickers[controlId].updateScrollbar();
+                });
             });
 
             $('#' + controlId + ' .picker-select').on('click', '.picker-select-item', function (e) {
@@ -132,10 +135,8 @@
         };
 
         PersonPicker.prototype.updateScrollbar = function () {
-            var $modalcontainer = $('#modal-scroll-container');
-            if ($modalcontainer.length) {
-                $modalcontainer.tinyscrollbar_update('relative');
-            }
+            // update the outer modal scrollbar
+            Rock.dialogs.updateModalScrollBar(this.controlId);
         }
 
         PersonPicker.prototype.initialize = function () {

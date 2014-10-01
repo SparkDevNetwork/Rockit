@@ -161,7 +161,7 @@ namespace RockWeb.Blocks.Finance
                 }
 
                 scheduleSummary.Add( "CurrencyType", transactionSchedule.CurrencyTypeValue.Value );
-                scheduleSummary.Add( "CreditCardType", transactionSchedule.CreditCardTypeValue.Value );
+                scheduleSummary.Add( "CreditCardType", (transactionSchedule.CreditCardTypeValue == null) ? "" : transactionSchedule.CreditCardTypeValue.Value );
                 scheduleSummary.Add( "UrlEncryptedKey", transactionSchedule.UrlEncodedKey );
                 scheduleSummary.Add( "Frequency", transactionSchedule.TransactionFrequencyValue.Value );
                 scheduleSummary.Add( "FrequencyDescription", transactionSchedule.TransactionFrequencyValue.Description );
@@ -271,7 +271,7 @@ namespace RockWeb.Blocks.Finance
                 FinancialScheduledTransactionService transactionService = new FinancialScheduledTransactionService( rockContext );
 
                 var schedules = transactionService.Queryable( "ScheduledTransactionDetails.Account" )
-                                .Where( s => s.AuthorizedPersonId == CurrentPerson.Id && s.IsActive == true );
+                                .Where( s => s.AuthorizedPersonAlias.PersonId == CurrentPerson.Id && s.IsActive == true );
 
                 rptScheduledTransactions.DataSource = schedules.ToList();
                 rptScheduledTransactions.DataBind();

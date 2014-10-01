@@ -16,8 +16,8 @@ namespace org.rocksolidchurch.SampleProject.Migrations
         /// </summary>
         public override void Up()
         {
-            RockMigrationHelper.AddPage( "7F2581A1-941E-4D51-8A9D-5BE9B881B003", "D65F783D-87A9-4CC9-8110-E83466A0EADB", "Referral Agencies", "", "223AC4F2-CBED-4733-807A-188CFBBFA0C8", "" ); // Site:Rock RMS
-            RockMigrationHelper.AddPage( "223AC4F2-CBED-4733-807A-188CFBBFA0C8", "D65F783D-87A9-4CC9-8110-E83466A0EADB", "Referral Agency Details", "", "4BF8FA57-AE86-4103-B07E-80ECE0000AEE", "" ); // Site:Rock RMS
+            RockMigrationHelper.AddPage( "7F2581A1-941E-4D51-8A9D-5BE9B881B003", "D65F783D-87A9-4CC9-8110-E83466A0EADB", "Referral Agencies", "", "223AC4F2-CBED-4733-807A-188CFBBFA0C8", "fa fa-check-square-o" ); // Site:Rock RMS
+            RockMigrationHelper.AddPage( "223AC4F2-CBED-4733-807A-188CFBBFA0C8", "D65F783D-87A9-4CC9-8110-E83466A0EADB", "Referral Agency Details", "", "4BF8FA57-AE86-4103-B07E-80ECE0000AEE", "fa fa-check-square-o" ); // Site:Rock RMS
 
             // Since the Referral Agency Details block handles displaying the breadcrumb for the page, we need to turn off the default breadcrumb rendered by the page
             Sql( @"

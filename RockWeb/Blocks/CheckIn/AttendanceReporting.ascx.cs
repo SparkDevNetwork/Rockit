@@ -137,9 +137,7 @@ namespace RockWeb.Blocks.CheckIn
         /// </summary>
         public void LoadDropDowns()
         {
-            var rockContext = new RockContext();
-
-            cpCampuses.Campuses = new CampusService( rockContext ).Queryable().OrderBy( a => a.Name ).ToList();
+            cpCampuses.Campuses = CampusCache.All();
         }
 
         /// <summary>
@@ -199,7 +197,7 @@ function(item) {
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = 'Weekend of <br />' + itemDate.toLocaleDateString();
     var seriesLabel = item.series.label;
-    var pointValue = item.series.chartData[item.dataIndex].YValue || item.series.chartData[item.dataIndex].YValueTotal;
+    var pointValue = item.series.chartData[item.dataIndex].YValue || item.series.chartData[item.dataIndex].YValueTotal || '-';
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
 ";
@@ -215,7 +213,7 @@ function(item) {
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = month_names[itemDate.getMonth()] + ' ' + itemDate.getFullYear();
     var seriesLabel = item.series.label;
-    var pointValue = item.series.chartData[item.dataIndex].YValue || item.series.chartData[item.dataIndex].YValueTotal;
+    var pointValue = item.series.chartData[item.dataIndex].YValue || item.series.chartData[item.dataIndex].YValueTotal || '-';
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
 ";
@@ -230,7 +228,7 @@ function(item) {
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = itemDate.getFullYear();
     var seriesLabel = item.series.label;
-    var pointValue = item.series.chartData[item.dataIndex].YValue || item.series.chartData[item.dataIndex].YValueTotal;
+    var pointValue = item.series.chartData[item.dataIndex].YValue || item.series.chartData[item.dataIndex].YValueTotal || '-';
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
 ";
@@ -242,7 +240,11 @@ function(item) {
             dataSourceParams.AddOrReplace( "groupBy", hfGroupBy.Value.AsInteger() );
             dataSourceParams.AddOrReplace( "graphBy", hfGraphBy.Value.AsInteger() );
 
-            dataSourceParams.AddOrReplace( "campusIds", cpCampuses.SelectedCampusIds.AsDelimited( "," ) );
+            if ( cpCampuses.SelectedCampusIds.Any() )
+            {
+                dataSourceParams.AddOrReplace( "campusIds", cpCampuses.SelectedCampusIds.AsDelimited( "," ) );
+            }
+
             dataSourceParams.AddOrReplace( "groupIds", GetSelectedGroupIds().AsDelimited( "," ) );
 
             SaveSettingsToUserPreferences();

@@ -19,13 +19,13 @@ namespace org.rocksolidchurch.SampleProject.Migrations
             Sql( @"
     CREATE TABLE [dbo].[_org_rockSolidChurch_SampleProject_ReferralAgency](
 	    [Id] [int] IDENTITY(1,1) NOT NULL,
+	    [Name] [nvarchar](100) NOT NULL,
+	    [Description] [nvarchar](max) NULL,
         [ContactName] [nvarchar](100) NULL,
         [PhoneNumber] [nvarchar](100) NULL,
         [Website] [nvarchar](100) NULL,
 	    [CampusId] [int] NULL,
 	    [AgencyTypeValueId] [int] NULL,
-	    [Name] [nvarchar](100) NOT NULL,
-	    [Description] [nvarchar](max) NULL,
 	    [Guid] [uniqueidentifier] NOT NULL,
 	    [CreatedDateTime] [datetime] NULL,
 	    [ModifiedDateTime] [datetime] NULL,

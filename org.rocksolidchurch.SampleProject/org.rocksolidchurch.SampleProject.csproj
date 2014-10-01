@@ -95,7 +95,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Data\NamedModel.cs" />
     <Compile Include="Data\SampleProjectContext.cs" />
     <Compile Include="Data\SampleProjectService.cs" />
     <Compile Include="Migrations\002_AddSystemData.cs" />

@@ -206,9 +206,9 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
         /// </summary>
         private void BindFilter()
         {
-            var campusi = new CampusService( new RockContext() ).Queryable().OrderBy( a => a.Name ).ToList();
-            cpCampus.Campuses = campusi;
-            cpCampus.Visible = campusi.Any();
+            var campuses = CampusCache.All();
+            cpCampus.Campuses = campuses;
+            cpCampus.Visible = campuses.Any();
 
             var definedType = DefinedTypeCache.Read( org.rocksolidchurch.SampleProject.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
             if ( definedType != null )

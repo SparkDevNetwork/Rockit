@@ -351,6 +351,8 @@ namespace RockWeb.Blocks.Groups
 
             int groupId = int.Parse( hfGroupId.Value );
 
+            
+
             if ( groupId == 0 )
             {
                 group = new Group();
@@ -435,11 +437,19 @@ namespace RockWeb.Blocks.Groups
             // use WrapTransaction since SaveAttributeValues does it's own RockContext.SaveChanges()
             rockContext.WrapTransaction( () =>
             {
-                if ( group.Id.Equals( 0 ) )
+                var adding = group.Id.Equals( 0 );
+                if ( adding )
                 {
                     groupService.Add( group );
                 }
+
                 rockContext.SaveChanges();
+
+                if (adding)
+                {
+                    // add ADMINISTRATE to the person who added the group 
+                    Rock.Security.Authorization.AllowPerson( group, Authorization.ADMINISTRATE, this.CurrentPerson, rockContext );
+                }
 
                 group.SaveAttributeValues( rockContext );
 
@@ -1036,11 +1046,9 @@ namespace RockWeb.Blocks.Groups
         /// </summary>
         private void LoadDropDowns()
         {
-            CampusService campusService = new CampusService( new RockContext() );
-            List<Campus> campuses = campusService.Queryable().OrderBy( a => a.Name ).ToList();
-            campuses.Insert( 0, new Campus { Id = None.Id, Name = None.Text } );
-            ddlCampus.DataSource = campuses;
+            ddlCampus.DataSource = CampusCache.All();
             ddlCampus.DataBind();
+            ddlCampus.Items.Insert( 0, new ListItem( None.Text, None.IdValue ) );
         }
 
         /// <summary>
@@ -1327,10 +1335,14 @@ namespace RockWeb.Blocks.Groups
                                 }
                             }
 
-                            if ( displayMemberTab && ddlMember.Items.Count > 0 && groupLocation.GroupMemberPersonId.HasValue )
+                            if ( displayMemberTab && ddlMember.Items.Count > 0 && groupLocation.GroupMemberPersonAliasId.HasValue )
                             {
-                                ddlMember.SetValue( string.Format( "{0}|{1}", groupLocation.LocationId, groupLocation.GroupMemberPersonId ) );
                                 LocationTypeTab = MEMBER_LOCATION_TAB_TITLE;
+                                int? personId = new PersonAliasService( rockContext ).GetPersonId( groupLocation.GroupMemberPersonAliasId.Value );
+                                if ( personId.HasValue )
+                                {
+                                    ddlMember.SetValue( string.Format( "{0}|{1}", groupLocation.LocationId, personId.Value ) );
+                                }
                             }
                             else if ( displayOtherTab )
                             {
@@ -1390,7 +1402,7 @@ namespace RockWeb.Blocks.Groups
         protected void dlgLocations_SaveClick( object sender, EventArgs e )
         {
             Location location = null;
-            int? memberPersonId = null;
+            int? memberPersonAliasId = null;
             RockContext rockContext = new RockContext();
 
             if ( LocationTypeTab.Equals( MEMBER_LOCATION_TAB_TITLE ) )
@@ -1407,7 +1419,7 @@ namespace RockWeb.Blocks.Groups
                             location.CopyPropertiesFrom( dbLocation );
                         }
 
-                        memberPersonId = int.Parse( ids[1] );
+                        memberPersonAliasId = new PersonAliasService( rockContext ).GetPrimaryAliasId( int.Parse( ids[1] ) );
                     }
                 }
             }
@@ -1436,7 +1448,7 @@ namespace RockWeb.Blocks.Groups
                     GroupLocationsState.Add( groupLocation );
                 }
 
-                groupLocation.GroupMemberPersonId = memberPersonId;
+                groupLocation.GroupMemberPersonAliasId = memberPersonAliasId;
                 groupLocation.Location = location;
                 groupLocation.LocationId = groupLocation.Location.Id;
                 groupLocation.GroupLocationTypeValueId = ddlLocationType.SelectedValueAsId();
@@ -1469,14 +1481,15 @@ namespace RockWeb.Blocks.Groups
             gLocations.Actions.ShowAdd = AllowMultipleLocations || !GroupLocationsState.Any();
 
             gLocations.DataSource = GroupLocationsState
-                .OrderBy( gl => gl.GroupLocationTypeValue.Order )
                 .Select( gl => new
                 {
                     gl.Guid,
                     gl.Location,
-                    Type = gl.GroupLocationTypeValue.Value,
-                    Schedules = gl.Schedules.Select( s => s.Name).ToList().AsDelimited(", ")
+                    Type = gl.GroupLocationTypeValue != null ? gl.GroupLocationTypeValue.Value : "",
+                    Order = gl.GroupLocationTypeValue != null ? gl.GroupLocationTypeValue.Order : 0,
+                    Schedules = gl.Schedules != null ? gl.Schedules.Select( s => s.Name).ToList().AsDelimited(", ") : ""
                 } )
+                .OrderBy( i => i.Order)
                 .ToList();
             gLocations.DataBind();
         }

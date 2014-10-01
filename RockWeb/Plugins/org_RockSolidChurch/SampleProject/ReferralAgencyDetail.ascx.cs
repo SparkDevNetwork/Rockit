@@ -66,9 +66,9 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
 
             if ( !Page.IsPostBack )
             {
-                var campusi = new CampusService( new RockContext() ).Queryable().OrderBy( a => a.Name ).ToList();
-                cpCampus.Campuses = campusi;
-                cpCampus.Visible = campusi.Any();
+                var campuses = CampusCache.All();
+                cpCampus.Campuses = campuses;
+                cpCampus.Visible = campuses.Any();
 
                 ShowDetail();
             }
