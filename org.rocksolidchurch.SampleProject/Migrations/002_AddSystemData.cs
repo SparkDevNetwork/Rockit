@@ -8,7 +8,7 @@ using Rock.Plugin;
 
 namespace org.rocksolidchurch.SampleProject.Migrations
 {
-    [MigrationNumber( 2, "1.0.8" )]
+    [MigrationNumber( 2, "1.0.13" )]
     public class AddSystemData : Migration
     {
         /// <summary>
