@@ -208,21 +208,7 @@ namespace RockWeb.Blocks.Crm.PersonDetail
 
                 if ( !string.IsNullOrWhiteSpace( hfActiveTab.Value ) )
                 {
-                    if ( hfActiveTab.Value == "Existing" )
-                    {
-                        liNewPerson.RemoveCssClass( "active" );
-                        divNewPerson.RemoveCssClass( "active" );
-                        liExistingPerson.AddCssClass( "active" );
-                        divExistingPerson.AddCssClass( "active" );
-                    }
-                    else
-                    {
-                        liNewPerson.AddCssClass( "active" );
-                        divNewPerson.AddCssClass( "active" );
-                        liExistingPerson.RemoveCssClass( "active" );
-                        divExistingPerson.RemoveCssClass( "active" );
-                    }
-
+                    SetActiveTab();
                     modalAddPerson.Show();
                 }
 
@@ -410,6 +396,7 @@ namespace RockWeb.Blocks.Crm.PersonDetail
             tbNewPersonFirstName.Required = true;
             tbNewPersonLastName.Required = true;
             hfActiveTab.Value = "New";
+            SetActiveTab();
 
             ppPerson.SetValue( null );
 
@@ -489,7 +476,18 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                 familyMember.NickName = tbNewPersonFirstName.Text;
                 familyMember.LastName = tbNewPersonLastName.Text;
                 familyMember.Gender = ddlNewPersonGender.SelectedValueAsEnum<Gender>();
-                familyMember.BirthDate = dpNewPersonBirthDate.SelectedDate;
+
+                DateTime? birthdate = dpNewPersonBirthDate.SelectedDate;
+                if ( birthdate.HasValue )
+                {
+                    // If setting a future birthdate, subtract a century until birthdate is not greater than today.
+                    var today = RockDateTime.Today;
+                    while ( birthdate.Value.CompareTo( today ) > 0 )
+                    {
+                        birthdate = birthdate.Value.AddYears( -100 );
+                    }
+                }
+                familyMember.BirthDate = birthdate;
 
                 familyMember.ConnectionStatusValueId = rblNewPersonConnectionStatus.SelectedValue.AsIntegerOrNull();
                 var role = familyRoles.Where( r => r.Id == ( rblNewPersonRole.SelectedValueAsInt() ?? 0 ) ).FirstOrDefault();
@@ -815,7 +813,18 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                                 person.Gender = familyMember.Gender;
                                 History.EvaluateChange( demographicChanges, "Gender", null, person.Gender );
 
-                                person.BirthDate = familyMember.BirthDate;
+                                DateTime? birthdate = familyMember.BirthDate;
+                                if ( birthdate.HasValue )
+                                {
+                                    // If setting a future birthdate, subtract a century until birthdate is not greater than today.
+                                    var today = RockDateTime.Today;
+                                    while ( birthdate.Value.CompareTo( today ) > 0 )
+                                    {
+                                        birthdate = birthdate.Value.AddYears( -100 );
+                                    }
+                                }
+                                person.BirthDate = birthdate;
+
                                 History.EvaluateChange( demographicChanges, "Birth Date", null, person.BirthDate );
 
                                 person.ConnectionStatusValueId = familyMember.ConnectionStatusValueId;
@@ -1213,6 +1222,24 @@ namespace RockWeb.Blocks.Crm.PersonDetail
         #endregion
 
         #region Private Methods
+
+        private void SetActiveTab()
+        {
+            if ( hfActiveTab.Value == "Existing" )
+            {
+                liNewPerson.RemoveCssClass( "active" );
+                divNewPerson.RemoveCssClass( "active" );
+                liExistingPerson.AddCssClass( "active" );
+                divExistingPerson.AddCssClass( "active" );
+            }
+            else
+            {
+                liNewPerson.AddCssClass( "active" );
+                divNewPerson.AddCssClass( "active" );
+                liExistingPerson.RemoveCssClass( "active" );
+                divExistingPerson.RemoveCssClass( "active" );
+            }
+        }
 
         private void BindMembers()
         {
