@@ -3,11 +3,12 @@
 
 */
 
-.rock-modal-frame { // used by both the iframe modal and the in-window modal
-    width: 750px;
-    -moz-box-shadow:    @modal-dropshadow-color 18px 18px 80px 0px;
-    -webkit-box-shadow: @modal-dropshadow-color 18px 18px 80px 0px;
-    box-shadow: @modal-dropshadow-color 18px 18px 80px 0px; 
+// import the following files as less files so they are concatenated properly
+@import (less) "./bootstrap-modal/bootstrap-modal-bs3patch.css";
+@import (less) "./bootstrap-modal/bootstrap-modal.css";
+
+.modal-overflow.modal {
+    top: 48px;
 }
 
 .modal-content {
@@ -16,13 +17,12 @@
     color: @modal-body-text-color;
 
     .modal-header {
-        background-color: @modal-header-bg;  
+        background-color: @modal-header-bg;
         color: @modal-header-text-color;
         padding: 5px 15px;
         min-height: 34px;
-        border-radius: @border-radius-base @border-radius-base 0 0;
         .clearfix();
-        
+
         h3 {
             float: left;
             margin-right: 12px;
@@ -48,6 +48,7 @@
 
     .modal-body {
         color: @modal-body-text-color;
+        text-align: left;
 
         // styling for the top nav-pill naviagtion
         .nav-pills {
@@ -58,7 +59,7 @@
             width: 720px;
 
             > .viewport {
-                width: 670px; 
+                width: 670px;
             }
         }
 
@@ -76,17 +77,6 @@
     }
 }
 
-.modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  z-index: 12000;
-  width: 750px;
-  margin-left: 0px;
-  background-color: @body-bg;
-}
-
-
 .modal-body {
   padding: 8px 12px 12px 12px;
 }
@@ -103,13 +93,21 @@
     height: 100%;
     width: 100%;
     border: 0;
+    display: block;
 }
 
 
-/* Bootbox Modal Overrides */
-.modal.bootbox {
-    left: 0;
-    top: 0;
+// Bootbox Modal Overrides
+.bootbox .modal-dialog {
+    margin: 0;
     width: auto;
-    background-color: transparent;
 }
+
+// bootstrap modal component overrides
+.modal-backdrop, 
+.modal-backdrop.fade.in{
+	opacity: 0.7;
+	filter: alpha(opacity=70);
+	background: @modal-backdrop-bg;
+}
+

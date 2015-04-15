@@ -554,7 +554,7 @@ namespace RockWeb.Blocks.Reporting
 
                 foreach ( var dataView in new DataViewService( new RockContext() ).GetByEntityTypeId( entityTypeId.Value ).ToList() )
                 {
-                    if ( dataView.IsAuthorized( Authorization.VIEW, this.CurrentPerson, rockContext ) )
+                    if ( dataView.IsAuthorized( Authorization.VIEW, this.CurrentPerson ) )
                     {
                         ddlDataView.Items.Add( new ListItem( dataView.Name, dataView.Id.ToString() ) );
                     }
@@ -710,7 +710,7 @@ namespace RockWeb.Blocks.Reporting
                 nbEditModeMessage.Text = EditModeMessage.ReadOnlySystem( Report.FriendlyTypeName );
             }
 
-            btnSecurity.Visible = report.IsAuthorized( Authorization.ADMINISTRATE, CurrentPerson, rockContext );
+            btnSecurity.Visible = report.IsAuthorized( Authorization.ADMINISTRATE, CurrentPerson );
             btnSecurity.Title = report.Name;
             btnSecurity.EntityId = report.Id;
 
@@ -750,13 +750,13 @@ namespace RockWeb.Blocks.Reporting
             authorizationMessage = string.Empty;
 
             // can't edit an existing report if not authorized for that report
-            if ( report.Id != 0 && !report.IsAuthorized( reportAction, CurrentPerson, rockContext ) )
+            if ( report.Id != 0 && !report.IsAuthorized( reportAction, CurrentPerson ) )
             {
                 isAuthorized = false;
                 authorizationMessage = EditModeMessage.ReadOnlyEditActionNotAllowed( Report.FriendlyTypeName );
             }
 
-            if ( report.EntityType != null && !report.EntityType.IsAuthorized( Authorization.VIEW, CurrentPerson, rockContext ) )
+            if ( report.EntityType != null && !report.EntityType.IsAuthorized( Authorization.VIEW, CurrentPerson ) )
             {
                 isAuthorized = false;
                 authorizationMessage = "INFO: This report uses an entity type that you do not have access to view.";
@@ -772,7 +772,7 @@ namespace RockWeb.Blocks.Reporting
                         var dataSelectComponent = Rock.Reporting.DataSelectContainer.GetComponent( dataSelectComponentTypeName );
                         if ( dataSelectComponent != null )
                         {
-                            if ( !dataSelectComponent.IsAuthorized( Authorization.VIEW, this.CurrentPerson, rockContext ) )
+                            if ( !dataSelectComponent.IsAuthorized( Authorization.VIEW, this.CurrentPerson ) )
                             {
                                 isAuthorized = false;
                                 authorizationMessage = "INFO: This report contains a data selection component that you do not have access to view.";
@@ -785,7 +785,7 @@ namespace RockWeb.Blocks.Reporting
 
             if ( report.DataView != null )
             {
-                if ( !report.DataView.IsAuthorized( Authorization.VIEW, this.CurrentPerson, rockContext ) )
+                if ( !report.DataView.IsAuthorized( Authorization.VIEW, this.CurrentPerson ) )
                 {
                     isAuthorized = false;
                     authorizationMessage = "INFO: This Reports uses a data view that you do not have access to view.";
@@ -895,7 +895,7 @@ namespace RockWeb.Blocks.Reporting
 
                 var rockContext = new RockContext();
 
-                if ( !report.IsAuthorized( Authorization.VIEW, this.CurrentPerson, rockContext ) )
+                if ( !report.IsAuthorized( Authorization.VIEW, this.CurrentPerson ) )
                 {
                     gReport.Visible = false;
                     return;
@@ -908,7 +908,7 @@ namespace RockWeb.Blocks.Reporting
                 if ( isPersonDataSet )
                 {
                     gReport.PersonIdField = "Id";
-                    gReport.DataKeyNames = new string[] { "id" };
+                    gReport.DataKeyNames = new string[] { "Id" };
                 }
                 else
                 {
@@ -926,12 +926,15 @@ namespace RockWeb.Blocks.Reporting
                 var selectedAttributes = new Dictionary<int, AttributeCache>();
                 var selectedComponents = new Dictionary<int, ReportField>();
 
+                // if there is a selectField, keep it to preserve which items are checked
+                var selectField = gReport.Columns.OfType<SelectField>().FirstOrDefault();
                 gReport.Columns.Clear();
                 int columnIndex = 0;
 
                 if ( !string.IsNullOrWhiteSpace( gReport.PersonIdField ) )
                 {
-                    gReport.Columns.Add( new SelectField() );
+                    // if we already had a selectField, use it (to preserve checkbox state)
+                    gReport.Columns.Add( selectField ?? new SelectField() );
                     columnIndex++;
                 }
 
@@ -948,7 +951,7 @@ namespace RockWeb.Blocks.Reporting
                             selectedEntityFields.Add( columnIndex, entityField );
 
                             BoundField boundField;
-                            if ( entityField.DefinedTypeGuid.HasValue )
+                            if ( entityField.FieldType.Guid.Equals( Rock.SystemGuid.FieldType.DEFINED_VALUE.AsGuid() ) )
                             {
                                 boundField = new DefinedValueField();
                             }
@@ -1045,7 +1048,7 @@ namespace RockWeb.Blocks.Reporting
                         selectedEntityFields.Add( columnIndex, entityField );
 
                         BoundField boundField;
-                        if ( entityField.DefinedTypeGuid.HasValue )
+                        if ( entityField.FieldType.Guid.Equals( Rock.SystemGuid.FieldType.DEFINED_VALUE.AsGuid() ) )
                         {
                             boundField = new DefinedValueField();
                         }
@@ -1066,7 +1069,6 @@ namespace RockWeb.Blocks.Reporting
                 {
                     gReport.Visible = true;
                     gReport.ExportFilename = report.Name;
-                    rockContext.Database.CommandTimeout = GetAttributeValue( "DatabaseTimeout" ).AsIntegerOrNull() ?? 180;
                     SortProperty sortProperty = gReport.SortProperty;
                     if ( sortProperty == null )
                     {
@@ -1091,7 +1093,7 @@ namespace RockWeb.Blocks.Reporting
                         }
                     }
 
-                    gReport.DataSource = report.GetDataSource( entityType, selectedEntityFields, selectedAttributes, selectedComponents, sortProperty, out errors );
+                    gReport.DataSource = report.GetDataSource( entityType, selectedEntityFields, selectedAttributes, selectedComponents, sortProperty, GetAttributeValue( "DatabaseTimeout" ).AsIntegerOrNull() ?? 180, out errors );
                     gReport.DataBind();
                 }
                 catch ( Exception ex )

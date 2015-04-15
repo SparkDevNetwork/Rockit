@@ -626,7 +626,7 @@ achieve our mission.  We are so grateful for your commitment.
                     ( f.EndDate == null || f.EndDate >= RockDateTime.Today ) )
                 .OrderBy( f => f.Order ) )
             {
-                var accountItem = new AccountItem( account.Id, account.Order, account.Name, account.CampusId );
+                var accountItem = new AccountItem( account.Id, account.Order, account.Name, account.CampusId, account.PublicName );
                 if ( showAll )
                 {
                     SelectedAccounts.Add( accountItem );
@@ -1279,17 +1279,7 @@ achieve our mission.  We are so grateful for your commitment.
             var savedAccount = new FinancialPersonSavedAccountService( new RockContext() ).Get( savedAccountId );
             if ( savedAccount != null )
             {
-                var reference = new ReferencePaymentInfo();
-                reference.TransactionCode = savedAccount.TransactionCode;
-                reference.ReferenceNumber = savedAccount.ReferenceNumber;
-                reference.MaskedAccountNumber = savedAccount.MaskedAccountNumber;
-                reference.InitialCurrencyTypeValue = DefinedValueCache.Read( savedAccount.CurrencyTypeValue );
-                if ( reference.InitialCurrencyTypeValue.Guid.Equals( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CREDIT_CARD ) ) )
-                {
-                    reference.InitialCreditCardTypeValue = DefinedValueCache.Read( savedAccount.CreditCardTypeValue );
-                }
-
-                return reference;
+                return savedAccount.GetReferencePayment();
             }
 
             return null;
@@ -1484,6 +1474,8 @@ achieve our mission.  We are so grateful for your commitment.
 
             public decimal Amount { get; set; }
 
+            public string PublicName { get; set; }
+
             public string AmountFormatted
             {
                 get
@@ -1492,12 +1484,13 @@ achieve our mission.  We are so grateful for your commitment.
                 }
             }
 
-            public AccountItem( int id, int order, string name, int? campusId )
+            public AccountItem( int id, int order, string name, int? campusId, string publicName )
             {
                 Id = id;
                 Order = order;
                 Name = name;
                 CampusId = campusId;
+                PublicName = publicName;
             }
         }
 

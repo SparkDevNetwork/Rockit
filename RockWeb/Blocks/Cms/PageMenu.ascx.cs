@@ -27,6 +27,7 @@ using DotLiquid;
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
+using Rock.Security;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
@@ -90,8 +91,7 @@ namespace RockWeb.Blocks.Cms
 
         private void Render()
         {
-            RockContext rockContext = new RockContext();
-            PageCache currentPage = PageCache.Read( RockPage.PageId, rockContext );
+            PageCache currentPage = PageCache.Read( RockPage.PageId );
             PageCache rootPage = null;
 
             Guid pageGuid = Guid.Empty;
@@ -128,7 +128,10 @@ namespace RockWeb.Blocks.Cms
             }
 
             var pageProperties = new Dictionary<string, object>();
-            pageProperties.Add( "Page", rootPage.GetMenuProperties( levelsDeep, CurrentPerson, rockContext, pageHeirarchy, pageParameters, queryString ) );
+            using ( var rockContext = new RockContext() )
+            {
+                pageProperties.Add( "Page", rootPage.GetMenuProperties( levelsDeep, CurrentPerson, rockContext, pageHeirarchy, pageParameters, queryString ) );
+            }
             string content = GetTemplate().Render( Hash.FromDictionary( pageProperties ) );
 
             // check for errors
@@ -141,7 +144,7 @@ namespace RockWeb.Blocks.Cms
             phContent.Controls.Add( new LiteralControl( content ) );
 
             // add debug info
-            if ( GetAttributeValue( "EnableDebug" ).AsBoolean() )
+            if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
             {
                 StringBuilder tipInfo = new StringBuilder();
                 tipInfo.Append( "<p /><div class='alert alert-success' style='clear: both;'><h4>Page Menu Tips</h4>" );

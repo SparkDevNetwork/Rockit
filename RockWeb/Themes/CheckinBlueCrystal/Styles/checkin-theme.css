@@ -5,15 +5,15 @@
 
  */
 /*!
- *  Font Awesome 4.2.0 by @davegandy - http://fontawesome.io - @fontawesome
+ *  Font Awesome 4.3.0 by @davegandy - http://fontawesome.io - @fontawesome
  *  License - http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
  */
 /* FONT PATH
  * -------------------------- */
 @font-face {
   font-family: 'FontAwesome';
-  src: url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.eot?v=4.2.0');
-  src: url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.eot?#iefix&v=4.2.0') format('embedded-opentype'), url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.woff?v=4.2.0') format('woff'), url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.ttf?v=4.2.0') format('truetype'), url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.svg?v=4.2.0#fontawesomeregular') format('svg');
+  src: url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.eot?v=4.3.0');
+  src: url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.eot?#iefix&v=4.3.0') format('embedded-opentype'), url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.woff2?v=4.3.0') format('woff2'), url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.woff?v=4.3.0') format('woff'), url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.ttf?v=4.3.0') format('truetype'), url('../../../Assets/Fonts/FontAwesome/fontawesome-webfont.svg?v=4.3.0#fontawesomeregular') format('svg');
   font-weight: normal;
   font-style: normal;
 }
@@ -24,6 +24,7 @@
   text-rendering: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transform: translate(0, 0);
 }
 /* makes the font 33% larger relative to the icon container */
 .fa-lg {
@@ -85,6 +86,10 @@
 .fa-spin {
   -webkit-animation: fa-spin 2s infinite linear;
   animation: fa-spin 2s infinite linear;
+}
+.fa-pulse {
+  -webkit-animation: fa-spin 1s infinite steps(8);
+  animation: fa-spin 1s infinite steps(8);
 }
 @-webkit-keyframes fa-spin {
   0% {
@@ -616,6 +621,7 @@
 .fa-twitter:before {
   content: "\f099";
 }
+.fa-facebook-f:before,
 .fa-facebook:before {
   content: "\f09a";
 }
@@ -1265,7 +1271,8 @@
 .fa-male:before {
   content: "\f183";
 }
-.fa-gittip:before {
+.fa-gittip:before,
+.fa-gratipay:before {
   content: "\f184";
 }
 .fa-sun-o:before {
@@ -1532,6 +1539,7 @@
 .fa-history:before {
   content: "\f1da";
 }
+.fa-genderless:before,
 .fa-circle-thin:before {
   content: "\f1db";
 }
@@ -1675,6 +1683,127 @@
 }
 .fa-meanpath:before {
   content: "\f20c";
+}
+.fa-buysellads:before {
+  content: "\f20d";
+}
+.fa-connectdevelop:before {
+  content: "\f20e";
+}
+.fa-dashcube:before {
+  content: "\f210";
+}
+.fa-forumbee:before {
+  content: "\f211";
+}
+.fa-leanpub:before {
+  content: "\f212";
+}
+.fa-sellsy:before {
+  content: "\f213";
+}
+.fa-shirtsinbulk:before {
+  content: "\f214";
+}
+.fa-simplybuilt:before {
+  content: "\f215";
+}
+.fa-skyatlas:before {
+  content: "\f216";
+}
+.fa-cart-plus:before {
+  content: "\f217";
+}
+.fa-cart-arrow-down:before {
+  content: "\f218";
+}
+.fa-diamond:before {
+  content: "\f219";
+}
+.fa-ship:before {
+  content: "\f21a";
+}
+.fa-user-secret:before {
+  content: "\f21b";
+}
+.fa-motorcycle:before {
+  content: "\f21c";
+}
+.fa-street-view:before {
+  content: "\f21d";
+}
+.fa-heartbeat:before {
+  content: "\f21e";
+}
+.fa-venus:before {
+  content: "\f221";
+}
+.fa-mars:before {
+  content: "\f222";
+}
+.fa-mercury:before {
+  content: "\f223";
+}
+.fa-transgender:before {
+  content: "\f224";
+}
+.fa-transgender-alt:before {
+  content: "\f225";
+}
+.fa-venus-double:before {
+  content: "\f226";
+}
+.fa-mars-double:before {
+  content: "\f227";
+}
+.fa-venus-mars:before {
+  content: "\f228";
+}
+.fa-mars-stroke:before {
+  content: "\f229";
+}
+.fa-mars-stroke-v:before {
+  content: "\f22a";
+}
+.fa-mars-stroke-h:before {
+  content: "\f22b";
+}
+.fa-neuter:before {
+  content: "\f22c";
+}
+.fa-facebook-official:before {
+  content: "\f230";
+}
+.fa-pinterest-p:before {
+  content: "\f231";
+}
+.fa-whatsapp:before {
+  content: "\f232";
+}
+.fa-server:before {
+  content: "\f233";
+}
+.fa-user-plus:before {
+  content: "\f234";
+}
+.fa-user-times:before {
+  content: "\f235";
+}
+.fa-hotel:before,
+.fa-bed:before {
+  content: "\f236";
+}
+.fa-viacoin:before {
+  content: "\f237";
+}
+.fa-train:before {
+  content: "\f238";
+}
+.fa-subway:before {
+  content: "\f239";
+}
+.fa-medium:before {
+  content: "\f23a";
 }
 /*! normalize.css v3.0.1 | MIT License | git.io/normalize */
 html {
@@ -7999,6 +8128,9 @@ body {
   padding-top: 28px;
 }
 /* bootbox modal styles */
+.bootbox {
+  z-index: 1060;
+}
 .bootbox .modal-content {
   background-color: #4b5c65;
 }
@@ -8088,12 +8220,382 @@ input.checkin-phone-entry {
 .iScrollVerticalScrollbar,
 .iScrollLoneScrollbar {
   position: absolute;
-  z-index: 9999;
+  z-index: 1;
   width: 7px;
   bottom: 2px;
   top: 2px;
   right: 1px;
   overflow: hidden;
+}
+/*
+    Used to manage styles related to modal dialog.
+
+*/
+/*!
+ * Bootstrap Modal
+ *
+ * Copyright Jordan Schroter
+ * Licensed under the Apache License v2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Boostrap 3 patch for for bootstrap-modal. Include BEFORE bootstrap-modal.css!
+ */
+body.modal-open,
+.modal-open .navbar-fixed-top,
+.modal-open .navbar-fixed-bottom {
+  margin-right: 0;
+}
+.modal {
+  left: 50%;
+  bottom: auto;
+  right: auto;
+  padding: 0;
+  width: 500px;
+  margin-left: -250px;
+  background-color: #ffffff;
+  border: 1px solid #999999;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  -webkit-box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+  background-clip: padding-box;
+}
+.modal.container {
+  max-width: none;
+}
+/*!
+ * Bootstrap Modal
+ *
+ * Copyright Jordan Schroter
+ * Licensed under the Apache License v2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ */
+.modal-open {
+  overflow: hidden;
+}
+/* add a scroll bar to stop page from jerking around */
+.modal-open.page-overflow .page-container,
+.modal-open.page-overflow .page-container .navbar-fixed-top,
+.modal-open.page-overflow .page-container .navbar-fixed-bottom,
+.modal-open.page-overflow .modal-scrollable {
+  overflow-y: scroll;
+}
+@media (max-width: 979px) {
+  .modal-open.page-overflow .page-container .navbar-fixed-top,
+  .modal-open.page-overflow .page-container .navbar-fixed-bottom {
+    overflow-y: visible;
+  }
+}
+.modal-scrollable {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: auto;
+}
+.modal {
+  outline: none;
+  position: absolute;
+  margin-top: 0;
+  top: 50%;
+  overflow: visible;
+  /* allow content to popup out (i.e tooltips) */
+}
+.modal.fade {
+  top: -100%;
+  -webkit-transition: opacity 0.3s linear, top 0.3s ease-out, bottom 0.3s ease-out, margin-top 0.3s ease-out;
+  -moz-transition: opacity 0.3s linear, top 0.3s ease-out, bottom 0.3s ease-out, margin-top 0.3s ease-out;
+  -o-transition: opacity 0.3s linear, top 0.3s ease-out, bottom 0.3s ease-out, margin-top 0.3s ease-out;
+  transition: opacity 0.3s linear, top 0.3s ease-out, bottom 0.3s ease-out, margin-top 0.3s ease-out;
+}
+.modal.fade.in {
+  top: 50%;
+}
+.modal-body {
+  max-height: none;
+  overflow: visible;
+}
+.modal.modal-absolute {
+  position: absolute;
+  z-index: 950;
+}
+.modal .loading-mask {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 6px;
+}
+.modal-backdrop.modal-absolute {
+  position: absolute;
+  z-index: 940;
+}
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: 0.7;
+  filter: alpha(opacity=70);
+  background: #fff;
+}
+.modal.container {
+  width: 940px;
+  margin-left: -470px;
+}
+/* Modal Overflow */
+.modal-overflow.modal {
+  top: 1%;
+}
+.modal-overflow.modal.fade {
+  top: -100%;
+}
+.modal-overflow.modal.fade.in {
+  top: 1%;
+}
+.modal-overflow .modal-body {
+  /*overflow: auto;*/
+  -webkit-overflow-scrolling: touch;
+}
+/* Responsive */
+@media (min-width: 1200px) {
+  .modal.container {
+    width: 1170px;
+    margin-left: -585px;
+  }
+}
+@media (max-width: 979px) {
+  .modal,
+  .modal.container,
+  .modal.modal-overflow {
+    top: 1%;
+    right: 1%;
+    left: 1%;
+    bottom: auto;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .modal.fade.in,
+  .modal.container.fade.in,
+  .modal.modal-overflow.fade.in {
+    top: 1%;
+    bottom: auto;
+  }
+  .modal-body,
+  .modal-overflow .modal-body {
+    position: static;
+    margin: 0;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .modal-footer,
+  .modal-overflow .modal-footer {
+    position: static;
+  }
+}
+.loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -12px 0 0 -12px;
+}
+/*
+Animate.css - http://daneden.me/animate
+Licensed under the ☺ license (http://licence.visualidiot.com/)
+
+Copyright (c) 2012 Dan Eden*/
+.animated {
+  -webkit-animation-duration: 1s;
+  -moz-animation-duration: 1s;
+  -o-animation-duration: 1s;
+  animation-duration: 1s;
+  -webkit-animation-fill-mode: both;
+  -moz-animation-fill-mode: both;
+  -o-animation-fill-mode: both;
+  animation-fill-mode: both;
+}
+@-webkit-keyframes shake {
+  0%,
+  100% {
+    -webkit-transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    -webkit-transform: translateX(-10px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    -webkit-transform: translateX(10px);
+  }
+}
+@-moz-keyframes shake {
+  0%,
+  100% {
+    -moz-transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    -moz-transform: translateX(-10px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    -moz-transform: translateX(10px);
+  }
+}
+@-o-keyframes shake {
+  0%,
+  100% {
+    -o-transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    -o-transform: translateX(-10px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    -o-transform: translateX(10px);
+  }
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-10px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(10px);
+  }
+}
+.shake {
+  -webkit-animation-name: shake;
+  -moz-animation-name: shake;
+  -o-animation-name: shake;
+  animation-name: shake;
+}
+.modal-overflow.modal {
+  top: 48px;
+}
+.modal-content {
+  border: 0;
+  background-color: #4b5c65;
+  color: #ffffff;
+}
+.modal-content .modal-header {
+  background-color: #4b5c65;
+  color: #ffffff;
+  padding: 5px 15px;
+  min-height: 34px;
+}
+.modal-content .modal-header:before,
+.modal-content .modal-header:after {
+  content: " ";
+  display: table;
+}
+.modal-content .modal-header:after {
+  clear: both;
+}
+.modal-content .modal-header:before,
+.modal-content .modal-header:after {
+  content: " ";
+  display: table;
+}
+.modal-content .modal-header:after {
+  clear: both;
+}
+.modal-content .modal-header h3 {
+  float: left;
+  margin-right: 12px;
+}
+.modal-content .modal-header .close {
+  margin: 0;
+  padding: 6px;
+  color: #ffffff;
+  text-shadow: none;
+}
+.modal-content .modal-header .label {
+  margin-top: 8px;
+}
+.modal-content .modal-header small {
+  margin-top: 12px;
+  display: block;
+  color: #e6e6e6;
+}
+.modal-content .modal-body {
+  color: #ffffff;
+  text-align: left;
+}
+.modal-content .modal-body .nav-pills {
+  margin: 6px 0 18px;
+}
+.modal-content .modal-body > .scroll-container {
+  width: 720px;
+}
+.modal-content .modal-body > .scroll-container > .viewport {
+  width: 670px;
+}
+.modal-content .modal-body.iframe {
+  overflow: hidden;
+}
+.modal-content .modal-footer {
+  padding: 8px;
+  margin-top: 10px;
+  background-color: #4b5c65;
+  color: #ffffff;
+  border-radius: 0 0 4px 4px;
+}
+.modal-body {
+  padding: 8px 12px 12px 12px;
+}
+.modal-footer:after {
+  clear: both;
+}
+.modal-footer .btn {
+  float: right;
+  margin-left: 5px;
+}
+#modal-popup_iframe {
+  height: 100%;
+  width: 100%;
+  border: 0;
+  display: block;
+}
+.bootbox .modal-dialog {
+  margin: 0;
+  width: auto;
+}
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: 0.7;
+  filter: alpha(opacity=70);
+  background: #000000;
 }
 @font-face {
   font-family: 'OpenSans';

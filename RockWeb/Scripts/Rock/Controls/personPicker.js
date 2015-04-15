@@ -56,6 +56,7 @@
                 e.preventDefault();
                 $('#' + controlId).find('.picker-menu').first().slideToggle(function () {
                     exports.personPickers[controlId].updateScrollbar();
+                    $(this).find('.picker-search').focus();
                 });
             });
 
@@ -96,7 +97,9 @@
                 });
 
             $('#' + controlId + '_btnCancel').click(function () {
-                $(this).closest('.picker-menu').slideUp();
+                $(this).closest('.picker-menu').slideUp(function () {
+                    exports.personPickers[controlId].updateScrollbar();
+                });
             });
 
             $('#' + controlId + '_btnSelectNone').click(function (e) {
