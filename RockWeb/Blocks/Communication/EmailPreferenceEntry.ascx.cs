@@ -38,11 +38,11 @@ namespace RockWeb.Blocks.Communication
     [Category( "Communication" )]
     [Description( "Allows user to set their email preference." )]
 
-    [TextField( "Emails Allowed Text", "Text to display for the 'Emails Allowed' option.", false, "I am still involved with {{ GlobalAttribute.OrganizationName }}, and wish to receive all emails.", "", 0 )]
-    [TextField( "No Mass Emails Text", "Text to display for the 'No Mass Emails' option.", false, "I am still involved with {{ GlobalAttribute.OrganizationName }}, but do not wish to receive mass emails (personal emails are fine).", "", 1 )]
-    [TextField( "No Emails Text", "Text to display for the 'No Emails' option.", false, "I am still involved with {{ GlobalAttribute.OrganizationName }}, but do not want to receive emails of ANY kind.", "", 2 )]
-    [TextField( "Not Involved Text", "Text to display for the 'Not Involved' option.", false, " I am no longer involved with {{ GlobalAttribute.OrganizationName }}.", "", 3 )]
-    [TextField( "Success Text", "Text to display after user submits selection.", false, "<h4>Thank-You</h4>We have saved your email preference.", "", 4 )]
+    [MemoField( "Emails Allowed Text", "Text to display for the 'Emails Allowed' option.", false, "I am still involved with {{ GlobalAttribute.OrganizationName }}, and wish to receive all emails.", "", 0, null, 3, true )]
+    [MemoField( "No Mass Emails Text", "Text to display for the 'No Mass Emails' option.", false, "I am still involved with {{ GlobalAttribute.OrganizationName }}, but do not wish to receive mass emails (personal emails are fine).", "", 1, null, 3, true )]
+    [MemoField( "No Emails Text", "Text to display for the 'No Emails' option.", false, "I am still involved with {{ GlobalAttribute.OrganizationName }}, but do not want to receive emails of ANY kind.", "", 2, null, 3, true )]
+    [MemoField( "Not Involved Text", "Text to display for the 'Not Involved' option.", false, " I am no longer involved with {{ GlobalAttribute.OrganizationName }}.", "", 3, null, 3, true )]
+    [MemoField( "Success Text", "Text to display after user submits selection.", false, "<h4>Thank-You</h4>We have saved your email preference.", "", 4, null, 3, true )]
     [TextField( "Reasons to Exclude", "A delimited list of the Inactive Reasons to exclude from Reason list", false, "No Activity,Deceased", "", 5)]
     public partial class EmailPreferenceEntry : RockBlock
     {
@@ -140,7 +140,7 @@ namespace RockWeb.Blocks.Communication
                                     {
                                         ddlInactiveReason.SelectedValue = _person.RecordStatusReasonValueId.HasValue.ToString();
                                     }
-                                    tbInactiveNote.Text = _person.InactiveReasonNote;
+                                    tbInactiveNote.Text = _person.ReviewReasonNote;
                                 }
                                 break;
                             }
@@ -195,14 +195,13 @@ namespace RockWeb.Blocks.Communication
                         person.RecordStatusValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_INACTIVE ).Id;
                         person.RecordStatusReasonValueId = ddlInactiveReason.SelectedValue.AsInteger();
                         person.ReviewReasonValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_REVIEW_REASON_SELF_INACTIVATED ).Id;
-                        if ( string.IsNullOrWhiteSpace( person.ReviewReasonNote ) )
+
+                        // If the inactive reason note is the same as the current review reason note, update it also.
+                        if ( ( person.InactiveReasonNote ?? string.Empty ) == ( person.ReviewReasonNote ?? string.Empty ) )
                         {
-                            person.ReviewReasonNote = tbInactiveNote.Text;
+                            person.InactiveReasonNote = tbInactiveNote.Text;
                         }
-                        else
-                        {
-                            person.ReviewReasonNote += " " + tbInactiveNote.Text;
-                        }
+                        person.ReviewReasonNote = tbInactiveNote.Text;
                     }
                     else
                     {

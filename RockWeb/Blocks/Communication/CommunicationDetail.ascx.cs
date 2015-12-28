@@ -50,6 +50,11 @@ namespace RockWeb.Blocks.Communication
 
     public partial class CommunicationDetail : RockBlock
     {
+        #region Fields
+
+        private bool _editingApproved = false;
+
+        #endregion
 
         #region Properties
 
@@ -109,6 +114,9 @@ namespace RockWeb.Blocks.Communication
     aOpened.ClientID, sOpened.ClientID );
 
             ScriptManager.RegisterStartupScript( pnlDetails, pnlDetails.GetType(), "recipient-toggle-" + this.BlockId.ToString(), script, true );
+
+            _editingApproved = PageParameter( "Edit" ).AsBoolean() && IsUserAuthorized( "Approve" );
+
         }
 
         /// <summary>
@@ -121,8 +129,38 @@ namespace RockWeb.Blocks.Communication
 
             if ( !Page.IsPostBack )
             {
-                CommunicationId = PageParameter( "CommunicationId" ).AsIntegerOrNull();
-                ShowDetail();
+                // Check if CommunicationDetail has already loaded existing communication
+                var communication = RockPage.GetSharedItem( "Communication" ) as Rock.Model.Communication;
+                if ( communication == null )
+                {
+                    CommunicationId = PageParameter( "CommunicationId" ).AsIntegerOrNull();
+                    if ( CommunicationId.HasValue )
+                    {
+                        communication = new CommunicationService( new RockContext() )
+                            .Queryable( "CreatedByPersonAlias.Person" )
+                            .Where( c => c.Id == CommunicationId.Value )
+                            .FirstOrDefault();
+                    }
+                }
+                else
+                {
+                    CommunicationId = communication.Id;
+                }
+
+                // If not valid for this block, hide contents and return
+                if ( communication == null ||
+                    communication.Status == CommunicationStatus.Transient ||
+                    communication.Status == CommunicationStatus.Draft ||
+                    communication.Status == CommunicationStatus.Denied ||
+                    ( communication.Status == CommunicationStatus.PendingApproval && _editingApproved ) )
+                {
+                    // If viewing a new, transient or draft communication, hide this block and use NewCommunication block
+                    this.Visible = false;
+                }
+                else
+                {
+                    ShowDetail( communication );
+                }
             }
         }
 
@@ -199,6 +237,23 @@ namespace RockWeb.Blocks.Communication
         void gActivity_GridRebind( object sender, EventArgs e )
         {
             BindActivity();
+        }
+
+        protected void btnEdit_Click( object sender, EventArgs e )
+        {
+            var rockContext = new RockContext();
+            var service = new CommunicationService( rockContext );
+            var communication = service.Get( CommunicationId.Value );
+            if ( communication != null &&
+                communication.Status == CommunicationStatus.PendingApproval &&
+                IsUserAuthorized( "Approve" ) )
+            {
+                // Redirect back to same page without the edit param
+                var pageRef = CurrentPageReference;
+                pageRef.Parameters.Add( "edit", "true" );
+                Response.Redirect( pageRef.BuildUrl() );
+                Context.ApplicationInstance.CompleteRequest();
+            }
         }
 
         /// <summary>
@@ -397,27 +452,8 @@ namespace RockWeb.Blocks.Communication
         /// <summary>
         /// Shows the detail.
         /// </summary>
-        private void ShowDetail()
+        private void ShowDetail( Rock.Model.Communication communication )
         {
-            Rock.Model.Communication communication = null;
-
-            if (CommunicationId.HasValue)
-            {
-                communication = new CommunicationService(new RockContext())
-                    .Queryable( "CreatedByPersonAlias.Person" )
-                    .Where( c => c.Id == CommunicationId.Value)
-                    .FirstOrDefault();
-            }
-
-            // If not valid for this block, hide contents and return
-            if ( communication == null ||
-                communication.Status == CommunicationStatus.Transient ||
-                communication.Status == CommunicationStatus.Draft )
-            {
-                // If viewing a new, transient or draft communication, hide this block and use NewCommunication block
-                this.Visible = false;
-                return;
-            }
 
             ShowStatus( communication );
             lTitle.Text = ( communication.Subject ?? "Communication" ).FormatAsHtmlTitle();
@@ -439,7 +475,7 @@ namespace RockWeb.Blocks.Communication
                 if (mediumEntityType != null)
                 {
                     var medium = MediumContainer.GetComponent( mediumEntityType.Name );
-                    if (medium != null)
+                    if (medium != null && medium.Transport != null)
                     {
                         pnlOpened.Visible = medium.Transport.CanTrackOpens;
                         lDetails.Text = medium.GetMessageDetails( communication );
@@ -482,32 +518,31 @@ namespace RockWeb.Blocks.Communication
                 var rockContext = new RockContext();
                 var recipients = new CommunicationRecipientService( rockContext )
                     .Queryable( "PersonAlias.Person,Activities" )
-                    .Where( r => r.CommunicationId == CommunicationId.Value )
-                    .ToList();
-
+                    .Where( r => r.CommunicationId == CommunicationId.Value );
+                
                 SetRecipients( pnlPending, aPending, lPending, gPending,
-                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Pending ).ToList() );
+                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Pending ) );
                 SetRecipients( pnlDelivered, aDelivered, lDelivered, gDelivered,
-                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Delivered || r.Status == CommunicationRecipientStatus.Opened ).ToList() );
+                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Delivered || r.Status == CommunicationRecipientStatus.Opened ) );
                 SetRecipients( pnlFailed, aFailed, lFailed, gFailed,
-                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Failed ).ToList() );
+                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Failed ) );
                 SetRecipients( pnlCancelled, aCancelled, lCancelled, gCancelled,
-                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Cancelled ).ToList() );
+                    recipients.Where( r => r.Status == CommunicationRecipientStatus.Cancelled ) );
 
                 if ( pnlOpened.Visible )
                 {
                     SetRecipients( pnlOpened, aOpened, lOpened, gOpened,
-                        recipients.Where( r => r.Status == CommunicationRecipientStatus.Opened ).ToList() );
+                        recipients.Where( r => r.Status == CommunicationRecipientStatus.Opened ) );
                 }
             }
         }
 
         private void SetRecipients( Panel pnl, HtmlAnchor htmlAnchor, Literal literalControl, 
-            Grid grid, List<CommunicationRecipient> recipients )
+            Grid grid, IQueryable<CommunicationRecipient> qryRecipients )
         {
             pnl.CssClass = pnlOpened.Visible ? "col-md-2-10 margin-b-md" : "col-md-3 margin-b-md";
 
-            int count = recipients.Count();
+            int count = qryRecipients.Count();
 
             if ( count <= 0 )
             {
@@ -520,21 +555,19 @@ namespace RockWeb.Blocks.Communication
 
             literalControl.Text = count.ToString( "N0" );
 
+            
             var sortProperty = grid.SortProperty;
             if ( sortProperty != null )
             {
-                grid.DataSource = recipients.AsQueryable()
-                    .Sort( sortProperty )
-                    .ToList();
+                qryRecipients = qryRecipients.AsQueryable().Sort( sortProperty );
+                    
             }
             else
             {
-                grid.DataSource = recipients
-                    .OrderBy( r => r.PersonAlias.Person.LastName )
-                    .ThenBy( r => r.PersonAlias.Person.NickName )
-                    .ToList();
+                qryRecipients = qryRecipients.OrderBy( r => r.PersonAlias.Person.LastName ).ThenBy( r => r.PersonAlias.Person.NickName );
             }
-            
+
+            grid.SetLinqDataSource( qryRecipients );
             grid.DataBind();
         }
 
@@ -557,7 +590,7 @@ namespace RockWeb.Blocks.Communication
                     activity = activity.OrderBy( a => a.ActivityDateTime );
                 }
 
-                gActivity.DataSource = activity.ToList();
+                gActivity.SetLinqDataSource( activity );
                 gActivity.DataBind();
             }
         }
@@ -609,6 +642,7 @@ namespace RockWeb.Blocks.Communication
             // Set default visibility
             btnApprove.Visible = false;
             btnDeny.Visible = false;
+            btnEdit.Visible = false;
             btnCancel.Visible = false;
             btnCopy.Visible = false;
 
@@ -629,6 +663,7 @@ namespace RockWeb.Blocks.Communication
                             {
                                 btnApprove.Visible = true;
                                 btnDeny.Visible = true;
+                                btnEdit.Visible = true;
                             }
                             btnCancel.Visible = true;
                             break;
@@ -636,10 +671,11 @@ namespace RockWeb.Blocks.Communication
                     case CommunicationStatus.Approved:
                         {
                             // If there are still any pending recipients, allow canceling of send
-                            btnCancel.Visible = communication.Recipients
-                                .Where( r => r.Status == CommunicationRecipientStatus.Pending )
-                                .Any();
+                            var hasPendingRecipients = new CommunicationRecipientService( new RockContext() ).Queryable()
+                            .Where( r => r.CommunicationId == communication.Id ).Where( r => r.Status == CommunicationRecipientStatus.Pending ).Any();
 
+
+                            btnCancel.Visible = hasPendingRecipients;
                             btnCopy.Visible = true;
                             break;
                         }

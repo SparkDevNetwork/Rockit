@@ -16,6 +16,7 @@
                 <fieldset>
                     <Rock:RockDropDownList ID="ddlTitle" runat="server" CssClass="input-width-md" Label="Title"/>
                     <Rock:DataTextBox ID="tbFirstName" runat="server" SourceTypeName="Rock.Model.Person, Rock" PropertyName="FirstName" />
+                    <Rock:DataTextBox ID="tbNickName" runat="server" SourceTypeName="Rock.Model.Person, Rock" PropertyName="NickName" />
                     <Rock:DataTextBox ID="tbLastName" runat="server" SourceTypeName="Rock.Model.Person, Rock" PropertyName="LastName" />
                     <Rock:RockDropDownList ID="ddlSuffix" CssClass="input-width-md" runat="server" Label="Suffix"/>
                     <Rock:BirthdayPicker ID="bpBirthDay" runat="server" Label="Birthday" />
@@ -43,10 +44,10 @@
                                             <div class="col-sm-5">
                                                 <div class="row">
                                                     <div class="col-xs-6">
-                                                        <asp:CheckBox ID="cbSms"  runat="server" Text="sms" Checked='<%# (bool)Eval("IsMessagingEnabled") %>' CssClass="js-sms-number"  />
+                                                        <asp:CheckBox ID="cbSms"  runat="server" Text="SMS" Checked='<%# (bool)Eval("IsMessagingEnabled") %>' CssClass="js-sms-number"  />
                                                     </div>
                                                     <div class="col-xs-6">
-                                                        <asp:CheckBox ID="cbUnlisted" runat="server" Text="unlisted" Checked='<%# (bool)Eval("IsUnlisted") %>' />
+                                                        <asp:CheckBox ID="cbUnlisted" runat="server" Text="Unlisted" Checked='<%# (bool)Eval("IsUnlisted") %>' />
                                                     </div>
                                                 </div>
                                             </div>
@@ -60,6 +61,35 @@
                     <Rock:DataTextBox ID="tbEmail" PrependText="<i class='fa fa-envelope'></i>" runat="server" SourceTypeName="Rock.Model.Person, Rock" PropertyName="Email" />
 
                 </fieldset>
+
+                <asp:Panel ID="pnlAddress" runat="server">
+                    <fieldset>
+                        <legend><asp:Literal ID="lAddressTitle" runat="server" /></legend>
+
+                        <div class="clearfix">
+                            <div class="pull-left margin-b-md">
+                                <asp:Literal ID="lPreviousAddress" runat="server" />
+                            </div>
+                            <div class="pull-right">
+                                <asp:LinkButton ID="lbMoved" CssClass="btn btn-default btn-xs" runat="server" OnClick="lbMoved_Click"><i class="fa fa-truck"></i> Moved</asp:LinkButton>
+                            </div>
+                        </div>
+
+                        <asp:HiddenField ID="hfStreet1" runat="server" />
+                        <asp:HiddenField ID="hfStreet2" runat="server" />
+                        <asp:HiddenField ID="hfCity" runat="server" />
+                        <asp:HiddenField ID="hfState" runat="server" />
+                        <asp:HiddenField ID="hfPostalCode" runat="server" />
+                        <asp:HiddenField ID="hfCountry" runat="server" />
+
+                        <Rock:AddressControl id="acAddress" runat="server" RequiredErrorMessage="Your Address is Required" />
+                        
+                        <div class="margin-b-sm">
+                            <Rock:RockCheckBox ID="cbIsMailingAddress" runat="server" Text="This is my mailing address" Checked="true" />
+                            <Rock:RockCheckBox ID="cbIsPhysicalAddress" runat="server" Text="This is my physical address" Checked="true" />
+                        </div>
+                    </fieldset>
+                </asp:Panel>
 
                 <div class="actions">
                     <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" />

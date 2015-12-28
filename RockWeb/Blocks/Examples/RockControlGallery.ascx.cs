@@ -25,6 +25,8 @@ using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
 using Rock;
 using Rock.Attribute;
+using Rock.Data;
+using Rock.Model;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -73,7 +75,7 @@ namespace RockWeb.Blocks.Examples
                     example.Controls.Add( new LiteralControl( string.Format( "<pre class='prettyprint'>{0}</pre>", Server.HtmlEncode( list[i] ) ) ) );
                 }
 
-                if ( example.TagName == "h1" || example.TagName == "h2" || example.TagName == "h3" )
+                if ( example.NamingContainer == this && (example.TagName == "h1" || example.TagName == "h2" || example.TagName == "h3") )
                 {
                     example.Attributes["class"] = "rollover-container";
                     example.Controls.AddAt( 0, new LiteralControl( string.Format( "<a name='{0}' class='anchor rollover-item' href='#{0}'><i class='fa fa-link rlink icon-link'></i></a>", BuildAnchorForHref( (HtmlGenericControl)example ) ) ) );
@@ -174,12 +176,29 @@ namespace RockWeb.Blocks.Examples
                 bddlExample.Items.Add( new ListItem( "Mustard", "654" ) );
                 bddlExample.SelectedValue = "44";
 
+                bddlExampleCheckmark.Items.Clear();
+                bddlExampleCheckmark.Items.Add( new ListItem( "Small", "44" ) );
+                bddlExampleCheckmark.Items.Add( new ListItem( "Medium", "88" ) );
+                bddlExampleCheckmark.Items.Add( new ListItem( "Large", "150" ) );
+                bddlExampleCheckmark.Items.Add( new ListItem( "Software Developer", "654" ) );
+
                 ddlDataExample.Items.AddRange( bddlExample.Items.OfType<ListItem>().ToArray() );
 
                 cblExample.Items.AddRange( bddlExample.Items.OfType<ListItem>().ToArray() );
                 cblExampleHorizontal.Items.AddRange( bddlExample.Items.OfType<ListItem>().ToArray() );
                 rblExample.Items.AddRange( bddlExample.Items.OfType<ListItem>().ToArray() );
                 rblExampleHorizontal.Items.AddRange( bddlExample.Items.OfType<ListItem>().ToArray() );
+
+                campsExample.Campuses = Rock.Web.Cache.CampusCache.All();
+                
+                var rockContext = new RockContext();
+                var allGroupTypes = new GroupTypeService( rockContext ).Queryable().OrderBy( a => a.Name ).ToList();
+                gpGroupType.GroupTypes = allGroupTypes;
+                gpGroupTypes.GroupTypes = allGroupTypes;
+
+                sdrpExample.SlidingDateRangeMode = SlidingDateRangePicker.SlidingDateRangeType.Last;
+                sdrpExample.TimeUnit = SlidingDateRangePicker.TimeUnitType.Week;
+                sdrpExample.NumberOfTimeUnits = 16;
 
                 BindGrid();
             }

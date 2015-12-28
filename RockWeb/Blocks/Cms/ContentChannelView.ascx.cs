@@ -51,7 +51,7 @@ namespace RockWeb.Blocks.Cms
     // Custom Settings
     [ContentChannelField( "Channel", "The channel to display items from.", false, "", "CustomSetting" )]
     [EnumsField( "Status", "Include items with the following status.", typeof( ContentChannelItemStatus ), false, "2", "CustomSetting" )]
-    [CodeEditorField( "Template", "The template to use when formatting the list of items.", CodeEditorMode.Liquid, CodeEditorTheme.Rock, 600, false, @"", "CustomSetting" )]
+    [CodeEditorField( "Template", "The template to use when formatting the list of items.", CodeEditorMode.Lava, CodeEditorTheme.Rock, 600, false, @"", "CustomSetting" )]
     [IntegerField( "Count", "The maximum number of items to display.", false, 5, "CustomSetting" )]
     [IntegerField( "Cache Duration", "Number of seconds to cache the content.", false, 3600, "CustomSetting" )]
     [BooleanField( "Enable Debug", "Enabling debug will display the fields of the first 5 items to help show you wants available for your liquid.", false, "CustomSetting" )]
@@ -145,6 +145,17 @@ $(document).ready(function() {
 
             this.BlockUpdated += ContentDynamic_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
+
+            Button btnTrigger = new Button();
+            btnTrigger.ClientIDMode = System.Web.UI.ClientIDMode.Static;
+            btnTrigger.ID = "rock-config-cancel-trigger";
+            btnTrigger.Click += btnTrigger_Click;
+            pnlEditModal.Controls.Add( btnTrigger );
+
+            AsyncPostBackTrigger trigger = new AsyncPostBackTrigger();
+            trigger.ControlID ="rock-config-cancel-trigger";
+            trigger.EventName = "Click";
+            upnlContent.Triggers.Add( trigger );
         }
 
         /// <summary>
@@ -181,6 +192,14 @@ $(document).ready(function() {
 
         void ContentDynamic_BlockUpdated( object sender, EventArgs e )
         {
+            ShowView();
+        }
+
+        void btnTrigger_Click( object sender, EventArgs e )
+        {
+            mdEdit.Hide();
+            pnlEditModal.Visible = false;
+
             ShowView();
         }
 
@@ -441,12 +460,24 @@ $(document).ready(function() {
                 }
             }
 
+            // add context to merge fields
+            var contextEntityTypes = RockPage.GetContextEntityTypes();
+
+            var contextObjects = new Dictionary<string, object>();
+            foreach ( var conextEntityType in contextEntityTypes )
+            {
+                var contextObject = RockPage.GetCurrentContext( conextEntityType );
+                contextObjects.Add( conextEntityType.FriendlyName, contextObject );
+            }
+            
+
             var mergeFields = new  Dictionary<string, object>();
             mergeFields.Add( "Pagination", pagination );
             mergeFields.Add( "LinkedPages", linkedPages );
             mergeFields.Add( "Items", currentPageContent );
             mergeFields.Add( "Campuses", CampusCache.All() );
             mergeFields.Add( "CurrentPerson", CurrentPerson );
+            mergeFields.Add( "Context", contextObjects );
 
             globalAttributeFields.ToList().ForEach( d => mergeFields.Add( d.Key, d.Value ) );
             mergeFields.Add( "RockVersion", Rock.VersionInfo.VersionInfo.GetRockProductVersionNumber() );
@@ -617,7 +648,7 @@ $(document).ready(function() {
                             var qry = service.Queryable( "ContentChannel,ContentChannelType" );
 
                             int? itemId = PageParameter( "Item" ).AsIntegerOrNull();
-                            if ( itemId.HasValue )
+                            if ( queryParameterFiltering && itemId.HasValue )
                             {
                                 qry = qry.Where( i => i.Id == itemId.Value );
                             }
@@ -655,14 +686,11 @@ $(document).ready(function() {
                                 }
                             }
 
-                            // All filtering has been added, now run query and then check security and load attributes
+                            // All filtering has been added, now run query and load attributes
                             foreach ( var item in qry.ToList() )
                             {
-                                if ( item.IsAuthorized( Authorization.VIEW, CurrentPerson ) )
-                                {
-                                    item.LoadAttributes( rockContext );
-                                    items.Add( item );
-                                }
+                                item.LoadAttributes( rockContext );
+                                items.Add( item );
                             }
 
                             // Order the items
@@ -714,14 +742,14 @@ $(document).ready(function() {
                                             if ( direction == SortDirection.Ascending )
                                             {
                                                 orderedQry = ( columnIndex == 0 ) ?
-                                                    itemQry.OrderBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.Value ) :
-                                                    orderedQry.ThenBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.Value );
+                                                    itemQry.OrderBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType ) :
+                                                    orderedQry.ThenBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType );
                                             }
                                             else
                                             {
                                                 orderedQry = ( columnIndex == 0 ) ?
-                                                    itemQry.OrderByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.Value ) :
-                                                    orderedQry.ThenByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.Value );
+                                                    itemQry.OrderByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType ) :
+                                                    orderedQry.ThenByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType );
                                             }
                                         }
                                         else
@@ -759,50 +787,55 @@ $(document).ready(function() {
                             }
                         }
 
+
                         // If items could be filtered by querystring values, check for filters
-                        if ( queryParameterFiltering && Request.QueryString.Count > 0 )
+                        if ( queryParameterFiltering )
                         {
-                            var propertyFilter = new Rock.Reporting.DataFilter.PropertyFilter();
-
-                            var itemQry = items.AsQueryable();
-                            foreach( string key in Request.QueryString.AllKeys )
+                            var pageParameters = PageParameters();
+                            if ( pageParameters.Count > 0 )
                             {
-                                var selection = new List<string>();
-                                selection.Add( key );
+                                var propertyFilter = new Rock.Reporting.DataFilter.PropertyFilter();
 
-                                var entityField = entityFields.FirstOrDefault( f => f.Name.Equals( key, StringComparison.OrdinalIgnoreCase ) );
-                                if ( entityField != null )
+                                var itemQry = items.AsQueryable();
+                                foreach ( string key in PageParameters().Select( p => p.Key ).ToList() )
                                 {
-                                    string value = Request.QueryString[key];
-                                    switch ( entityField.FieldType.Guid.ToString().ToUpper() )
+                                    var selection = new List<string>();
+                                    selection.Add( key );
+
+                                    var entityField = entityFields.FirstOrDefault( f => f.Name.Equals( key, StringComparison.OrdinalIgnoreCase ) );
+                                    if ( entityField != null )
                                     {
-                                        case Rock.SystemGuid.FieldType.DAY_OF_WEEK:
-                                        case Rock.SystemGuid.FieldType.SINGLE_SELECT:
-                                            {
-                                                selection.Add( value );
-                                            }
-                                            break;
-                                        case Rock.SystemGuid.FieldType.MULTI_SELECT:
-                                            {
-                                                var values = new List<string>();
-                                                values.Add( value );
-                                                selection.Add( Newtonsoft.Json.JsonConvert.SerializeObject( values ) );
-                                            }
-                                            break;
-                                        default:
-                                            {
-                                                selection.Add( ComparisonType.EqualTo.ConvertToInt().ToString());
-                                                selection.Add( value);
-                                            }
-                                            break;
+                                        string value = PageParameter( key );
+                                        switch ( entityField.FieldType.Guid.ToString().ToUpper() )
+                                        {
+                                            case Rock.SystemGuid.FieldType.DAY_OF_WEEK:
+                                            case Rock.SystemGuid.FieldType.SINGLE_SELECT:
+                                                {
+                                                    selection.Add( value );
+                                                }
+                                                break;
+                                            case Rock.SystemGuid.FieldType.MULTI_SELECT:
+                                                {
+                                                    var values = new List<string>();
+                                                    values.Add( value );
+                                                    selection.Add( Newtonsoft.Json.JsonConvert.SerializeObject( values ) );
+                                                }
+                                                break;
+                                            default:
+                                                {
+                                                    selection.Add( ComparisonType.EqualTo.ConvertToInt().ToString() );
+                                                    selection.Add( value );
+                                                }
+                                                break;
+                                        }
+
+                                        itemQry = itemQry.Where( paramExpression, propertyFilter.GetExpression( itemType, service, paramExpression, Newtonsoft.Json.JsonConvert.SerializeObject( selection ) ) );
                                     }
-
-                                    itemQry = itemQry.Where( paramExpression, propertyFilter.GetExpression( itemType, service, paramExpression, Newtonsoft.Json.JsonConvert.SerializeObject( selection ) ) );
                                 }
+
+                                items = itemQry.ToList();
+
                             }
-
-                            items = itemQry.ToList();
-
                         }
                     }
                 }
@@ -946,6 +979,20 @@ $(document).ready(function() {
 
                     HttpContext.Current.Items.Remove( string.Format( "EntityHelper:GetEntityFields:{0}", entityType.FullName ) );
                     var entityFields = Rock.Reporting.EntityHelper.GetEntityFields( entityType );
+                    foreach( var entityField in entityFields
+                        .Where( f => 
+                            f.FieldKind == Rock.Reporting.FieldKind.Attribute &&
+                            f.AttributeGuid.HasValue )
+                        .ToList() )
+                    {
+                        var attribute = AttributeCache.Read( entityField.AttributeGuid.Value );
+                        if ( attribute != null && 
+                            attribute.EntityTypeQualifierColumn == "ContentChannelTypeId" && 
+                            attribute.EntityTypeQualifierValue.AsInteger() != channel.ContentChannelTypeId )
+                        {
+                            entityFields.Remove( entityField );
+                        }
+                    }
 
                     if ( entityFields != null )
                     {
@@ -969,7 +1016,10 @@ $(document).ready(function() {
                                 a.Value.EntityTypeQualifierValue != "" )
                             .Select( a => a.Value ) )
                         {
-                            Rock.Reporting.EntityHelper.AddEntityFieldForAttribute( entityFields, attribute );
+                            if ( !entityFields.Any( f => f.AttributeGuid.Equals( attribute.Guid ) ) )
+                            {
+                                Rock.Reporting.EntityHelper.AddEntityFieldForAttribute( entityFields, attribute );
+                            }
                         }
 
                         // Re-sort fields
@@ -1020,55 +1070,69 @@ $(document).ready(function() {
         /// <param name="rockContext">The rock context.</param>
         private void CreateFilterControl( Control parentControl, DataViewFilter filter, bool setSelection, RockContext rockContext )
         {
-            if ( filter.ExpressionType == FilterExpressionType.Filter )
+            try
             {
-                var filterControl = new FilterField();
-                
-                parentControl.Controls.Add( filterControl );
-                filterControl.DataViewFilterGuid = filter.Guid;
-                filterControl.ID = string.Format( "ff_{0}", filterControl.DataViewFilterGuid.ToString( "N" ) );
-                
-                // Remove the 'Other Data View' Filter as it doesn't really make sense to have it available in this scenario
-                filterControl.ExcludedFilterTypes = new string[] { typeof( Rock.Reporting.DataFilter.OtherDataViewFilter ).FullName };
-                filterControl.FilteredEntityTypeName = ITEM_TYPE_NAME;
-
-                if ( filter.EntityTypeId.HasValue )
+                if ( filter.ExpressionType == FilterExpressionType.Filter )
                 {
-                    var entityTypeCache = Rock.Web.Cache.EntityTypeCache.Read( filter.EntityTypeId.Value, rockContext );
-                    if ( entityTypeCache != null )
+                    var filterControl = new FilterField();
+                
+                    parentControl.Controls.Add( filterControl );
+                    filterControl.DataViewFilterGuid = filter.Guid;
+                    filterControl.ID = string.Format( "ff_{0}", filterControl.DataViewFilterGuid.ToString( "N" ) );
+                
+                    // Remove the 'Other Data View' Filter as it doesn't really make sense to have it available in this scenario
+                    filterControl.ExcludedFilterTypes = new string[] { typeof( Rock.Reporting.DataFilter.OtherDataViewFilter ).FullName };
+                    filterControl.FilteredEntityTypeName = ITEM_TYPE_NAME;
+
+                    if ( filter.EntityTypeId.HasValue )
                     {
-                        filterControl.FilterEntityTypeName = entityTypeCache.Name;
+                        var entityTypeCache = Rock.Web.Cache.EntityTypeCache.Read( filter.EntityTypeId.Value, rockContext );
+                        if ( entityTypeCache != null )
+                        {
+                            filterControl.FilterEntityTypeName = entityTypeCache.Name;
+                        }
+                    }
+
+                    filterControl.Expanded = filter.Expanded;
+                    if ( setSelection )
+                    {
+                        try
+                        {
+                            filterControl.SetSelection( filter.Selection );
+                        }
+                        catch ( Exception ex )
+                        {
+                            this.LogException( new Exception( "Exception setting selection for DataViewFilter: " + filter.Guid, ex ) );
+                        }
+                    }
+
+                    filterControl.DeleteClick += filterControl_DeleteClick;
+                }
+                else
+                {
+                    var groupControl = new FilterGroup();
+                    parentControl.Controls.Add( groupControl );
+                    groupControl.DataViewFilterGuid = filter.Guid;
+                    groupControl.ID = string.Format( "fg_{0}", groupControl.DataViewFilterGuid.ToString( "N" ) );
+                    groupControl.FilteredEntityTypeName = ITEM_TYPE_NAME;
+                    groupControl.IsDeleteEnabled = parentControl is FilterGroup;
+                    if ( setSelection )
+                    {
+                        groupControl.FilterType = filter.ExpressionType;
+                    }
+
+                    groupControl.AddFilterClick += groupControl_AddFilterClick;
+                    groupControl.AddGroupClick += groupControl_AddGroupClick;
+                    groupControl.DeleteGroupClick += groupControl_DeleteGroupClick;
+                    foreach ( var childFilter in filter.ChildFilters )
+                    {
+                        CreateFilterControl( groupControl, childFilter, setSelection, rockContext );
                     }
                 }
-
-                filterControl.Expanded = filter.Expanded;
-                if ( setSelection )
-                {
-                    filterControl.Selection = filter.Selection;
-                }
-
-                filterControl.DeleteClick += filterControl_DeleteClick;
             }
-            else
+            catch ( Exception ex )
             {
-                var groupControl = new FilterGroup();
-                parentControl.Controls.Add( groupControl );
-                groupControl.DataViewFilterGuid = filter.Guid;
-                groupControl.ID = string.Format( "fg_{0}", groupControl.DataViewFilterGuid.ToString( "N" ) );
-                groupControl.FilteredEntityTypeName = ITEM_TYPE_NAME;
-                groupControl.IsDeleteEnabled = parentControl is FilterGroup;
-                if ( setSelection )
-                {
-                    groupControl.FilterType = filter.ExpressionType;
-                }
-
-                groupControl.AddFilterClick += groupControl_AddFilterClick;
-                groupControl.AddGroupClick += groupControl_AddGroupClick;
-                groupControl.DeleteGroupClick += groupControl_DeleteGroupClick;
-                foreach ( var childFilter in filter.ChildFilters )
-                {
-                    CreateFilterControl( groupControl, childFilter, setSelection, rockContext );
-                }
+                this.LogException( new Exception( "Exception creating FilterControl for DataViewFilter: " + filter.Guid, ex ) );
             }
         }
 
@@ -1125,7 +1189,7 @@ $(document).ready(function() {
             if ( filterField.FilterEntityTypeName != null )
             {
                 filter.EntityTypeId = Rock.Web.Cache.EntityTypeCache.Read( filterField.FilterEntityTypeName ).Id;
-                filter.Selection = filterField.Selection;
+                filter.Selection = filterField.GetSelection();
             }
 
             return filter;

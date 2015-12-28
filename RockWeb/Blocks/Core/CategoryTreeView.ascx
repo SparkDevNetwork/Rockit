@@ -2,9 +2,10 @@
 
 <asp:UpdatePanel ID="upCategoryTree" runat="server" UpdateMode="Conditional" ChildrenAsTriggers="false">
     <ContentTemplate>
-        <asp:HiddenField ID="hfInitialCategoryParentIds" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfSelectedItemId" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfPageRouteTemplate" runat="server" ClientIDMode="Static" />
+        <asp:HiddenField ID="hfInitialCategoryParentIds" runat="server" />
+        <asp:HiddenField ID="hfSelectedItemId" runat="server" />
+        <asp:HiddenField ID="hfPageRouteTemplate" runat="server" />
+        <asp:HiddenField ID="hfDetailPageUrl" runat="server" />
 
         <div class="treeview">
 
@@ -36,7 +37,7 @@
                 <div class="viewport">
                     <div class="overview">
                         <div class="panel-body treeview-frame">
-                            <div id="treeview-content"></div>
+                            <asp:Panel ID="pnlTreeviewContent" runat="server" />
                         </div>
                     </div>
                 </div>
@@ -54,7 +55,7 @@
 
         <script type="text/javascript">
 
-            var scrollbCategory = $('.treeview-scroll');
+            var scrollbCategory = $('#<%=pnlTreeviewContent.ClientID%>').closest('.treeview-scroll');
             scrollbCategory.tinyscrollbar({ axis: 'x', sizethumb: 60, size: 200 });
 
             // resize scrollbar when the window resizes
@@ -66,7 +67,7 @@
 
             // scrollbar hide/show
             var timerScrollHide;
-            $("[id$='upCategoryTree']").on({
+            $("#<%=upCategoryTree.ClientID%>").on({
                 mouseenter: function () {
                     clearTimeout(timerScrollHide);
                     $("[id$='upCategoryTree'] div[class~='scrollbar'] div[class='track'").fadeIn('fast');
@@ -80,12 +81,12 @@
 
             if ('<%= RestParms %>' == '') {
                 // EntityType not set
-                $('#treeview-content').hide();
+                $('#<%=pnlTreeviewContent.ClientID%>').hide();
             }
 
             $(function () {
-                var $selectedId = $('#hfSelectedItemId'),
-                    $expandedIds = $('#hfInitialCategoryParentIds'),
+                var $selectedId = $('#<%=hfSelectedItemId.ClientID%>'),
+                    $expandedIds = $('#<%=hfInitialCategoryParentIds.ClientID%>'),
                     _mapCategories = function (arr) {
                         return $.map(arr, function (item) {
                             var node = {
@@ -94,9 +95,14 @@
                                 iconCssClass: item.IconCssClass,
                                 parentId: item.ParentId,
                                 hasChildren: item.HasChildren,
-                                isCategory: item.IsCategory
+                                isCategory: item.IsCategory,
+                                entityId: item.Id
                             };
 
+                            // If this Tree Node represents a Category, add a prefix to its identifier to prevent collisions with other Entity identifiers.
+                            if (item.IsCategory) {
+                                node.id = '<%= CategoryNodePrefix %>' + node.id;
+                            }
                             if (item.Children && typeof item.Children.length === 'number') {
                                 node.children = _mapCategories(item.Children);
                             }
@@ -105,13 +111,18 @@
                         });
                     };
 
-                $('#treeview-content')
+                $('#<%=pnlTreeviewContent.ClientID%>')
                     .on('rockTree:selected', function (e, id) {
 
                         var $node = $('[data-id="' + id + '"]'),
                             isCategory = $node.attr('data-iscategory') === 'true',
-                            urlParameter = (isCategory ? 'CategoryId' : '<%= PageParameterName %>'),
-                                itemSearch = '?' + urlParameter + '=' + id;
+                            urlParameter = (isCategory ? 'CategoryId' : '<%= PageParameterName %>');
+
+                        // Get the id of the Entity represented by this Tree Node if it has been specified as an attribute.
+                        // If not, assume the id of the Entity is the same as the Node.
+                        var entityId = $node.attr('data-entityid') || id;
+
+                        var itemSearch = '?' + urlParameter + '=' + entityId;
 
                         var currentItemId = $selectedId.val();
 
@@ -121,16 +132,23 @@
                                 return $(this).attr('data-id')
                             }).get().join(',');
 
-                            var pageRouteTemplate = $('#hfPageRouteTemplate').val();
+                            var pageRouteTemplate = $('#<%=hfPageRouteTemplate.ClientID%>').val();
                             var locationUrl = "";
                             var regex = new RegExp("{" + urlParameter + "}", "i");
 
                             if (pageRouteTemplate.match(regex)) {
-                                locationUrl = Rock.settings.get('baseUrl') + pageRouteTemplate.replace(regex, id);
+                                locationUrl = Rock.settings.get('baseUrl') + pageRouteTemplate.replace(regex, entityId);
                                 locationUrl += "?ExpandedIds=" + encodeURIComponent(expandedDataIds);
                             }
                             else {
-                                locationUrl = window.location.href.split('?')[0] + itemSearch;
+                                var detailPageUrl = $('#<%=hfDetailPageUrl.ClientID%>').val();
+                                if (detailPageUrl) {
+                                    locationUrl = Rock.settings.get('baseUrl') + detailPageUrl + itemSearch;
+                                }
+                                else {
+                                    locationUrl = window.location.href.split('?')[0] + itemSearch;
+                                }
+
                                 locationUrl += "&ExpandedIds=" + encodeURIComponent(expandedDataIds);
                             }
 
@@ -148,7 +166,7 @@
                             restUrl: '<%= ResolveUrl( "~/api/categories/getchildren/" ) %>',
                             restParams: '<%= RestParms %>',
                             mapping: {
-                                include: ['isCategory'],
+                                include: ['isCategory', 'entityId'],
                                 mapData: _mapCategories
                             },
                             selectedIds: $selectedId.val() ? $selectedId.val().split(',') : null,
@@ -176,6 +194,8 @@
             <Content>
                 <Rock:NotificationBox ID="nbRootCategoryEntityTypeWarning" runat="server" Text="Entity Type must be set in Block Settings before setting Root Category." NotificationBoxType="Warning" />
                 <Rock:CategoryPicker ID="cpRootCategory" runat="server" Label="Root Category" />
+
+                <Rock:CategoryPicker ID="cpExcludeCategories" runat="server" Label="Exclude Categories" AllowMultiSelect="true" />
             </Content>
         </Rock:ModalDialog>
     </ContentTemplate>

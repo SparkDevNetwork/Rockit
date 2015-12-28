@@ -42,7 +42,7 @@ namespace RockWeb.Blocks.Reporting
 
     [BooleanField( "Show Chart", DefaultValue = "true" )]
     [DefinedValueField( Rock.SystemGuid.DefinedType.CHART_STYLES, "Chart Style", DefaultValue = Rock.SystemGuid.DefinedValue.CHART_STYLE_ROCK )]
-    [SlidingDateRangeField( "Chart Date Range", Key = "SlidingDateRange", DefaultValue = "-1||||" )]
+    [SlidingDateRangeField( "Chart Date Range", key: "SlidingDateRange", defaultValue: "-1||||", enabledSlidingDateRangeTypes:"Last,Previous,Current,DateRange")]
     [BooleanField( "Combine Chart Series" )]
     public partial class MetricDetail : RockBlock, IDetailBlock
     {
@@ -196,15 +196,35 @@ namespace RockWeb.Blocks.Reporting
 
             metric.EntityTypeId = etpEntityType.SelectedEntityTypeId;
 
+            int sourceTypeDataView = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.METRIC_SOURCE_VALUE_TYPE_DATAVIEW.AsGuid() ).Id;
+            int sourceTypeSQL = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.METRIC_SOURCE_VALUE_TYPE_SQL.AsGuid() ).Id;
+
             var personService = new PersonService( rockContext );
             var metricChampionPerson = personService.Get( ppMetricChampionPerson.SelectedValue ?? 0 );
             metric.MetricChampionPersonAliasId = metricChampionPerson != null ? metricChampionPerson.PrimaryAliasId : null;
             var adminPerson = personService.Get( ppAdminPerson.SelectedValue ?? 0 );
             metric.AdminPersonAliasId = adminPerson != null ? adminPerson.PrimaryAliasId : null;
-            metric.SourceSql = ceSourceSql.Text;
-            metric.DataViewId = ddlDataView.SelectedValueAsId();
 
-            if ( rblScheduleSelect.SelectedValueAsEnum<ScheduleSelectionType>() == ScheduleSelectionType.NamedSchedule )
+            if ( metric.SourceValueTypeId == sourceTypeSQL )
+            {
+                metric.SourceSql = ceSourceSql.Text;
+            }
+            else
+            {
+                metric.SourceSql = string.Empty;
+            }
+
+            if ( metric.SourceValueTypeId == sourceTypeDataView )
+            {
+                metric.DataViewId = ddlDataView.SelectedValueAsId();
+            }
+            else
+            {
+                metric.DataViewId = null;
+            }
+
+            var scheduleSelectionType = rblScheduleSelect.SelectedValueAsEnum<ScheduleSelectionType>();
+            if ( scheduleSelectionType == ScheduleSelectionType.NamedSchedule )
             {
                 metric.ScheduleId = ddlSchedule.SelectedValueAsId();
             }
@@ -245,16 +265,36 @@ namespace RockWeb.Blocks.Reporting
                     schedule.CategoryId = metricScheduleCategoryId;
                 }
 
-                schedule.iCalendarContent = sbSchedule.iCalendarContent;
-                if ( schedule.Id == 0 )
+                // if the schedule was a unique schedule (configured in the Metric UI, set the schedule's ical content to the schedule builder UI's value
+                if ( scheduleSelectionType == ScheduleSelectionType.Unique )
                 {
-                    scheduleService.Add( schedule );
-
-                    // save to make sure we have a scheduleId
-                    rockContext.SaveChanges();
+                    schedule.iCalendarContent = sbSchedule.iCalendarContent;
                 }
 
-                metric.ScheduleId = schedule.Id;
+                if ( !schedule.HasSchedule() && scheduleSelectionType == ScheduleSelectionType.Unique )
+                {
+                    // don't save as a unique schedule if the schedule doesn't do anything
+                    schedule = null;
+                }
+                else
+                {
+                    if ( schedule.Id == 0 )
+                    {
+                        scheduleService.Add( schedule );
+
+                        // save to make sure we have a scheduleId
+                        rockContext.SaveChanges();
+                    }
+                }
+
+                if ( schedule != null )
+                {
+                    metric.ScheduleId = schedule.Id;
+                }
+                else
+                {
+                    metric.ScheduleId = null;
+                }
 
                 if ( metric.Id == 0 )
                 {
@@ -299,8 +339,9 @@ namespace RockWeb.Blocks.Reporting
 
                 // delete any orphaned Unnamed metric schedules
                 var metricIdSchedulesQry = metricService.Queryable().Select( a => a.ScheduleId );
+                int? metricScheduleId = schedule != null ? schedule.Id : (int?)null;
                 var orphanedSchedules = scheduleService.Queryable()
-                    .Where( a => a.CategoryId == metricScheduleCategoryId && a.Name == string.Empty && a.Id != schedule.Id )
+                    .Where( a => a.CategoryId == metricScheduleCategoryId && a.Name == string.Empty && a.Id != ( metricScheduleId ?? 0 ) )
                     .Where( s => !metricIdSchedulesQry.Any( m => m == s.Id ) );
                 foreach ( var item in orphanedSchedules )
                 {
@@ -323,6 +364,7 @@ namespace RockWeb.Blocks.Reporting
             }
 
             qryParams["MetricCategoryId"] = hfMetricCategoryId.Value;
+            qryParams["ExpandedIds"] = PageParameter( "ExpandedIds" );
 
             NavigateToPage( RockPage.Guid, qryParams );
         }
@@ -576,6 +618,11 @@ namespace RockWeb.Blocks.Reporting
             ppMetricChampionPerson.SetValue( metric.MetricChampionPersonAlias != null ? metric.MetricChampionPersonAlias.Person : null );
             ppAdminPerson.SetValue( metric.AdminPersonAlias != null ? metric.AdminPersonAlias.Person : null );
             ceSourceSql.Text = metric.SourceSql;
+            ceSourceSql.Help = @"Specify the SQL that will return the Y Value for each scheduled Date. Example: <pre>SELECT COUNT(*) FROM [Attendance] </pre> 
+If this is a metric is partitioned, the 2nd column will be the EntityId value. Example: <pre>SELECT COUNT(*), [CampusId] FROM [Attendance] GROUP BY [CampusId] </pre>
+The SQL can include Lava merge fields:";
+            ceSourceSql.Help += metric.GetMergeObjects( RockDateTime.Now ).lavaDebugInfo();
+
             if ( metric.Schedule != null )
             {
                 sbSchedule.iCalendarContent = metric.Schedule.iCalendarContent;
@@ -651,8 +698,10 @@ namespace RockWeb.Blocks.Reporting
                 descriptionListMain.Add( "Categories", metric.MetricCategories.Select( s => s.Category.ToString() ).OrderBy( o => o ).ToList().AsDelimited( "," ) );
             }
 
-            // only show LastRun label if SourceValueType is not Manual
-            ltLastRunDateTime.Visible = metric.SourceValueTypeId != DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.METRIC_SOURCE_VALUE_TYPE_MANUAL.AsGuid() ).Id;
+            // only show LastRun and Schedule label if SourceValueType is not Manual
+            int manualSourceType = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.METRIC_SOURCE_VALUE_TYPE_MANUAL.AsGuid() ).Id;
+            ltLastRunDateTime.Visible = metric.SourceValueTypeId != manualSourceType;
+            hlScheduleFriendlyText.Visible = metric.SourceValueTypeId != manualSourceType;
 
             if ( metric.LastRunDateTime != null )
             {
@@ -664,6 +713,37 @@ namespace RockWeb.Blocks.Reporting
                 ltLastRunDateTime.LabelType = LabelType.Warning;
                 ltLastRunDateTime.Text = "Never Run";
             }
+
+            if (metric.Schedule != null)
+            {
+                string iconClass;
+                if (metric.Schedule.HasSchedule())
+                {
+                    if (metric.Schedule.HasScheduleWarning()                        )
+                    {
+                        hlScheduleFriendlyText.LabelType = LabelType.Warning;
+                        iconClass = "fa fa-exclamation-triangle";
+                    }
+                    else
+                    {
+                        hlScheduleFriendlyText.LabelType = LabelType.Info;
+                        iconClass = "fa fa-clock-o";
+                    }
+                }
+                else
+                {
+                    hlScheduleFriendlyText.LabelType = LabelType.Danger;
+                    iconClass = "fa fa-exclamation-triangle";
+                }
+
+                hlScheduleFriendlyText.Text = "<i class='" + iconClass + "'></i> " + metric.Schedule.FriendlyScheduleText;
+            }
+            else
+            {
+                hlScheduleFriendlyText.LabelType = LabelType.Danger;
+                hlScheduleFriendlyText.Text = "<i class='fa fa-clock-o'></i> " + "Not Scheduled";
+            }
+
 
             lblMainDetails.Text = descriptionListMain.Html;
         }
@@ -738,5 +818,6 @@ namespace RockWeb.Blocks.Reporting
         }
 
         #endregion
+
     }
 }

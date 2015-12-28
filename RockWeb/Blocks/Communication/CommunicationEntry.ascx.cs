@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Text;
+using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Xml.Linq;
@@ -59,6 +60,7 @@ namespace RockWeb.Blocks.Communication
         #region Fields
 
         private bool _fullMode = true;
+        private bool _editingApproved = false;
 
         #endregion
 
@@ -80,6 +82,27 @@ namespace RockWeb.Blocks.Communication
         {
             get { return ViewState["MediumEntityTypeId"] as int?; }
             set { ViewState["MediumEntityTypeId"] = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the entity types that have been viewed. If entity type has not been viewed, the control will be initialized to current person
+        /// </summary>
+        /// <value>
+        /// The initialized entity types.
+        /// </value>
+        protected List<int> ViewedEntityTypes
+        {
+            get 
+            { 
+                var viewedEntityTypes = ViewState["ViewedEntityTypes"] as List<int>; 
+                if ( viewedEntityTypes == null )
+                {
+                    viewedEntityTypes = new List<int>();
+                    ViewedEntityTypes = viewedEntityTypes;
+                }
+                return viewedEntityTypes;
+            }
+            set { ViewState["ViewedEntityTypes"] = value; }
         }
 
         /// <summary>
@@ -157,6 +180,12 @@ namespace RockWeb.Blocks.Communication
             set { ViewState["AdditionalMergeFields"] = value; }
         }
 
+        public bool ApproverEditing
+        {
+            get { return ViewState["ApproverEditing"] as bool? ?? false; }
+            set { ViewState["ApproverEditing"] = value; }
+        }
+
         #endregion
 
         #region Base Control Methods
@@ -189,6 +218,9 @@ namespace RockWeb.Blocks.Communication
             dtpFutureSend.Visible = _fullMode;
             btnTest.Visible = _fullMode;
             btnSave.Visible = _fullMode;
+
+            _editingApproved = PageParameter( "Edit" ).AsBoolean() && IsUserAuthorized( "Approve" );
+
         }
 
         /// <summary>
@@ -228,7 +260,8 @@ namespace RockWeb.Blocks.Communication
                 if ( communication == null ||
                     communication.Status == CommunicationStatus.Transient ||
                     communication.Status == CommunicationStatus.Draft ||
-                    communication.Status == CommunicationStatus.Denied )
+                    communication.Status == CommunicationStatus.Denied ||
+                    ( communication.Status == CommunicationStatus.PendingApproval && _editingApproved ) )
                 {
                     // If viewing a new, transient, draft, or denied communication, use this block
                     ShowDetail( communication );
@@ -281,8 +314,8 @@ namespace RockWeb.Blocks.Communication
                     MediumEntityTypeId = mediumId;
                     BindMediums();
 
-                    LoadMediumControl( true );
-                    LoadTemplates();
+                    var control = LoadMediumControl( true );
+                    InitializeControl( control );
                 }
             }
         }
@@ -301,7 +334,7 @@ namespace RockWeb.Blocks.Communication
                     var Person = new PersonService( new RockContext() ).Get( ppAddPerson.PersonId.Value );
                     if ( Person != null )
                     {
-                        Recipients.Add( new Recipient( Person, CommunicationRecipientStatus.Pending ) );
+                        Recipients.Add( new Recipient( Person, Person.PhoneNumbers.Any(a => a.IsMessagingEnabled), CommunicationRecipientStatus.Pending ) );
                         ShowAllRecipients = true;
                     }
                 }
@@ -444,7 +477,8 @@ namespace RockWeb.Blocks.Communication
             if ( Page.IsValid && CurrentPersonAliasId.HasValue )
             {
                 // Get existing or new communication record
-                var communication = UpdateCommunication( new RockContext() );
+                var rockContext = new RockContext();
+                var communication = UpdateCommunication( rockContext );
 
                 if ( communication != null  )
                 {
@@ -463,16 +497,16 @@ namespace RockWeb.Blocks.Communication
                     testCommunication.ReviewerPersonAliasId = CurrentPersonAliasId;
 
                     var testRecipient = new CommunicationRecipient();
-                    if (communication.Recipients.Any())
+                    if ( communication.GetRecipientCount( rockContext ) > 0 )
                     {
-                        var recipient = communication.Recipients.FirstOrDefault();
+                        var recipient = communication.GetRecipientsQry(rockContext).FirstOrDefault();
                         testRecipient.AdditionalMergeValuesJson = recipient.AdditionalMergeValuesJson;
                     }
+                    
                     testRecipient.Status = CommunicationRecipientStatus.Pending;
                     testRecipient.PersonAliasId = CurrentPersonAliasId.Value;
                     testCommunication.Recipients.Add( testRecipient );
-
-                    var rockContext = new RockContext();
+                    
                     var communicationService = new CommunicationService( rockContext );
                     communicationService.Add( testCommunication );
                     rockContext.SaveChanges();
@@ -506,46 +540,71 @@ namespace RockWeb.Blocks.Communication
 
                 if ( communication != null )
                 {
-                    string message = string.Empty;
-
-                    if ( CheckApprovalRequired( communication.Recipients.Count ) && !IsUserAuthorized( "Approve" ) )
+                    if ( _editingApproved && communication.Status == CommunicationStatus.PendingApproval )
                     {
-                        communication.Status = CommunicationStatus.PendingApproval;
-                        message = "Communication has been submitted for approval.";
+                        rockContext.SaveChanges();
+
+                        // Redirect back to same page without the edit param
+                        var pageRef = new Rock.Web.PageReference();
+                        pageRef.PageId = CurrentPageReference.PageId;
+                        pageRef.RouteId = CurrentPageReference.RouteId;
+                        pageRef.Parameters = new Dictionary<string, string>();
+                        pageRef.Parameters.Add( "CommunicationId", communication.Id.ToString() );
+                        Response.Redirect( pageRef.BuildUrl() );
+                        Context.ApplicationInstance.CompleteRequest();
                     }
                     else
                     {
-                        communication.Status = CommunicationStatus.Approved;
-                        communication.ReviewedDateTime = RockDateTime.Now;
-                        communication.ReviewerPersonAliasId = CurrentPersonAliasId;
+                        string message = string.Empty;
 
-                        if ( communication.FutureSendDateTime.HasValue &&
-                            communication.FutureSendDateTime > RockDateTime.Now)
+                        if ( CheckApprovalRequired( communication.GetRecipientCount(rockContext) ) && !IsUserAuthorized( "Approve" ) )
                         {
-                            message = string.Format( "Communication will be sent {0}.",
-                                communication.FutureSendDateTime.Value.ToRelativeDateString( 0 ) );
+                            communication.Status = CommunicationStatus.PendingApproval;
+                            message = "Communication has been submitted for approval.";
                         }
                         else
                         {
-                            message = "Communication has been queued for sending.";
+                            communication.Status = CommunicationStatus.Approved;
+                            communication.ReviewedDateTime = RockDateTime.Now;
+                            communication.ReviewerPersonAliasId = CurrentPersonAliasId;
+
+                            if ( communication.FutureSendDateTime.HasValue &&
+                                communication.FutureSendDateTime > RockDateTime.Now )
+                            {
+                                message = string.Format( "Communication will be sent {0}.",
+                                    communication.FutureSendDateTime.Value.ToRelativeDateString( 0 ) );
+                            }
+                            else
+                            {
+                                message = "Communication has been queued for sending.";
+                            }
                         }
-                    }
 
-                    rockContext.SaveChanges();
+                        rockContext.SaveChanges();
 
-                    if ( communication.Status == CommunicationStatus.Approved &&
-                        (!communication.FutureSendDateTime.HasValue || communication.FutureSendDateTime.Value <= RockDateTime.Now))
-                    {
-                        if ( GetAttributeValue( "SendWhenApproved" ).AsBoolean() )
+                        // send approval email if needed (now that we have a communication id)
+                        if ( communication.Status == CommunicationStatus.PendingApproval )
                         {
-                            var transaction = new Rock.Transactions.SendCommunicationTransaction();
-                            transaction.CommunicationId = communication.Id;
-                            transaction.PersonAlias = CurrentPersonAlias;
-                            Rock.Transactions.RockQueue.TransactionQueue.Enqueue( transaction );
+                            var approvalTransaction = new Rock.Transactions.SendCommunicationApprovalEmail();
+                            approvalTransaction.CommunicationId = communication.Id;
+                            approvalTransaction.ApprovalPageUrl = HttpContext.Current.Request.Url.AbsoluteUri;
+                            Rock.Transactions.RockQueue.TransactionQueue.Enqueue( approvalTransaction );
                         }
-                    }
 
-                    ShowResult( message, communication );
+                        if ( communication.Status == CommunicationStatus.Approved &&
+                            ( !communication.FutureSendDateTime.HasValue || communication.FutureSendDateTime.Value <= RockDateTime.Now ) )
+                        {
+                            if ( GetAttributeValue( "SendWhenApproved" ).AsBoolean() )
+                            {
+                                var transaction = new Rock.Transactions.SendCommunicationTransaction();
+                                transaction.CommunicationId = communication.Id;
+                                transaction.PersonAlias = CurrentPersonAlias;
+                                Rock.Transactions.RockQueue.TransactionQueue.Enqueue( transaction );
+                            }
+                        }
+
+                        ShowResult( message, communication );
+                    }
                 }
             }
         }
@@ -569,6 +628,26 @@ namespace RockWeb.Blocks.Communication
             }
         }
 
+        protected void btnCancel_Click( object sender, EventArgs e )
+        {
+            if ( _editingApproved )
+            {
+                var communicationService = new CommunicationService( new RockContext() );
+                var communication = communicationService.Get( CommunicationId.Value );
+                if ( communication != null && communication.Status == CommunicationStatus.PendingApproval )
+                {
+                    // Redirect back to same page without the edit param
+                    var pageRef = new Rock.Web.PageReference();
+                    pageRef.PageId = CurrentPageReference.PageId;
+                    pageRef.RouteId = CurrentPageReference.RouteId;
+                    pageRef.Parameters = new Dictionary<string, string>();
+                    pageRef.Parameters.Add("CommunicationId", communication.Id.ToString());
+                    Response.Redirect( pageRef.BuildUrl() );
+                    Context.ApplicationInstance.CompleteRequest();
+                }
+            }
+        }
+
         #endregion
 
         #region Private Methods
@@ -585,17 +664,25 @@ namespace RockWeb.Blocks.Communication
             {
                 this.AdditionalMergeFields = communication.AdditionalMergeFields.ToList();
                 lTitle.Text = ( communication.Subject ?? "New Communication" ).FormatAsHtmlTitle();
+                var recipientList = new CommunicationRecipientService( new RockContext() )
+                    .Queryable()
+                    //.Include()
+                    .Where( r => r.CommunicationId == communication.Id )
+                    .Select(a => new {
+                        a.PersonAlias.Person,
+                        PersonHasSMS = a.PersonAlias.Person.PhoneNumbers.Any( p => p.IsMessagingEnabled ),
+                        a.Status,
+                        a.StatusNote,
+                        a.OpenedClient,
+                        a.OpenedDateTime
+                    }).ToList();
 
-                foreach ( var recipient in new CommunicationRecipientService( new RockContext() )
-                    .Queryable( "PersonAlias.Person.PhoneNumbers" )
-                    .Where( r => r.CommunicationId == communication.Id ) )
-                {
-                    Recipients.Add( new Recipient( recipient.PersonAlias.Person, recipient.Status, recipient.StatusNote, recipient.OpenedClient, recipient.OpenedDateTime ) );
-                }
+                Recipients = recipientList.Select( recipient => new Recipient( recipient.Person, recipient.PersonHasSMS, recipient.Status, recipient.StatusNote, recipient.OpenedClient, recipient.OpenedDateTime ) ).ToList();
             }
             else
             {
                 communication = new Rock.Model.Communication() { Status = CommunicationStatus.Transient };
+                communication.SenderPersonAliasId = CurrentPersonAliasId;
                 lTitle.Text = "New Communication".FormatAsHtmlTitle();
 
                 int? personId = PageParameter( "Person" ).AsIntegerOrNull();
@@ -605,7 +692,7 @@ namespace RockWeb.Blocks.Communication
                     var person = new PersonService( new RockContext() ).Get( personId.Value );
                     if ( person != null )
                     {
-                        Recipients.Add( new Recipient( person, CommunicationRecipientStatus.Pending, string.Empty, string.Empty, null ) );
+                        Recipients.Add( new Recipient( person, person.PhoneNumbers.Any(p => p.IsMessagingEnabled), CommunicationRecipientStatus.Pending, string.Empty, string.Empty, null ) );
                     }
                 }
             }
@@ -616,7 +703,7 @@ namespace RockWeb.Blocks.Communication
             BindMediums();
 
             MediumData = communication.MediumData;
-            MediumData.Add( "Subject", communication.Subject );
+            MediumData.AddOrReplace( "Subject", communication.Subject );
 
             if (communication.Status == CommunicationStatus.Transient && !string.IsNullOrWhiteSpace(GetAttributeValue("DefaultTemplate")))
             {
@@ -650,10 +737,7 @@ namespace RockWeb.Blocks.Communication
             cbBulk.Checked = communication.IsBulkCommunication;
 
             MediumControl control = LoadMediumControl( true );
-            if ( control != null && CurrentPerson != null )
-            {
-                control.InitializeFromSender( CurrentPerson );
-            }
+            InitializeControl( control );
 
             dtpFutureSend.SelectedDateTime = communication.FutureSendDateTime;
 
@@ -842,6 +926,23 @@ namespace RockWeb.Blocks.Communication
         }
 
         /// <summary>
+        /// Initializes the control with current persons information if this is first time that this medium is being viewed
+        /// </summary>
+        /// <param name="control">The control.</param>
+        private void InitializeControl( MediumControl control )
+        {
+            if ( MediumEntityTypeId.HasValue && !ViewedEntityTypes.Contains( MediumEntityTypeId.Value ) )
+            {
+                if ( control != null && CurrentPerson != null )
+                {
+                    control.InitializeFromSender( CurrentPerson );
+                }
+
+                ViewedEntityTypes.Add( MediumEntityTypeId.Value );
+            }
+        }
+
+        /// <summary>
         /// Gets the medium data.
         /// </summary>
         private void GetMediumData()
@@ -926,6 +1027,19 @@ namespace RockWeb.Blocks.Communication
                 btnSubmit.Enabled = false;
                 btnSave.Enabled = false;
             }
+
+            if ( _editingApproved && communication.Status == CommunicationStatus.PendingApproval )
+            {
+                btnSubmit.Text = "Save";
+                btnSave.Visible = false;
+                btnCancel.Visible = true;
+            }
+            else
+            {
+                btnSubmit.Text = "Submit";
+                btnSave.Visible = true;
+                btnCancel.Visible = false;
+            }
         }
 
         /// <summary>
@@ -941,7 +1055,14 @@ namespace RockWeb.Blocks.Communication
             int.TryParse( GetAttributeValue( "MaximumRecipients" ), out maxRecipients );
             bool approvalRequired = numberOfRecipients > maxRecipients;
 
-            btnSubmit.Text = (approvalRequired && !IsUserAuthorized( "Approve" ) ? "Submit" : "Send" ) + " Communication";
+            if ( _editingApproved )
+            {
+                btnSubmit.Text = "Save";
+            }
+            else
+            {
+                btnSubmit.Text = ( approvalRequired && !IsUserAuthorized( "Approve" ) ? "Submit" : "Send" ) + " Communication";
+            }
 
             return approvalRequired;
         }
@@ -957,16 +1078,29 @@ namespace RockWeb.Blocks.Communication
             var recipientService = new CommunicationRecipientService(rockContext);
 
             Rock.Model.Communication communication = null;
+            IQueryable<CommunicationRecipient> qryRecipients = null;
+
             if ( CommunicationId.HasValue )
             {
                 communication = communicationService.Get( CommunicationId.Value );
+            }
 
+            if ( communication != null )
+            {
                 // Remove any deleted recipients
-                foreach(var recipient in recipientService.GetByCommunicationId( CommunicationId.Value ) )
+                HashSet<int> personIdHash = new HashSet<int>( Recipients.Select( a => a.PersonId ) );
+                qryRecipients = communication.GetRecipientsQry( rockContext );
+
+                foreach ( var item in qryRecipients.Select( a => new 
                 {
-                    if (!Recipients.Any( r => recipient.PersonAlias != null && r.PersonId == recipient.PersonAlias.PersonId))
+                    Id = a.Id,
+                    PersonId = a.PersonAlias.PersonId
+                }) )
+                {
+                    if ( !personIdHash.Contains(item.PersonId) )
                     {
-                        recipientService.Delete(recipient);
+                        var recipient = qryRecipients.Where( a => a.Id == item.Id ).FirstOrDefault();
+                        recipientService.Delete( recipient );
                         communication.Recipients.Remove( recipient );
                     }
                 }
@@ -980,10 +1114,16 @@ namespace RockWeb.Blocks.Communication
                 communicationService.Add( communication );
             }
 
+            if (qryRecipients == null)
+            {
+                qryRecipients = communication.GetRecipientsQry( rockContext );
+            }
+
             // Add any new recipients
+            HashSet<int> communicationPersonIdHash = new HashSet<int>( qryRecipients.Select( a => a.PersonAlias.PersonId ) );
             foreach(var recipient in Recipients )
             {
-                if ( !communication.Recipients.Any( r => r.PersonAlias != null && r.PersonAlias.PersonId == recipient.PersonId ) )
+                if ( !communicationPersonIdHash.Contains( recipient.PersonId ) )
                 {
                     var person = new PersonService( rockContext ).Get( recipient.PersonId );
                     if ( person != null )
@@ -1193,14 +1333,14 @@ namespace RockWeb.Blocks.Communication
             /// <param name="personId">The person id.</param>
             /// <param name="personName">Name of the person.</param>
             /// <param name="status">The status.</param>
-            public Recipient( Person person, CommunicationRecipientStatus status, string statusNote = "", string openedClient = "", DateTime? openedDateTime = null )
+            public Recipient( Person person, bool personHasSMS, CommunicationRecipientStatus status, string statusNote = "", string openedClient = "", DateTime? openedDateTime = null )
             {
                 PersonId = person.Id;
                 PersonName = person.FullName;
-                IsDeceased = person.IsDeceased ?? false;
-                HasSmsNumber = person.PhoneNumbers.Any( p => p.IsMessagingEnabled );
+                IsDeceased = person.IsDeceased;
+                HasSmsNumber = personHasSMS;
                 Email = person.Email;
-                IsEmailActive = person.IsEmailActive ?? true;
+                IsEmailActive = person.IsEmailActive;
                 EmailNote = person.EmailNote;
                 EmailPreference = person.EmailPreference;
                 Status = status;

@@ -37,9 +37,11 @@ namespace RockWeb.Blocks.Security
     [Category( "Security" )]
     [Description( "Allows a user to get their forgotten username information emailed to them." )]
 
-    [TextField( "Heading Caption", "", false, "<div class='alert alert-info'>Enter your email address below and we'll send your account information to you right away.</div>", "Captions", 0 )]
-    [TextField( "Invalid Email Caption", "", false, "Sorry, we could not find an account for the email address you entered.", "Captions", 1 )]
-    [TextField("Success Caption", "", false, "Your user name has been sent with instructions on how to change your password if needed.", "Captions", 2)]
+    [CodeEditorField( "Heading Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "<div class='alert alert-info'>Enter your email address below and we'll send your account information to you right away.</div>", "Captions", 0 )]
+    [CodeEditorField( "Invalid Email Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "Sorry, we could not find an account for the email address you entered.", "Captions", 1 )]
+    [CodeEditorField( "Success Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "Your user name has been sent with instructions on how to change your password if needed.", "Captions", 2 )]
+
+    
     [LinkedPage( "Confirmation Page", "Page for user to confirm their account (if blank will use 'ConfirmAccount' page route)", true, "", "", 3 )]
     [SystemEmailField( "Forgot Username Email Template", "Email Template to send", false, Rock.SystemGuid.SystemEmail.SECURITY_FORGOT_USERNAME, "", 4, "EmailTemplate" )]
     public partial class ForgotUserName : Rock.Web.UI.RockBlock
@@ -92,6 +94,9 @@ namespace RockWeb.Blocks.Security
             var personService = new PersonService( rockContext );
             var userLoginService = new UserLoginService( rockContext );
 
+            bool hasAccountWithPasswordResetAbility = false;
+            List<string> accountTypes = new List<string>();
+
             foreach ( Person person in personService.GetByEmail( tbEmail.Text )
                 .Where( p => p.Users.Any()))
             {
@@ -104,7 +109,10 @@ namespace RockWeb.Blocks.Security
                         if ( !component.RequiresRemoteAuthentication )
                         {
                             users.Add( user );
+                            hasAccountWithPasswordResetAbility = true;
                         }
+
+                        accountTypes.Add( user.EntityType.FriendlyName );
                     }
                 }
 
@@ -114,16 +122,28 @@ namespace RockWeb.Blocks.Security
                 results.Add( resultsDictionary );
             }
 
-            if ( results.Count > 0 )
+            if ( results.Count > 0 && hasAccountWithPasswordResetAbility )
             {
                 mergeObjects.Add( "Results", results.ToArray() );
                 var recipients = new List<RecipientData>();
                 recipients.Add( new RecipientData( tbEmail.Text, mergeObjects ) );
 
-                Email.Send( GetAttributeValue( "EmailTemplate" ).AsGuid(), recipients, ResolveRockUrlIncludeRoot( "~/" ), ResolveRockUrlIncludeRoot( "~~/" ) );
+                Email.Send( GetAttributeValue( "EmailTemplate" ).AsGuid(), recipients, ResolveRockUrlIncludeRoot( "~/" ), ResolveRockUrlIncludeRoot( "~~/" ), false );
 
                 pnlEntry.Visible = false;
                 pnlSuccess.Visible = true;
+            }
+            else if (results.Count > 0 )
+            {
+                // the person has user accounts but none of them are allowed to have their passwords reset (Facebook/Google/etc)
+                
+                lWarning.Text = string.Format( @"<p>We were able to find the following accounts for this email, but 
+                                                none of them are able to be reset from this website.</p> <p>Accounts:<br /> {0}</p>
+                                                <p>To create a new account with a username and password please see our <a href='{1}'>New Account</a>
+                                                page.</p>"
+                                    , string.Join( ",", accountTypes )
+                                    , ResolveRockUrl( "~/NewAccount" ) );
+                pnlWarning.Visible = true;
             }
             else
             {

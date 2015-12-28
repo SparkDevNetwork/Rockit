@@ -1,5 +1,11 @@
 ﻿<%@ Control Language="C#" AutoEventWireup="true" CodeFile="ContentChannelView.ascx.cs" Inherits="RockWeb.Blocks.Cms.ContentChannelView" %>
 
+<script type="text/javascript">
+    function clearDialog() {
+        $('#rock-config-cancel-trigger').click();
+    }
+</script>
+
 <asp:UpdatePanel ID="upnlContent" runat="server" UpdateMode="Conditional">
     <ContentTemplate>
 
@@ -12,7 +18,7 @@
 
         <%-- Edit Panel --%>
         <asp:Panel ID="pnlEditModal" runat="server" Visible="false">
-            <Rock:ModalDialog ID="mdEdit" runat="server" OnSaveClick="lbSave_Click" Title="Channel Configuration">
+            <Rock:ModalDialog ID="mdEdit" runat="server" OnSaveClick="lbSave_Click" Title="Channel Configuration" OnCancelScript="clearDialog();">
                 <Content>
 
                     <asp:UpdatePanel ID="upnlEdit" runat="server">
@@ -34,7 +40,7 @@
 
                             <div class="row">
                                 <div class="col-md-12">
-                                    <Rock:CodeEditor ID="ceTemplate" runat="server" EditorHeight="200" EditorMode="Liquid" EditorTheme="Rock" Label="Format"
+                                    <Rock:CodeEditor ID="ceTemplate" runat="server" EditorHeight="200" EditorMode="Lava" EditorTheme="Rock" Label="Format"
                                         Help="The template to use when formatting the list of items." />
                                 </div>
                             </div>
@@ -68,8 +74,8 @@
 
                             <div class="row">
                                 <div class="col-md-6">
-                                    <Rock:RockCheckBox ID="cbQueryParamFiltering" runat="server" Label="Enable Query Parameter Filtering" Text="Yes"
-                                        Help="Enabling this option will allow results to be filtered further by any query string parameters that are included." />
+                                    <Rock:RockCheckBox ID="cbQueryParamFiltering" runat="server" Label="Enable Query/Route Parameter Filtering" Text="Yes"
+                                        Help="Enabling this option will allow results to be filtered further by any query string our route parameters that are included. This includes item properties or attributes." />
                                     <Rock:KeyValueList ID="kvlOrder" runat="server" Label="Order Items By" KeyPrompt="Field" ValuePrompt="Direction"
                                         Help="The field value and direction that items should be ordered by." />
                                 </div>

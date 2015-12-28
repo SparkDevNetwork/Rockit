@@ -123,6 +123,11 @@ namespace RockWeb.Blocks.Store
             }
         }
 
+        protected void lbRate_Click( object sender, EventArgs e )
+        {
+           
+        }
+
         #endregion
 
         #region Methods
@@ -130,7 +135,9 @@ namespace RockWeb.Blocks.Store
         private void ShowPackage()
         {
             string errorResponse = string.Empty;
-            
+
+            lbRate.Visible = false;
+
             // get package id
             int packageId = -1;
 
@@ -152,7 +159,7 @@ namespace RockWeb.Blocks.Store
             lVendorName.Text = package.Vendor.Name;
             imgPackageImage.ImageUrl = package.PackageIconBinaryFile.ImageUrl;
             lbPackageLink.PostBackUrl = package.SupportUrl;
-            lRatingSummary.Text = string.Format( "<div class='rating rating-{0}'><small></small></div>", package.Rating.ToString().Replace( ".", "" ) );
+            lRatingSummary.Text = string.Format( "<div class='rating rating-{0} pull-left margin-r-sm'><small></small></div>", package.Rating.ToString().Replace( ".", "" ) );
 
             lAuthorInfo.Text = string.Format( "<a href='{0}'>{1}</a>", package.Vendor.Url, package.Vendor.Name );
 
@@ -239,6 +246,12 @@ namespace RockWeb.Blocks.Store
                 lLatestVersionLabel.Text = latestVersion.VersionLabel;
                 lLatestVersionDescription.Text = latestVersion.Description;
 
+                var versionReviews = new PackageVersionRatingService().GetPackageVersionRatings( latestVersion.Id );
+                rptLatestVersionRatings.DataSource = versionReviews;
+                rptLatestVersionRatings.DataBind();
+
+                lNoReviews.Visible = versionReviews.Count() == 0;
+
                 // alert the user if a newer version exists but requires a rock update
                 if ( package.Versions.Where( v => v.Id > latestVersion.Id ).Count() > 0 )
                 {
@@ -255,7 +268,7 @@ namespace RockWeb.Blocks.Store
                 lDocumenationLink.Text = string.Format( "<a href='{0}'>Support Link</a>", latestVersion.DocumentationUrl );
 
                 // fill in previous version info
-                rptAdditionalVersions.DataSource = package.Versions.Where( v => v.Id < latestVersion.Id );
+                rptAdditionalVersions.DataSource = package.Versions.Where( v => v.Id < latestVersion.Id ).OrderByDescending( v => v.AddedDate);
                 rptAdditionalVersions.DataBind();
 
                 // get the details for the latest version
@@ -304,7 +317,24 @@ namespace RockWeb.Blocks.Store
             }
         }
 
+        protected string GetRating( int versionId )
+        {
+            var ratings = new PackageVersionRatingService().GetPackageVersionRatings( versionId );
+
+            if (ratings.Count > 0 )
+            {
+                var avgRating = ratings.Sum( r => r.Rating ) / ratings.Count();
+
+                return (Math.Round( (double)avgRating * 2 ) / 2).ToString();
+            }
+            else
+            {
+                return "0";
+            }
+            
+        }
+
         #endregion
-        
-}
+
+    }
 }

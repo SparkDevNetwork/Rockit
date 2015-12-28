@@ -2,19 +2,21 @@
 
 <asp:UpdatePanel ID="upGroupType" runat="server" UpdateMode="Conditional" ChildrenAsTriggers="false">
     <ContentTemplate>
-        <asp:HiddenField ID="hfRootGroupId" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfInitialGroupId" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfGroupTypesInclude" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfGroupTypesExclude" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfInitialGroupParentIds" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfLimitToSecurityRoleGroups" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfSelectedGroupId" runat="server" ClientIDMode="Static" />
-        <asp:HiddenField ID="hfPageRouteTemplate" runat="server" ClientIDMode="Static" />
+        <asp:HiddenField ID="hfRootGroupId" runat="server" />
+        <asp:HiddenField ID="hfInitialGroupId" runat="server"  />
+        <asp:HiddenField ID="hfGroupTypesInclude" runat="server"  />
+        <asp:HiddenField ID="hfGroupTypesExclude" runat="server"  />
+        <asp:HiddenField ID="hfIncludeInactiveGroups" runat="server"  />
+        <asp:HiddenField ID="hfInitialGroupParentIds" runat="server"  />
+        <asp:HiddenField ID="hfLimitToSecurityRoleGroups" runat="server" />
+        <asp:HiddenField ID="hfSelectedGroupId" runat="server"  />
+        <asp:HiddenField ID="hfPageRouteTemplate" runat="server"  />
+        <asp:HiddenField ID="hfDetailPageUrl" runat="server"  />
 
         <div class="treeview">
             <div class="treeview-actions" id="divTreeviewActions" runat="server">
 
-                <div class="btn-group">
+                <div class="btn-group pull-left margin-r-sm">
                     <button type="button" class="btn btn-action btn-xs dropdown-toggle" data-toggle="dropdown">
                         <i class="fa fa-plus-circle"></i> Add Group <span class="fa fa-caret-down"></span>
                     </button>
@@ -26,15 +28,17 @@
                     </ul>
                 </div>
 
+                <Rock:Toggle ID="tglHideInactiveGroups" runat="server" OnText="Active" OffText="All" Checked="true" ButtonSizeCssClass="btn-xs" OnCheckedChanged="tglHideInactiveGroups_CheckedChanged" />
             </div>
+
+            
 
             <div class="treeview-scroll scroll-container scroll-container-horizontal">
 
                 <div class="viewport">
                     <div class="overview">
                         <div class="panel-body treeview-frame">
-                            <div id="treeview-content">
-                            </div>
+                            <asp:Panel ID="pnlTreeviewContent" runat="server" />
                         </div>
 
                     </div>
@@ -52,10 +56,10 @@
 
         <script type="text/javascript">
             $(function () {
-                var $selectedId = $('#hfSelectedGroupId'),
-                    $expandedIds = $('#hfInitialGroupParentIds');
-
-                var scrollbCategory = $('.treeview-scroll');
+                var $selectedId = $('#<%=hfSelectedGroupId.ClientID%>'),
+                    $expandedIds = $('#<%=hfInitialGroupParentIds.ClientID%>');
+                
+                var scrollbCategory = $('#<%=pnlTreeviewContent.ClientID%>').closest('.treeview-scroll');
                 scrollbCategory.tinyscrollbar({ axis: 'x', sizethumb: 60, size: 200 });
 
                 // resize scrollbar when the window resizes
@@ -65,7 +69,7 @@
                     });
                 });
 
-                $('#treeview-content')
+                $('#<%=pnlTreeviewContent.ClientID%>')
                     .on('rockTree:selected', function (e, id) {
                         var groupSearch = '?GroupId=' + id;
                         var currentItemId = $selectedId.val();
@@ -77,14 +81,21 @@
                                 return $(this).attr('data-id')
                             }).get().join(',');
 
-                            var pageRouteTemplate = $('#hfPageRouteTemplate').val();
+                            var pageRouteTemplate = $('#<%=hfPageRouteTemplate.ClientID%>').val();
                             var locationUrl = "";
                             if (pageRouteTemplate.match(/{groupId}/i)) {
                                 locationUrl = Rock.settings.get('baseUrl') + pageRouteTemplate.replace(/{groupId}/i, id);
                                 locationUrl += "?ExpandedIds=" + encodeURIComponent(expandedDataIds);
                             }
                             else {
-                                locationUrl = window.location.href.split('?')[0] + groupSearch;
+                                var detailPageUrl = $('#<%=hfDetailPageUrl.ClientID%>').val();
+                                if (detailPageUrl) {
+                                    locationUrl = Rock.settings.get('baseUrl') + detailPageUrl + groupSearch;
+                                }
+                                else {
+                                    locationUrl = window.location.href.split('?')[0] + groupSearch;
+                                }
+                                
                                 locationUrl += "&ExpandedIds=" + encodeURIComponent(expandedDataIds);
                             }
 
@@ -99,10 +110,11 @@
                     })
                     .rockTree({
                         restUrl: '<%=ResolveUrl( "~/api/groups/getchildren/" ) %>',
-                        restParams: '?rootGroupId=' + ($('#hfRootGroupId').val() || 0)
-                            + '&limitToSecurityRoleGroups=' + ($('#hfLimitToSecurityRoleGroups').val() || false)
-                            + '&includedGroupTypeIds=' + ($('#hfGroupTypesInclude').val() || '0')
-                            + '&excludedGroupTypeIds=' + ($('#hfGroupTypesExclude').val() || '0'),
+                        restParams: '?rootGroupId=' + ($('#<%=hfRootGroupId.ClientID%>').val() || 0)
+                            + '&limitToSecurityRoleGroups=' + ($('#<%=hfLimitToSecurityRoleGroups.ClientID%>').val() || false)
+                            + '&includedGroupTypeIds=' + ($('#<%=hfGroupTypesInclude.ClientID%>').val() || '0')
+                            + '&excludedGroupTypeIds=' + ($('#<%=hfGroupTypesExclude.ClientID%>').val() || '0')
+                            + '&includeInactiveGroups=' + ($('#<%=hfIncludeInactiveGroups.ClientID%>').val() || false),
                         multiSelect: false,
                         selectedIds: $selectedId.val() ? $selectedId.val().split(',') : null,
                         expandedIds: $expandedIds.val() ? $expandedIds.val().split(',') : null

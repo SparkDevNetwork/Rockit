@@ -6,33 +6,44 @@
         var availabilityMessageRow = $('#availabilityMessageRow');
         var usernameUnavailable = $('#availabilityMessage');
         var usernameTextbox = $('#<%= tbUserName.ClientID %>');
+        var usernameRegExp = new RegExp("<%= Rock.Web.Cache.GlobalAttributesCache.Read().GetValue( "core.ValidUsernameRegularExpression" ) %>");
+        var usernameValidCaption = "<%= Rock.Web.Cache.GlobalAttributesCache.Read().GetValue( "core.ValidUsernameCaption" ) %>";
 
         availabilityMessageRow.hide();
 
         usernameTextbox.blur(function () {
             if ($(this).val() && $.trim($(this).val()) != '') {
-                $.ajax({
-                    type: 'GET',
-                    contentType: 'application/json',
-                    dataType: 'json',
-                    url: Rock.settings.get('baseUrl') + 'api/userlogins/available/' + escape($(this).val()),
-                    success: function (getData, status, xhr) {
 
-                        if (getData) {
-                            usernameUnavailable.html('This Username is available.');
-                            usernameUnavailable.addClass('alert-success');
-                            usernameUnavailable.removeClass('alert-warning');
-                        } else {
-                            availabilityMessageRow.show();
-                            usernameUnavailable.html('This Username is already taken!');
-                            usernameUnavailable.addClass('alert-warning');
-                            usernameUnavailable.removeClass('alert-success');
+                if (!usernameRegExp.test($(this).val())) {
+                    usernameUnavailable.html('Username is not valid. ' + usernameValidCaption);
+                    usernameUnavailable.addClass('alert-warning');
+                    usernameUnavailable.removeClass('alert-success');
+                }
+                else {
+                    $.ajax({
+                        type: 'GET',
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        url: Rock.settings.get('baseUrl') + 'api/userlogins/available/' + escape($(this).val()),
+                        success: function (getData, status, xhr) {
+
+                            if (getData) {
+                                usernameUnavailable.html('That username is available.');
+                                usernameUnavailable.addClass('alert-success');
+                                usernameUnavailable.removeClass('alert-warning');
+                            } else {
+                                availabilityMessageRow.show();
+                                usernameUnavailable.html('That username is already taken!');
+                                usernameUnavailable.addClass('alert-warning');
+                                usernameUnavailable.removeClass('alert-success');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            alert(status + ' [' + error + ']: ' + xhr.responseText);
                         }
-                    },
-                    error: function (xhr, status, error) {
-                        alert(status + ' [' + error + ']: ' + xhr.responseText);
-                    }
-                });
+                    });
+                }
+
             } else {
                 usernameUnavailable.html('Username is required!');
                 usernameUnavailable.addClass('alert-warning');
@@ -76,9 +87,9 @@
 
                 <fieldset>
                     <legend>Your Information</legend> 
-                    <Rock:RockTextBox ID="tbFirstName" runat="server" Label="First Name" Required="true" ></Rock:RockTextBox>
-                    <Rock:RockTextBox ID="tbLastName" runat="server" Label="Last Name" Required="true" ></Rock:RockTextBox>
-                    <Rock:RockTextBox ID="tbEmail" runat="server" Label="Email" Required="true" ></Rock:RockTextBox>
+                    <Rock:RockTextBox ID="tbFirstName" runat="server" Label="First Name" Required="true" />
+                    <Rock:RockTextBox ID="tbLastName" runat="server" Label="Last Name" Required="true" />
+                    <Rock:EmailBox ID="tbEmail" runat="server" Label="Email" Required="true" />
                     <Rock:RockDropDownList ID="ddlGender" runat="server" Label="Gender">
                         <asp:ListItem Text="" Value="U"></asp:ListItem>
                         <asp:ListItem Text="Male" Value="M"></asp:ListItem>
@@ -87,6 +98,44 @@
                     <Rock:BirthdayPicker ID="bdaypBirthDay" runat="server" Label="Birthday" />
                </fieldset>
 
+               <asp:Panel ID="pnlPhoneNumbers" runat="server">
+                   <fieldset>
+                        <legend>Phone Numbers</legend>
+                        <asp:Repeater ID="rPhoneNumbers" runat="server">
+                                    <ItemTemplate>
+                                        <div class="form-group phonegroup">
+                                            <div class="control-label col-sm-1 phonegroup-label"><%# Rock.Web.Cache.DefinedValueCache.Read( (int)Eval("NumberTypeValueId")).Value  %></div>
+                                            <div class="controls col-sm-11 phonegroup-number">
+                                                <div class="row">
+                                                    <div class="col-sm-7">
+                                                        <asp:HiddenField ID="hfPhoneType" runat="server" Value='<%# Eval("NumberTypeValueId")  %>' />
+                                                        <Rock:PhoneNumberBox ID="pnbPhone" runat="server" CountryCode='<%# Eval("CountryCode") %>' Number='<%# Eval("NumberFormatted")  %>' />
+                                                    </div>    
+                                                    <div class="col-sm-5 margin-t-sm">
+                                                        <div class="row">
+                                                            <div class="col-xs-6">
+                                                                <asp:CheckBox ID="cbSms" runat="server" Text="SMS" Checked='<%# (bool)Eval("IsMessagingEnabled") %>' CssClass="js-sms-number" />
+                                                            </div>
+                                                            <div class="col-xs-6">
+                                                                <asp:CheckBox ID="cbUnlisted" runat="server" Text="Unlisted" Checked='<%# (bool)Eval("IsUnlisted") %>' />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </ItemTemplate>
+                                </asp:Repeater>
+                        </fieldset>
+                   </asp:Panel>
+                    
+                    <asp:Panel ID="pnlAddress" runat="server">
+                        <fieldset>
+                            <legend>Address</legend>
+                            <Rock:AddressControl ID="acAddress" runat="server" RequiredErrorMessage="Your Address is Required" />
+                        </fieldset>
+                    </asp:Panel>
             </div>
         
         </div>

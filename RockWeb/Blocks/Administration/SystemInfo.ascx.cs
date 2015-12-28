@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -41,6 +42,12 @@ namespace RockWeb.Blocks.Administration
     [Description( "Displays system information on the installed version of Rock." )]
     public partial class SystemInfo : Rock.Web.UI.RockBlock
     {
+        #region Fields
+
+        private string _catalog = String.Empty;
+
+        #endregion
+
         #region Base Control Methods
 
         protected override void OnInit( EventArgs e )
@@ -51,7 +58,20 @@ namespace RockWeb.Blocks.Administration
             lRockVersion.Text = VersionInfo.GetRockProductVersionFullName();
             lClientCulture.Text = System.Globalization.CultureInfo.CurrentCulture.ToString();
             lDatabase.Text = GetDbInfo();
+            lSystemDateTime.Text = DateTime.Now.ToString( "G" ) + " " + DateTime.Now.ToString( "zzz" );
+            lRockTime.Text = Rock.RockDateTime.Now.ToString( "G" ) + " " + Rock.RockDateTime.OrgTimeZoneInfo.BaseUtcOffset.ToString();
+            var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+            if ( currentProcess != null && currentProcess.StartTime != null )
+            {
+                lProcessStartTime.Text = currentProcess.StartTime.ToString( "G" ) + " " + DateTime.Now.ToString( "zzz" );
+            }
+            else
+            {
+                lProcessStartTime.Text = "-";
+            }
+
             lExecLocation.Text = Assembly.GetExecutingAssembly().Location;
+            lLastMigrations.Text = GetLastMigrationData();
 
             lCacheOverview.Text = GetCacheInfo();
             lRoutes.Text = GetRoutesInfo();
@@ -59,6 +79,34 @@ namespace RockWeb.Blocks.Administration
             // register btnDumpDiagnostics as a PostBackControl since it is returning a File download
             ScriptManager scriptManager = ScriptManager.GetCurrent( Page );
             scriptManager.RegisterPostBackControl( btnDumpDiagnostics );
+
+            btn1.Visible = false;
+            btn2.Visible = false;
+            btn3.Visible = false;
+            btn4.Visible = false;
+            btn5.Visible = false;
+        }
+
+        protected override void OnPreRender( EventArgs e )
+        {
+            if ( Context.Items.Contains( "Cache_Hits" ) )
+            {
+                var cacheHits = Context.Items["Cache_Hits"] as System.Collections.Generic.Dictionary<string, bool>;
+                if ( cacheHits != null )
+                {
+                    var misses = cacheHits.Where( c => !c.Value );
+                    if ( misses.Any() )
+                    {
+                        lFalseCacheHits.Text = string.Format( "<p><strong>Cache Misses:</strong><br /> {0}</p>",
+                            misses.Select( c => c.Key )
+                                .OrderBy( c => c )
+                                .ToList()
+                                .AsDelimited( "<br />" ) );
+                    }
+                }
+            }
+            
+            base.OnPreRender( e );
         }
 
         #endregion
@@ -72,42 +120,75 @@ namespace RockWeb.Blocks.Administration
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void btnClearCache_Click( object sender, EventArgs e )
         {
-            // Clear all cached items
-            Rock.Web.Cache.RockMemoryCache.Clear();
+            var msgs = new List<string>();
 
-            // Clear the static object that contains all auth rules (so that it will be refreshed)
-            Rock.Security.Authorization.Flush();
-
-            // Check for any unregistered entity types, field types, and block types
-            string webAppPath = Server.MapPath("~");
-            EntityTypeService.RegisterEntityTypes( webAppPath );
-            FieldTypeService.RegisterFieldTypes( webAppPath );
-            BlockTypeService.RegisterBlockTypes( webAppPath, Page, false );
-
-            // Delete all cached files
-            try
+            var btnSender = sender as System.Web.UI.WebControls.Button;
+            if ( btnSender != null )
             {
-                var dirInfo = new DirectoryInfo( Path.Combine( webAppPath, "App_Data/Cache" ) );
-                foreach ( var childDir in dirInfo.GetDirectories() )
+                string btnId = btnSender.ID;
+
+                if ( btnId == "btnFlushCache" || btnId == "btn1" )
                 {
-                    childDir.Delete( true );
+                    // Clear all cached items
+                    Rock.Web.Cache.RockMemoryCache.Clear();
+                    msgs.Add( "RockMemoryCache has been cleared" );
                 }
-                foreach ( var file in dirInfo.GetFiles().Where( f => f.Name != ".gitignore" ) )
+
+                if ( btnId == "btnFlushCache" || btnId == "btn2" )
                 {
-                    file.Delete();
+                    // Clear the static object that contains all auth rules (so that it will be refreshed)
+                    Rock.Security.Authorization.Flush();
+                    msgs.Add( "Authorizations have been cleared" );
                 }
-            }
-            catch( Exception ex )
-            {
-                nbMessage.NotificationBoxType = Rock.Web.UI.Controls.NotificationBoxType.Warning;
-                nbMessage.Visible = true;
-                nbMessage.Text = "Cache has been cleared, but following error occurred when attempting to delete cached files: " + ex.Message;
-                return;
+
+                if ( btnId == "btnFlushCache" || btnId == "btn3" )
+                {
+                    // Flush the static entity attributes cache
+                    Rock.Web.Cache.AttributeCache.FlushEntityAttributes();
+                    msgs.Add( "EntityAttributes have been cleared" );
+                }
+
+                string webAppPath = Server.MapPath( "~" );
+
+                if ( btnId == "btnFlushCache" || btnId == "btn4" )
+                {
+                    // Check for any unregistered entity types, field types, and block types
+                    EntityTypeService.RegisterEntityTypes( webAppPath );
+                    FieldTypeService.RegisterFieldTypes( webAppPath );
+                    BlockTypeService.RegisterBlockTypes( webAppPath, Page, false );
+                    msgs.Add( "EntityTypes, FieldTypes, BlockTypes have been re-registered" );
+                }
+
+                // Delete all cached files
+                try
+                {
+                    if ( btnId == "btnFlushCache" || btnId == "btn5" )
+                    {
+                        var dirInfo = new DirectoryInfo( Path.Combine( webAppPath, "App_Data/Cache" ) );
+                        foreach ( var childDir in dirInfo.GetDirectories() )
+                        {
+                            childDir.Delete( true );
+                        }
+                        foreach ( var file in dirInfo.GetFiles().Where( f => f.Name != ".gitignore" ) )
+                        {
+                            file.Delete();
+                        }
+                        msgs.Add( "Cached files have been deleted" );
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    nbMessage.NotificationBoxType = Rock.Web.UI.Controls.NotificationBoxType.Warning;
+                    nbMessage.Visible = true;
+                    nbMessage.Text = "The following error occurred when attempting to delete cached files: " + ex.Message;
+                    return;
+                }
             }
 
             nbMessage.NotificationBoxType = Rock.Web.UI.Controls.NotificationBoxType.Success;
             nbMessage.Visible = true;
-            nbMessage.Text = "The cache has been cleared.";
+            nbMessage.Title = "Clear Cache";
+            nbMessage.Text = string.Format( "<p>{0}</p>", msgs.AsDelimited( "<br />" ) );
         }
 
         protected void btnRestart_Click( object sender, EventArgs e )
@@ -115,6 +196,11 @@ namespace RockWeb.Blocks.Administration
             RestartWebApplication();
         }
 
+        /// <summary>
+        /// Creates a text version (mostly) of the Diagnostics data that is sent via the HttpResponse to the client.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void btnDumpDiagnostics_Click( object sender, EventArgs e )
         {
             System.Web.HttpResponse response = System.Web.HttpContext.Current.Response;
@@ -127,11 +213,14 @@ namespace RockWeb.Blocks.Administration
             response.Charset = "";
 
             ResponseWrite( "Version:", lRockVersion.Text, response );
-            ResponseWrite( "Database:", lDatabase.Text.Replace("<br />", Environment.NewLine.ToString()), response );
+            ResponseWrite( "Database:", lDatabase.Text.Replace( "<br />", Environment.NewLine.ToString() ), response );
             ResponseWrite( "Execution Location:", lExecLocation.Text, response );
-            ResponseWrite( "Cache:", lCacheOverview.Text, response ); ;
-            ResponseWrite( "Routes:", lRoutes.Text, response );
+            ResponseWrite( "Migrations:", GetLastMigrationData().Replace( "<br />", Environment.NewLine.ToString() ), response );
+            ResponseWrite( "Cache:", lCacheOverview.Text.Replace( "<br />", Environment.NewLine.ToString() ), response ); ;
+            ResponseWrite( "Routes:", lRoutes.Text.Replace( "<br />", Environment.NewLine.ToString() ), response );
 
+            // Last and least...
+            ResponseWrite( "Server Variables:", "", response );
             foreach ( string key in Request.ServerVariables )
             {
                 ResponseWrite( key, Request.ServerVariables[key], response );
@@ -144,88 +233,63 @@ namespace RockWeb.Blocks.Administration
 
         #region Methods
 
+        /// <summary>
+        /// Queries the MigrationHistory and the PluginMigration tables and returns 
+        /// the name (MigrationId) of the last core migration that was run and a table
+        /// listing the last plugin assembly's migration name and number that was run. 
+        /// </summary>
+        /// <returns>An HTML fragment of the MigrationId of the last core migration and a table of the
+        /// last plugin migrations.</returns>
+        private string GetLastMigrationData()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            var result = DbService.ExecuteScaler( "SELECT TOP 1 [MigrationId] FROM [__MigrationHistory] ORDER BY [MigrationId] DESC ", CommandType.Text, null );
+            if ( result != null )
+            {
+                sb.AppendFormat( "Last Core Migration: {0}{1}", (string)result, Environment.NewLine );
+            }
+
+            var tableResult = DbService.GetDataTable( @"
+    WITH summary AS 
+    (
+        SELECT p.[PluginAssemblyName], p.MigrationName, p.[MigrationNumber], ROW_NUMBER() 
+            OVER( PARTITION BY p.[PluginAssemblyName] ORDER BY p.[MigrationNumber] DESC ) AS section
+        FROM [PluginMigration] p
+    )
+    SELECT s.[PluginAssemblyName], s.MigrationName, s.[MigrationNumber]
+    FROM summary s
+    WHERE s.section = 1", System.Data.CommandType.Text, null );
+
+            if ( tableResult != null )
+            {
+                sb.AppendFormat( "<table class='table table-condensed'>" );
+                sb.Append( "<tr><th>Plugin Assembly</th><th>Migration Name</th><th>Number</th></tr>" );
+                foreach ( DataRow row in tableResult.Rows )
+                {
+                    sb.AppendFormat( "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>", row[0].ToString(), row[1].ToString(), row[2].ToString() );
+                }
+                sb.AppendFormat( "</table>" );
+            }
+
+            return sb.ToString();
+        }
+
         private string GetCacheInfo()
         {
             var cache = Rock.Web.Cache.RockMemoryCache.Default;
 
-            //StringBuilder sbItems = new StringBuilder();
-            Dictionary<string, int> cacheSize = new Dictionary<string, int>();
-            int totalSize = 0;
-
-            var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
-            foreach ( KeyValuePair<string, object> cachItem in cache.AsQueryable().ToList() )
-            {
-                //int size = 0;
-
-                //try
-                //{
-                //    using ( var memStream = new MemoryStream() )
-                //    {
-                //        binaryFormatter.Serialize( memStream, cachItem.Value );
-                //        size = memStream.ToArray().Length;
-                //        memStream.Close();
-                //    }
-
-                //    sbItems.AppendFormat( "<p>{0} ({1:N0} bytes)</p>", cachItem.Key, size );
-                //    totalSize += size;
-
-                //}
-                //catch (SystemException ex)
-                //{
-                //    sbItems.AppendFormat( "<p>{0} (Could Not Determine Size: {1})</p>", cachItem.Key, ex.Message );
-                //}
-            }
-
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat( "<p><strong>Cache Items:</strong><br /> {0}</p>", cache.Count() );
-            sb.AppendFormat( "<p><strong>Approximate Current Size:</strong><br /> {0:N0} (bytes)</p>", totalSize );
-            sb.AppendFormat( "<p><strong>Cache Memory Limit:</strong><br /> {0:N0} (bytes)</p>", cache.CacheMemoryLimit );
-            sb.AppendFormat( "<p><strong>Physical Memory Limit:</strong><br /> {0} %</p>", cache.PhysicalMemoryLimit );
-            sb.AppendFormat( "<p><strong>Polling Interval:</strong><br /> {0}</p>", cache.PollingInterval );
-
-            //Type type = cache.GetType();
-
-            //FieldInfo[] fields = type.GetFields( BindingFlags.NonPublic | BindingFlags.Instance );
-            //foreach(var field in fields)
-            //    if ( field.Name == "_stats" )
-            //    {
-            //        object statObj = field.GetValue(cache);
-            //        Type statType = statObj.GetType();
-            //        foreach ( var statField in statType.GetFields( BindingFlags.NonPublic | BindingFlags.Instance ) )
-            //        {
-            //            if ( statField.Name == "_cacheMemoryMonitor" ||
-            //                statField.Name == "_physicalMemoryMonitor")
-            //            {
-            //                object monitorObj = statField.GetValue( statObj );
-            //                Type monitorType = monitorObj.GetType();
-            //                foreach ( var monitorField in monitorType.GetFields( BindingFlags.NonPublic | BindingFlags.Instance ) )
-            //                {
-            //                    if ( monitorField.Name == "_sizedRef" )
-            //                    {
-            //                        object sizeObj = monitorField.GetValue( monitorObj );
-            //                        Type sizeType = sizeObj.GetType();
-            //                        foreach ( var sizeField in sizeType.GetProperties( BindingFlags.NonPublic | BindingFlags.Instance ) )
-            //                        {
-            //                            sb.AppendFormat( "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{0}: {1}<br/>", sizeField.Name, sizeField.GetValue( sizeObj, null ) );
-            //                        }
-            //                    }
-            //                    else
-            //                    {
-            //                        sb.AppendFormat( "&nbsp;&nbsp;&nbsp;&nbsp;{0}: {1}<br/>", monitorField.Name, monitorField.GetValue( monitorObj ) );
-            //                    }
-            //                }
-
-            //                int currentPressure = (int)monitorType.InvokeMember( "GetCurrentPressure", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.InvokeMethod, null, monitorObj, null );
-            //                sb.AppendFormat( "&nbsp;&nbsp;&nbsp;&nbsp;Current Pressure: {0} %<br/>", currentPressure );
-            //            }
-            //            else
-            //            {
-            //                sb.AppendFormat( "{0}: {1}<br/>", statField.Name, statField.GetValue( statObj ) );
-            //            }
-            //        }
-            //    }
-            //lCacheObjects.Text = sbItems.ToString();
-
+            sb.AppendFormat( "<p><strong>Cache Items:</strong><br /> {0}</p>{1}", cache.Count(), Environment.NewLine );
+            sb.AppendFormat( "<p><strong>Cache Memory Limit:</strong><br /> {0:N0} (bytes)</p>{1}", cache.CacheMemoryLimit, Environment.NewLine );
+            sb.AppendFormat( "<p><strong>Physical Memory Limit:</strong><br /> {0} %</p>{1}", cache.PhysicalMemoryLimit, Environment.NewLine );
+            sb.AppendFormat( "<p><strong>Polling Interval:</strong><br /> {0}</p>{1}", cache.PollingInterval, Environment.NewLine );
+            lCacheObjects.Text = cache.GroupBy( a => a.Value.GetType() ).Select( a => new
+            {
+                a.Key.Name,
+                Count = a.Count()
+            } ).OrderBy( a => a.Name ).Select( a => string.Format( "{0}: {1} items", a.Name, a.Count ) ).ToList().AsDelimited( "<br />" );
+            
             return sb.ToString();
         }
 
@@ -240,7 +304,7 @@ namespace RockWeb.Blocks.Administration
             StringBuilder sb = new StringBuilder();
             foreach ( var routeItem in routes )
             {
-                sb.AppendFormat( "{0}<br/>", routeItem.Key );
+                sb.AppendFormat( "{0}<br />", routeItem.Key );
             }
 
             return sb.ToString();
@@ -254,7 +318,8 @@ namespace RockWeb.Blocks.Administration
             object dataSource, catalog = string.Empty;
             if ( csBuilder.TryGetValue( "data source", out dataSource ) && csBuilder.TryGetValue( "initial catalog", out catalog ) )
             {
-                databaseResults.Append( string.Format( "Name: {0} <br /> Server: {1}", catalog, dataSource ));
+                _catalog = catalog.ToString();
+                databaseResults.Append( string.Format( "Name: {0} <br /> Server: {1}", catalog, dataSource ) );
             }
 
             try
@@ -274,35 +339,65 @@ namespace RockWeb.Blocks.Administration
 
                     databaseResults.Append( string.Format( "<br />Database Version: {0}", versionInfo ) );
                 }
-                
-                // get database size
-                reader = DbService.GetDataReader( "sp_helpdb " + catalog, System.Data.CommandType.Text, null );
-                if ( reader != null )
+
+                try
                 {
-                    // get second data table
-                    reader.NextResult();
-                    reader.Read();
-
-                    string size = reader.GetValue( 5 ).ToString();
-                    if ( size != "Unlimited" )
+                    // get database size
+                    reader = DbService.GetDataReader( "sp_helpdb " + catalog, System.Data.CommandType.Text, null );
+                    if ( reader != null )
                     {
-                        if ( size.Contains( "KB" ) )
+                        // get second data table
+                        reader.NextResult();
+                        reader.Read();
+
+                        string size = reader.GetValue( 5 ).ToString();
+                        if ( size != "Unlimited" )
                         {
-                            size = size.Replace( " KB", "" );
-                            int sizeInKB = Int32.Parse( size );
+                            if ( size.Contains( "KB" ) )
+                            {
+                                size = size.Replace( " KB", "" );
+                                int sizeInKB = Int32.Parse( size );
 
-                            int sizeInMB = sizeInKB / 1024;
+                                int sizeInMB = sizeInKB / 1024;
 
-                            databaseResults.Append( string.Format("<br />Database Size: {0}", sizeInMB) );
+                                databaseResults.AppendFormat( "<br />Database Size: {0}", sizeInMB );
+                            }
+                        }
+                        else
+                        {
+                            databaseResults.Append( "<br />Database Size: Unlimited" );
                         }
                     }
-                    else
+                }
+                catch
+                {
+                    databaseResults.AppendFormat( "<br />Database Size: unable to determine" );
+                }
+
+                try
+                {
+                    // get database snapshot isolation details
+                    reader = DbService.GetDataReader( string.Format( "SELECT [snapshot_isolation_state], [is_read_committed_snapshot_on] FROM sys.databases WHERE [name] = '{0}'", _catalog ), System.Data.CommandType.Text, null );
+                    if ( reader != null )
                     {
-                        databaseResults.Append( "<br />Database Size: Unlimited" );
+                        bool isAllowSnapshotIsolation = false;
+                        bool isReadCommittedSnapshopOn = true;
+
+                        while ( reader.Read() )
+                        {
+                            isAllowSnapshotIsolation = reader[0].ToStringSafe().AsBoolean();
+                            isReadCommittedSnapshopOn = reader[1].ToString().AsBoolean();
+                        }
+
+                        databaseResults.AppendFormat( "<br />Allow Snapshot Isolation: {0}<br />Is Read Committed Snapshot On: {1}<br />", isAllowSnapshotIsolation.ToYesNo(), isReadCommittedSnapshopOn.ToYesNo() );
                     }
                 }
+                catch { }
             }
-            catch {}
+            catch ( Exception ex )
+            {
+                databaseResults.AppendFormat( "Unable to read database system information: {0}", ex.Message );
+            }
 
             return databaseResults.ToString();
         }

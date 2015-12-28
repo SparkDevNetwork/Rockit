@@ -16,7 +16,7 @@
             initialize: function () {
                 var self = this;
 
-                var key = localStorage.getItem("com.rockrms.search");
+                var key = sessionStorage.getItem("com.rockrms.search");
                 if (key && key != '') {
                     var $search = self.$el.parents('.smartsearch');
                     $search.find('input:hidden').val(key);
@@ -27,7 +27,7 @@
                     name: this.name,
                     limit: 15,
                     remote: {
-                        url: Rock.settings.get('baseUrl') + 'api/search?type=%TYPE&term=%QUERY',
+                        url: Rock.settings.get('baseUrl') + 'api/search?type=%TYPE&term=%QUERY&$top=15',
                         replace: function (url, uriEncodedQuery) {
                             var query = url;
                             query = query.replace('%TYPE', self.$el.parents('.smartsearch').find('input:hidden').val());
@@ -45,7 +45,7 @@
                         var keyVal = self.$el.parents('.smartsearch').find('input:hidden').val(),
                             $li = self.$el.parents('.smartsearch').find('li[data-key="' + keyVal + '"]'),
                             targetUrl = $li.attr('data-target'),
-                            url = Rock.settings.get('baseUrl') + targetUrl.replace('{0}', encodeURIComponent(term));
+                            url = Rock.settings.get('baseUrl') + targetUrl.replace('{0}', encodeURIComponent(term.trim()));
 
                         window.location = url;
                     };
@@ -74,7 +74,7 @@
                         text = $this.html();
 
                     var key = $this.parent().attr('data-key');
-                    localStorage.setItem("com.rockrms.search", key);
+                    sessionStorage.setItem("com.rockrms.search", key);
 
                     $this.parents('.dropdown-menu').siblings('.navbar-link').find('span').html(text);
                     self.$el.parents('.smartsearch').find('input:hidden').val(key)

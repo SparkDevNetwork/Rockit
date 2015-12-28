@@ -51,7 +51,8 @@
 		            name: item.Name || item.Title,
 		            iconCssClass: item.IconCssClass,
 		            parentId: item.ParentId,
-		            hasChildren: item.HasChildren
+		            hasChildren: item.HasChildren,
+                    isActive: item.IsActive
 		        };
 
 		        if (item.Children && typeof item.Children.length === 'number') {
@@ -151,7 +152,15 @@
                 // Wrapper function around jQuery.ajax. Appends a handler to databind the
                 // resulting JSON from the server and returns the promise
                 getNodes = function (parentId, parentNode) {
-                    var restUrl = self.options.restUrl + parentId;
+                    var restUrl = self.options.restUrl;
+
+                    // If the Tree Node we are loading has an EntityId attribute, use it to identify the associated Data Entity key - otherwise use the Tree Node identifier itself.
+                    // The Data Entity key identifies the node data we are requesting from the REST source to load into the tree.
+                    if (parentNode && parentNode.entityId) {
+                        restUrl += parentNode.entityId;
+                    } else {
+                        restUrl += parentId;
+                    }
 
                     if (self.options.restParams) {
                         restUrl += self.options.restParams;
@@ -287,6 +296,7 @@
 
 				    $li.addClass('rocktree-item')
 						.addClass(node.hasChildren ? 'rocktree-folder' : 'rocktree-leaf')
+                        .addClass( ( !node.hasOwnProperty('isActive') || node.isActive )? '' : 'is-inactive')
 						.attr('data-id', node.id)
 						.attr('data-parent-id', node.parentId);
 
@@ -295,7 +305,12 @@
 				        $li.attr('data-' + includeAttrs[i], node[includeAttrs[i]]);
 				    }
 
-				    $li.append('<span class="rocktree-name"> ' + node.name + '</span>');
+                    // ensure we only get Text for the tooltip
+				    var tmp = document.createElement("DIV");
+				    tmp.innerHTML = node.name;
+				    var nodeText = tmp.textContent || tmp.innerText || "";
+
+				    $li.append('<span class="rocktree-name" title="' + nodeText.trim() + '"> ' + node.name + '</span>');
 				    
 				    for (var i = 0; i < self.selectedNodes.length; i++) {
 				        if (self.selectedNodes[i].id == node.id) {
@@ -305,14 +320,14 @@
 				    }
 
 				    if (node.hasChildren) {
-				        $li.prepend('<i class="rocktree-icon ' + folderCssClass + '"></i>');
+				        $li.prepend('<i class="rocktree-icon icon-fw ' + folderCssClass + '"></i>');
 
 				        if (node.iconCssClass) {
-				            $li.find('.rocktree-name').prepend('<i class="' + node.iconCssClass + '"></i>');
+				            $li.find('.rocktree-name').prepend('<i class="icon-fw ' + node.iconCssClass + '"></i>');
 				        }
 				    } else {
 				        if (leafCssClass) {
-				            $li.find('.rocktree-name').prepend('<i class="' + leafCssClass + '"></i>');
+				            $li.find('.rocktree-name').prepend('<i class="icon-fw ' + leafCssClass + '"></i>');
 				        }
 				    }
 
@@ -328,9 +343,10 @@
 				        
 				        $li.append($childUl);
 
-				        $.each(node.children, function (index, childNode) {
-				            renderNode($childUl, childNode);
-				        });
+				        var l = node.children.length;
+				        for (var i = 0; i < l; i++) {
+				            renderNode($childUl, node.children[i]);
+				        }
 				    }
 				};
 

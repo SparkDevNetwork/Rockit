@@ -170,9 +170,9 @@ as fields on the workflow or activity)...
   ]
 }
 </pre>
-", CodeEditorMode.Liquid, CodeEditorTheme.Rock, 400, false, @"
+", CodeEditorMode.Lava, CodeEditorTheme.Rock, 400, false, @"
 {% if Actions.size > 0 %}
-    <div class='panel panel-info'> 
+    <div class='panel panel-block'> 
         <div class='panel-heading'>
             <h4 class='panel-title'>My {% if Role == '0' %}Tasks{% else %}Requests{% endif %}</h4>
         </div>
@@ -261,96 +261,104 @@ as fields on the workflow or activity)...
 
         private void BindData()
         {
-            string role = GetAttributeValue("Role");
-            if (string.IsNullOrWhiteSpace(role))
+            try
             {
-                role = "0";
+                string role = GetAttributeValue( "Role" );
+                if ( string.IsNullOrWhiteSpace( role ) )
+                {
+                    role = "0";
+                }
+
+                string contents = GetAttributeValue( "Contents" );
+
+                string appRoot = ResolveRockUrl( "~/" );
+                string themeRoot = ResolveRockUrl( "~~/" );
+                contents = contents.Replace( "~~/", themeRoot ).Replace( "~/", appRoot );
+
+                using ( var rockContext = new RockContext() )
+                {
+                    List<WorkflowAction> actions = null;
+                    if ( role == "1" )
+                    {
+                        actions = GetWorkflows( rockContext );
+                    }
+                    else
+                    {
+                        actions = GetActions( rockContext );
+                    }
+
+                    var mergeFields = new Dictionary<string, object>();
+                    mergeFields.Add( "Role", role );
+                    mergeFields.Add( "Actions", actions.OrderByDescending( a => a.CreatedDateTime ) );
+
+                    lContents.Text = contents.ResolveMergeFields( mergeFields );
+                }
+                
             }
-
-            string contents = GetAttributeValue( "Contents" );
-
-            string appRoot = ResolveRockUrl( "~/" );
-            string themeRoot = ResolveRockUrl( "~~/" );
-            contents = contents.Replace( "~~/", themeRoot ).Replace( "~/", appRoot );
-
-            List<WorkflowAction> actions = null;
-            if (role == "1")
+            catch ( Exception ex )
             {
-                actions = GetWorkflows();
+                LogException( ex );
+                lContents.Text = "error getting workflows";
             }
-            else
-            {
-                actions = GetActions();
-            }
-
-            var mergeFields = new Dictionary<string, object>();
-            mergeFields.Add( "Role", role );
-            mergeFields.Add( "Actions", actions );
-
-            lContents.Text = contents.ResolveMergeFields( mergeFields );
         }
 
-        private List<WorkflowAction> GetWorkflows()
+        private List<WorkflowAction> GetWorkflows( RockContext rockContext )
         {
             var actions = new List<WorkflowAction>();
 
             if ( CurrentPerson != null )
             {
-                using ( var rockContext = new RockContext() )
+
+                var categoryIds = GetCategories( rockContext );
+
+                var qry = new WorkflowService( rockContext ).Queryable( "WorkflowType" )
+                    .Where( w =>
+                        w.ActivatedDateTime.HasValue &&
+                        !w.CompletedDateTime.HasValue &&
+                        w.InitiatorPersonAlias.PersonId == CurrentPerson.Id );
+
+                if ( categoryIds.Any() )
                 {
-                    var categoryIds = GetCategories( rockContext );
-
-                    var qry = new WorkflowService( rockContext ).Queryable()
+                    qry = qry
                         .Where( w =>
-                            w.ActivatedDateTime.HasValue &&
-                            !w.CompletedDateTime.HasValue &&
-                            w.InitiatorPersonAlias.PersonId == CurrentPerson.Id );
+                            w.WorkflowType.CategoryId.HasValue &&
+                            categoryIds.Contains( w.WorkflowType.CategoryId.Value ) );
+                }
 
-                    if ( categoryIds.Any() )
-                    {
-                        qry = qry
-                            .Where( w =>
-                                w.WorkflowType.CategoryId.HasValue &&
-                                categoryIds.Contains( w.WorkflowType.CategoryId.Value ) );
-                    }
+                foreach ( var workflow in qry.OrderBy( w => w.ActivatedDateTime ) )
+                {
+                    var activity = new WorkflowActivity();
+                    activity.Workflow = workflow;
 
-                    foreach ( var workflow in qry.OrderBy( w => w.ActivatedDateTime ) )
-                    {
-                        var activity = new WorkflowActivity();
-                        activity.Workflow = workflow;
+                    var action = new WorkflowAction();
+                    action.Activity = activity;
 
-                        var action = new WorkflowAction();
-                        action.Activity = activity;
-
-                        actions.Add( action );
-                    }
+                    actions.Add( action );
                 }
             }
 
             return actions;
         }
 
-        private List<WorkflowAction> GetActions()
+        private List<WorkflowAction> GetActions( RockContext rockContext )
         {
             var formActions = new List<WorkflowAction>();
-            
+
             if ( CurrentPerson != null )
             {
-                using ( var rockContext = new RockContext() )
-                {
-                    // Get all of the active form actions that user is assigned to and authorized to view
-                    formActions = GetActiveForms( rockContext );
 
-                    // If a category filter was specified, filter list by selected categories
-                    var categoryIds = GetCategories( rockContext );
-                    if ( categoryIds.Any() )
-                    {
-                        formActions = formActions
-                            .Where( a =>
-                                a.ActionType.ActivityType.WorkflowType.CategoryId.HasValue &&
-                                categoryIds.Contains( a.ActionType.ActivityType.WorkflowType.CategoryId.Value ) )
-                            .ToList();
-                    }
+                // Get all of the active form actions that user is assigned to and authorized to view
+                formActions = GetActiveForms( rockContext );
+
+                // If a category filter was specified, filter list by selected categories
+                var categoryIds = GetCategories( rockContext );
+                if ( categoryIds.Any() )
+                {
+                    formActions = formActions
+                        .Where( a =>
+                            a.ActionType.ActivityType.WorkflowType.CategoryId.HasValue &&
+                            categoryIds.Contains( a.ActionType.ActivityType.WorkflowType.CategoryId.Value ) )
+                        .ToList();
                 }
             }
 
@@ -360,7 +368,7 @@ as fields on the workflow or activity)...
         private List<WorkflowAction> GetActiveForms( RockContext rockContext )
         {
             var formActions = RockPage.GetSharedItem( "ActiveForms" ) as List<WorkflowAction>;
-            if (formActions == null)
+            if ( formActions == null )
             {
                 formActions = new WorkflowActionService( rockContext ).GetActiveForms( CurrentPerson );
                 RockPage.SaveSharedItem( "ActiveForms", formActions );
@@ -383,7 +391,7 @@ as fields on the workflow or activity)...
 
         private List<int> GetCategoryIds( List<int> ids, List<CategoryNavigationItem> categories )
         {
-            foreach( var categoryNavItem in categories)
+            foreach ( var categoryNavItem in categories )
             {
                 ids.Add( categoryNavItem.Category.Id );
                 GetCategoryIds( ids, categoryNavItem.ChildCategories );
