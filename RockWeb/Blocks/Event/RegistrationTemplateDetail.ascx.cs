@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -209,6 +209,39 @@ namespace RockWeb.Blocks.Event
     please contact {{ RegistrationInstance.ContactPersonAlias.Person.FullName }} at {{ RegistrationInstance.ContactEmail }}.
 </p>
 ", "", 2 )]
+
+    [CodeEditorField( "Default Payment Reminder Email", "The default Payment Reminder Email Template value to use for a new template", CodeEditorMode.Lava, CodeEditorTheme.Rock, 300, false, @"{{ 'Global' | Attribute:'EmailHeader' }}
+{% capture currencySymbol %}{{ 'Global' | Attribute:'CurrencySymbol' }}{% endcapture %}
+{% capture externalSite %}{{ 'Global' | Attribute:'PublicApplicationRoot' }}{% endcapture %}
+{% assign registrantCount = Registration.Registrants | Size %}
+
+<h1>{{ RegistrationInstance.RegistrationTemplate.RegistrationTerm }} Payment Reminder</h1>
+
+<p>
+    This {{ RegistrationInstance.RegistrationTemplate.RegistrationTerm | Downcase  }} for {{ RegistrationInstance.Name }} has a remaining balance 
+    of {{ currencySymbol }}{{ Registration.BalanceDue | Format:'#,##0.00' }}. The 
+    {{ RegistrationInstance.RegistrationTemplate.RegistrantTerm | Downcase | Pluralize  }} for this 
+    {{ RegistrationInstance.RegistrationTemplate.RegistrationTerm }} are below.
+</p>
+
+<ul>
+{% for registrant in Registration.Registrants %}
+    <li>{{ registrant.PersonAlias.Person.FullName }}</li>
+{% endfor %}
+</ul>
+
+<p>
+    You can complete the payment for this {{ RegistrationInstance.RegistrationTemplate.RegistrationTerm | Downcase }}
+    using our <a href='{{ externalSite }}/Registration?RegistrationId={{ Registration.Id }}&rckipid={{ Registration.PersonAlias.Person.UrlEncodedKey }}'>
+    online registration page</a>.
+</p>
+
+<p>
+    If you have any questions please contact {{ RegistrationInstance.ContactName }} at {{ RegistrationInstance.ContactEmail }}.
+</p>
+
+{{ 'Global' | Attribute:'EmailFooter' }}
+", "", 3 )]
     public partial class RegistrationTemplateDetail : RockBlock
     {
 
@@ -534,6 +567,11 @@ namespace RockWeb.Blocks.Event
                             newFormField.Guid = Guid.NewGuid();
                             newFormFieldsState[newForm.Guid].Add( newFormField );
 
+                            if ( formField.FieldSource != RegistrationFieldSource.PersonField )
+                            {
+                                newFormField.Attribute = formField.Attribute;
+                            }
+
                             if ( formField.FieldSource == RegistrationFieldSource.RegistrationAttribute && formField.Attribute != null )
                             {
                                 var newAttribute = formField.Attribute.Clone( false );
@@ -630,12 +668,16 @@ namespace RockWeb.Blocks.Event
             RegistrationTemplate.Notify = notify;
             RegistrationTemplate.AddPersonNote = cbAddPersonNote.Checked;
             RegistrationTemplate.LoginRequired = cbLoginRequired.Checked;
+            RegistrationTemplate.AllowExternalRegistrationUpdates = cbAllowExternalUpdates.Checked;
+            RegistrationTemplate.AllowGroupPlacement = cbAllowGroupPlacement.Checked;
             RegistrationTemplate.AllowMultipleRegistrants = cbMultipleRegistrants.Checked;
             RegistrationTemplate.MaxRegistrants = nbMaxRegistrants.Text.AsInteger();
             RegistrationTemplate.RegistrantsSameFamily = rblRegistrantsInSameFamily.SelectedValueAsEnum<RegistrantsSameFamily>();
+            RegistrationTemplate.SetCostOnInstance = !tglSetCostOnTemplate.Checked;
             RegistrationTemplate.Cost = cbCost.Text.AsDecimal();
             RegistrationTemplate.MinimumInitialPayment = cbMinimumInitialPayment.Text.AsDecimalOrNull();
             RegistrationTemplate.FinancialGatewayId = fgpFinancialGateway.SelectedValueAsInt();
+            RegistrationTemplate.BatchNamePrefix = txtBatchNamePrefix.Text;
 
             RegistrationTemplate.ConfirmationFromName = tbConfirmationFromName.Text;
             RegistrationTemplate.ConfirmationFromEmail = tbConfirmationFromEmail.Text;
@@ -646,6 +688,12 @@ namespace RockWeb.Blocks.Event
             RegistrationTemplate.ReminderFromEmail = tbReminderFromEmail.Text;
             RegistrationTemplate.ReminderSubject = tbReminderSubject.Text;
             RegistrationTemplate.ReminderEmailTemplate = ceReminderEmailTemplate.Text;
+
+            RegistrationTemplate.PaymentReminderFromName = tbPaymentReminderFromName.Text;
+            RegistrationTemplate.PaymentReminderFromEmail = tbPaymentReminderFromEmail.Text;
+            RegistrationTemplate.PaymentReminderSubject = tbPaymentReminderSubject.Text;
+            RegistrationTemplate.PaymentReminderEmailTemplate = cePaymentReminderEmailTemplate.Text;
+            RegistrationTemplate.PaymentReminderTimeSpan = nbPaymentReminderTimeSpan.Text.AsInteger();
 
             RegistrationTemplate.RegistrationTerm = string.IsNullOrWhiteSpace( tbRegistrationTerm.Text ) ? "Registration" : tbRegistrationTerm.Text;
             RegistrationTemplate.RegistrantTerm = string.IsNullOrWhiteSpace( tbRegistrantTerm.Text ) ? "Registrant" : tbRegistrantTerm.Text;
@@ -702,9 +750,9 @@ namespace RockWeb.Blocks.Event
 
             // Perform Validation
             var validationErrors = new List<string>();
-            if ( ( RegistrationTemplate.Cost > 0 || FeeState.Any() ) && !RegistrationTemplate.FinancialGatewayId.HasValue )
+            if ( ( ( RegistrationTemplate.SetCostOnInstance ?? false ) || RegistrationTemplate.Cost > 0 || FeeState.Any() ) && !RegistrationTemplate.FinancialGatewayId.HasValue )
             {
-                validationErrors.Add( "A Financial Gateway is required when the registration has a cost or additional fees." );
+                validationErrors.Add( "A Financial Gateway is required when the registration has a cost or additional fees or is configured to allow instances to set a cost." );
             }
 
             if ( validationErrors.Any() )
@@ -726,6 +774,8 @@ namespace RockWeb.Blocks.Event
                 var registrationTemplateFormFieldService = new RegistrationTemplateFormFieldService( rockContext );
                 var registrationTemplateDiscountService = new RegistrationTemplateDiscountService( rockContext );
                 var registrationTemplateFeeService = new RegistrationTemplateFeeService( rockContext );
+                var registrationRegistrantFeeService = new RegistrationRegistrantFeeService( rockContext );
+
                 var groupService = new GroupService( rockContext );
 
                 // delete forms that aren't assigned in the UI anymore
@@ -763,11 +813,23 @@ namespace RockWeb.Blocks.Event
 
                 // delete fees that aren't assigned in the UI anymore
                 var feeUiGuids = FeeState.Select( u => u.Guid ).ToList();
-                foreach ( var fee in registrationTemplateFeeService
+                var deletedfees = registrationTemplateFeeService
                     .Queryable()
                     .Where( d =>
                         d.RegistrationTemplateId == RegistrationTemplate.Id &&
-                        !feeUiGuids.Contains( d.Guid ) ) )
+                        !feeUiGuids.Contains( d.Guid ) )
+                    .ToList();
+
+                var deletedFeeIds = deletedfees.Select( f => f.Id ).ToList();
+                foreach ( var registrantFee in registrationRegistrantFeeService
+                    .Queryable()
+                    .Where( f => deletedFeeIds.Contains( f.RegistrationTemplateFeeId ) )
+                    .ToList() )
+                {
+                    registrationRegistrantFeeService.Delete( registrantFee );
+                }
+
+                foreach ( var fee in deletedfees )
                 {
                     registrationTemplateFeeService.Delete( fee );
                 }
@@ -961,6 +1023,16 @@ namespace RockWeb.Blocks.Event
             nbMaxRegistrants.Visible = cbMultipleRegistrants.Checked;
             
             BuildControls();
+        }
+
+        /// <summary>
+        /// Handles the CheckedChanged event of the tglSetCost control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void tglSetCost_CheckedChanged( object sender, EventArgs e )
+        {
+            SetCostVisibility();
         }
 
         #endregion
@@ -1697,6 +1769,10 @@ namespace RockWeb.Blocks.Event
                 registrationTemplate.Notify = RegistrationNotify.None;
                 registrationTemplate.SuccessTitle = "Congratulations {{ Registration.FirstName }}";
                 registrationTemplate.SuccessText = GetAttributeValue( "DefaultSuccessText" );
+                registrationTemplate.PaymentReminderEmailTemplate = GetAttributeValue( "DefaultPaymentReminderEmail" );
+                registrationTemplate.PaymentReminderFromEmail = "{{ RegistrationInstance.ContactEmail }}";
+                registrationTemplate.PaymentReminderFromName = "{{ RegistrationInstance.ContactPersonAlias.Person.FullName }}";
+                registrationTemplate.PaymentReminderSubject = "{{ RegistrationInstance.Name }} Payment Reminder";
                 registrationTemplate.AllowMultipleRegistrants = true;
                 registrationTemplate.MaxRegistrants = 10;
                 registrationTemplate.GroupMemberStatus = GroupMemberStatus.Active;
@@ -1730,6 +1806,8 @@ namespace RockWeb.Blocks.Event
             {
                 btnEdit.Visible = true;
                 btnDelete.Visible = true;
+
+                btnCopy.ToolTip = "Copy " + registrationTemplate.Name;
                 btnCopy.Visible = true;
 
                 btnSecurity.Title = "Secure " + registrationTemplate.Name;
@@ -1836,8 +1914,9 @@ namespace RockWeb.Blocks.Event
             hfHasRegistrations.Value = new RegistrationInstanceService( rockContext )
                 .Queryable().AsNoTracking()
                 .Any( i =>
+
                     i.RegistrationTemplateId == registrationTemplateId &&
-                    i.Registrations.Any() ).ToString();
+                    i.Registrations.Any( r => !r.IsTemporary ) ).ToString();
         }
 
         /// <summary>
@@ -1879,13 +1958,18 @@ namespace RockWeb.Blocks.Event
 
             cbAddPersonNote.Checked = RegistrationTemplate.AddPersonNote;
             cbLoginRequired.Checked = RegistrationTemplate.LoginRequired;
+            cbAllowExternalUpdates.Checked = RegistrationTemplate.AllowExternalRegistrationUpdates;
+            cbAllowGroupPlacement.Checked = RegistrationTemplate.AllowGroupPlacement;
             cbMultipleRegistrants.Checked = RegistrationTemplate.AllowMultipleRegistrants;
             nbMaxRegistrants.Visible = RegistrationTemplate.AllowMultipleRegistrants;
             nbMaxRegistrants.Text = RegistrationTemplate.MaxRegistrants.ToString();
             rblRegistrantsInSameFamily.SetValue( RegistrationTemplate.RegistrantsSameFamily.ConvertToInt() );
+            tglSetCostOnTemplate.Checked = !RegistrationTemplate.SetCostOnInstance.HasValue || !RegistrationTemplate.SetCostOnInstance.Value;
             cbCost.Text = RegistrationTemplate.Cost.ToString();
             cbMinimumInitialPayment.Text = RegistrationTemplate.MinimumInitialPayment.HasValue ? RegistrationTemplate.MinimumInitialPayment.Value.ToString( "N2" ) : "";
             fgpFinancialGateway.SetValue( RegistrationTemplate.FinancialGatewayId );
+            txtBatchNamePrefix.Text = RegistrationTemplate.BatchNamePrefix;
+            SetCostVisibility();
 
             tbConfirmationFromName.Text = RegistrationTemplate.ConfirmationFromName;
             tbConfirmationFromEmail.Text = RegistrationTemplate.ConfirmationFromEmail;
@@ -1897,6 +1981,12 @@ namespace RockWeb.Blocks.Event
             tbReminderSubject.Text = RegistrationTemplate.ReminderSubject;
             ceReminderEmailTemplate.Text = RegistrationTemplate.ReminderEmailTemplate;
 
+            tbPaymentReminderFromName.Text = RegistrationTemplate.PaymentReminderFromName;
+            tbPaymentReminderFromEmail.Text = RegistrationTemplate.PaymentReminderFromEmail;
+            tbPaymentReminderSubject.Text = RegistrationTemplate.PaymentReminderSubject;
+            cePaymentReminderEmailTemplate.Text = RegistrationTemplate.PaymentReminderEmailTemplate;
+            nbPaymentReminderTimeSpan.Text = RegistrationTemplate.PaymentReminderTimeSpan.ToString();
+
             tbRegistrationTerm.Text = RegistrationTemplate.RegistrationTerm;
             tbRegistrantTerm.Text = RegistrationTemplate.RegistrantTerm;
             tbFeeTerm.Text = RegistrationTemplate.FeeTerm;
@@ -1906,6 +1996,16 @@ namespace RockWeb.Blocks.Event
             ceSuccessText.Text = RegistrationTemplate.SuccessText;
 
             BuildControls( true );
+        }
+
+        /// <summary>
+        /// Sets the cost visibility.
+        /// </summary>
+        private void SetCostVisibility()
+        {
+            bool setCostOnTemplate = tglSetCostOnTemplate.Checked;
+            cbCost.Visible = setCostOnTemplate;
+            cbMinimumInitialPayment.Visible = setCostOnTemplate;
         }
 
         /// <summary>
@@ -1966,10 +2066,17 @@ namespace RockWeb.Blocks.Event
                 lFormsReadonly.Text = "<div>" + None.TextHtml + "</div>";
             }
 
-            lCost.Text = RegistrationTemplate.Cost.FormatAsCurrency();
-
-            lMinimumInitialPayment.Visible = RegistrationTemplate.MinimumInitialPayment.HasValue;
-            lMinimumInitialPayment.Text = RegistrationTemplate.MinimumInitialPayment.HasValue ? RegistrationTemplate.MinimumInitialPayment.Value.FormatAsCurrency() : "";
+            if ( RegistrationTemplate.SetCostOnInstance ?? false )
+            {
+                lCost.Text = "Set on Instance";
+                lMinimumInitialPayment.Text = "Set on Instance";
+            }
+            else
+            {
+                lCost.Text = RegistrationTemplate.Cost.FormatAsCurrency();
+                lMinimumInitialPayment.Visible = RegistrationTemplate.MinimumInitialPayment.HasValue;
+                lMinimumInitialPayment.Text = RegistrationTemplate.MinimumInitialPayment.HasValue ? RegistrationTemplate.MinimumInitialPayment.Value.FormatAsCurrency() : "";
+            }
 
             rFees.DataSource = RegistrationTemplate.Fees.OrderBy( f => f.Order ).ToList();
             rFees.DataBind();
@@ -2544,5 +2651,5 @@ namespace RockWeb.Blocks.Event
 
         #endregion
 
-    }
+}
 }

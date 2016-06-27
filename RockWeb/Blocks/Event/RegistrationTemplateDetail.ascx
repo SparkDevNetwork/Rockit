@@ -59,8 +59,24 @@
                                         <Rock:RockCheckBox ID="cbAddPersonNote" runat="server" Label="Add Person Note" Help="Should a note be added to a person's record whenever they register?" Text="Yes" />
                                     </div>
                                 </div>
-                                <Rock:RockCheckBox ID="cbLoginRequired" runat="server" Label="Login Required" Text="Yes"
-                                    Help="Is user required to be logged in when registering?" />
+                                <div class="row">
+                                    <div class="col-xs-6">
+                                        <Rock:RockCheckBox ID="cbLoginRequired" runat="server" Label="Login Required" Text="Yes"
+                                            Help="Is user required to be logged in when registering?" />
+                                    </div>
+                                    <div class="col-xs-6">
+                                        <Rock:RockCheckBox ID="cbAllowGroupPlacement" runat="server" Label="Allow Group Placement" Text="Yes"
+                                            Help="If enabled, the registration instance will include a Group Placement option for 
+                                                adding registrants to specific child groups of a selected parent group." />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-6">
+                                        <Rock:RockCheckBox ID="cbAllowExternalUpdates" runat="server" Label="Allow External Updates to Saved Registrations" Text="Yes"
+                                            Help="Allow saved registrations to be updated online. If false the individual will be able to make additional payments, but will
+                                            not be allow to change any of the registrant information and attributes." />
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="row">
@@ -76,12 +92,17 @@
                                 </div>
                                 <Rock:RockRadioButtonList ID="rblRegistrantsInSameFamily" runat="server" Label="Registrants in same Family" RepeatDirection="Horizontal"
                                     Help="Typical relationship of registrants that user would register." />
-                                <Rock:CurrencyBox ID="cbCost" runat="server" Label="Cost"
-                                    Help="The cost per registrant." />
-                                <Rock:CurrencyBox ID="cbMinimumInitialPayment" runat="server" Label="Minimum Initial Payment"
-                                    Help="The minimum amount required per registrant. Leave value blank if full amount is required." />
-                                <Rock:FinancialGatewayPicker ID="fgpFinancialGateway" runat="server" Label="Financial Gateway"
-                                    Help="The financial gateway to use for processing registration payments." />
+                                <div class="well">
+                                    <Rock:Toggle ID="tglSetCostOnTemplate" runat="server" Label="Set Cost On" OnText="Template" OffText="Instance" 
+                                        ActiveButtonCssClass="btn-info" OnCheckedChanged="tglSetCost_CheckedChanged" ButtonSizeCssClass="btn-xs" />
+                                    <Rock:CurrencyBox ID="cbCost" runat="server" Label="Cost"
+                                        Help="The cost per registrant." />
+                                    <Rock:CurrencyBox ID="cbMinimumInitialPayment" runat="server" Label="Minimum Initial Payment"
+                                        Help="The minimum amount required per registrant. Leave value blank if full amount is required." />
+                                    <Rock:FinancialGatewayPicker ID="fgpFinancialGateway" runat="server" Label="Financial Gateway"
+                                        Help="The financial gateway to use for processing registration payments." />
+                                    <Rock:RockTextBox ID="txtBatchNamePrefix" runat="server" Label="Batch Prefix" Help="Optional prefix to add the the financial batches. If left blank the prefix from the registration block will be used." />
+                                </div>
                             </div>
                         </div>
                     </Rock:PanelWidget>
@@ -174,6 +195,30 @@
                         </div>
                     </Rock:PanelWidget>
 
+                    <Rock:PanelWidget ID="wpPaymentReminder" runat="server" Title="Payment Reminder Email">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <Rock:RockTextBox ID="tbPaymentReminderFromName" runat="server" Label="From Name" />
+                                <Rock:RockTextBox ID="tbPaymentReminderFromEmail" runat="server" Label="From Email" />
+                            </div>
+                            <div class="col-md-6">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <Rock:RockTextBox ID="tbPaymentReminderSubject" runat="server" Label="Subject" />
+                                <Rock:CodeEditor ID="cePaymentReminderEmailTemplate" runat="server" Label="Confirmation Email Template" EditorMode="Lava" EditorTheme="Rock" EditorHeight="300" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <Rock:NumberBox ID="nbPaymentReminderTimeSpan" runat="server" Help="The number of days in between automatic payment reminders." CssClass="input-width-xs" Label="Payment Reminder Time Span" />
+                            </div>
+                            <div class="col-md-6">
+                            </div>
+                        </div>
+                    </Rock:PanelWidget>
+
                     <Rock:PanelWidget ID="wpTerms" runat="server" Title="Terms/Text">
                         <div class="row">
                             <div class="col-md-6">
@@ -237,7 +282,7 @@
                         <Rock:HiddenFieldWithClass ID="hfHasRegistrations" runat="server" CssClass="js-has-registrations" />
                         <asp:LinkButton ID="btnDelete" runat="server" Text="Delete" CssClass="btn btn-link js-delete-template" OnClick="btnDelete_Click" CausesValidation="false" />
                         <span class="pull-right">
-                            <asp:LinkButton ID="btnCopy" runat="server" Text="Copy" CssClass="btn btn-link" OnClick="btnCopy_Click" />
+                            <asp:LinkButton ID="btnCopy" runat="server" CssClass="btn btn-default btn-sm fa fa-clone" OnClick="btnCopy_Click"/>
                             <Rock:SecurityButton ID="btnSecurity" runat="server" class="btn btn-sm btn-security" />
                         </span>
 

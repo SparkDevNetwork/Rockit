@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,7 +42,7 @@ namespace RockWeb.Blocks.Finance
     [Description( "Shows a graph of giving statistics which can be configured for specific date range, amounts, currency types, campus, etc." )]
 
     [DefinedValueField( Rock.SystemGuid.DefinedType.CHART_STYLES, "Chart Style", DefaultValue = Rock.SystemGuid.DefinedValue.CHART_STYLE_ROCK, Order = 0 )]
-    [LinkedPage( "Detail Page", "Select the page to navigate to when the chart is clicked", Order = 1 )]
+    [LinkedPage( "Detail Page", "Select the page to navigate to when the chart is clicked", false, Order = 1 )]
     [BooleanField("Hide View By Options", "Should the View By options be hidden (Giver, Adults, Children, Family)?", Order = 2 )]
     public partial class GivingAnalytics : RockBlock
     {
@@ -53,6 +53,7 @@ namespace RockWeb.Blocks.Finance
         private Panel pnlTotal;
         private Literal lTotal;
         private bool HideViewByOption = false;
+        private bool FilterIncludedInURL = false;
 
         #endregion
 
@@ -97,6 +98,15 @@ namespace RockWeb.Blocks.Finance
         {
             base.OnInit( e );
 
+            // Setup for being able to copy text to clipboard
+            RockPage.AddScriptLink( this.Page, "~/Scripts/ZeroClipboard/ZeroClipboard.js" );
+            string script = string.Format( @"
+    var client = new ZeroClipboard( $('#{0}'));
+    $('#{0}').tooltip();
+", btnCopyToClipboard.ClientID );
+            ScriptManager.RegisterStartupScript( btnCopyToClipboard, btnCopyToClipboard.GetType(), "share-copy", script, true );
+            btnCopyToClipboard.Attributes["data-clipboard-target"] = hfFilterUrl.ClientID;
+
             // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
@@ -106,6 +116,7 @@ namespace RockWeb.Blocks.Finance
             gGiversGifts.DataKeyNames = new string[] { "Id" };
             gGiversGifts.PersonIdField = "Id";
             gGiversGifts.GridRebind += gGiversGifts_GridRebind;
+            gGiversGifts.EntityTypeId = EntityTypeCache.GetId<Rock.Model.Person>();
 
             pnlTotal = new Panel();
             gGiversGifts.Actions.AddCustomActionControl( pnlTotal );
@@ -144,7 +155,11 @@ namespace RockWeb.Blocks.Finance
             {
                 BuildDynamicControls();
                 LoadDropDowns();
-                LoadSettingsFromUserPreferences();
+                LoadSettings();
+                if ( FilterIncludedInURL )
+                {
+                    LoadChartAndGrids();
+                }
 
                 lSlidingDateRangeHelp.Text = SlidingDateRangePicker.GetHelpHtml( RockDateTime.Now );
             }
@@ -458,7 +473,7 @@ namespace RockWeb.Blocks.Finance
 function(item) {
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = 'Weekend of <br />' + itemDate.toLocaleDateString();
-    var seriesLabel = item.series.label;
+    var seriesLabel = item.series.label || ( item.series.labels ? item.series.labels[item.dataIndex] : null );
     var pointValue = item.series.chartData[item.dataIndex].YValue.toLocaleString() || item.series.chartData[item.dataIndex].YValueTotal.toLocaleString() || '-';
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
@@ -475,7 +490,7 @@ function(item) {
     var month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = month_names[itemDate.getMonth()] + ' ' + itemDate.getFullYear();
-    var seriesLabel = item.series.label;
+    var seriesLabel = item.series.label || ( item.series.labels ? item.series.labels[item.dataIndex] : null );
     var pointValue = item.series.chartData[item.dataIndex].YValue.toLocaleString() || item.series.chartData[item.dataIndex].YValueTotal.toLocaleString() || '-';
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
@@ -491,7 +506,7 @@ function(item) {
 function(item) {
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = itemDate.getFullYear();
-    var seriesLabel = item.series.label;
+    var seriesLabel = item.series.label || ( item.series.labels ? item.series.labels[item.dataIndex] : null );
     var pointValue = item.series.chartData[item.dataIndex].YValue.toLocaleString() || item.series.chartData[item.dataIndex].YValueTotal.toLocaleString() || '-';
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
@@ -533,7 +548,7 @@ function(item) {
 
             dataSourceParams.AddOrReplace( "graphBy", hfGraphBy.Value.AsInteger() );
 
-            SaveSettingsToUserPreferences();
+            SaveSettings();
 
             dataSourceUrl += "?" + dataSourceParams.Select( s => string.Format( "{0}={1}", s.Key, s.Value ) ).ToList().AsDelimited( "&" );
 
@@ -563,7 +578,7 @@ function(item) {
         /// <summary>
         /// Saves the attendance reporting settings to user preferences.
         /// </summary>
-        private void SaveSettingsToUserPreferences()
+        private void SaveSettings()
         {
             string keyPrefix = string.Format( "giving-analytics-{0}-", this.BlockId );
 
@@ -608,16 +623,30 @@ function(item) {
             this.SetUserPreference( keyPrefix + "GiversFilterByPattern", string.Format( "{0}|{1}|{2}", tbPatternXTimes.Text, cbPatternAndMissed.Checked, drpPatternDateRange.DelimitedValues ), false );
 
             this.SaveUserPreferences( keyPrefix );
+
+            // Create URL for selected settings
+            var pageReference = CurrentPageReference;
+            foreach ( var setting in GetUserPreferences( keyPrefix ) )
+            {
+                string key = setting.Key.Substring( keyPrefix.Length );
+                pageReference.Parameters.AddOrReplace( key, setting.Value );
+            }
+
+            Uri uri = new Uri( Request.Url.ToString() );
+            hfFilterUrl.Value = uri.Scheme + "://" + uri.GetComponents( UriComponents.HostAndPort, UriFormat.UriEscaped ) + pageReference.BuildUrl();
+            btnCopyToClipboard.Disabled = false;
         }
 
         /// <summary>
         /// Loads the attendance reporting settings from user preferences.
         /// </summary>
-        private void LoadSettingsFromUserPreferences()
+        private void LoadSettings()
         {
+            FilterIncludedInURL = false;
+
             string keyPrefix = string.Format( "giving-analytics-{0}-", this.BlockId );
 
-            string slidingDateRangeSettings = this.GetUserPreference( keyPrefix + "SlidingDateRange" );
+            string slidingDateRangeSettings = GetSetting( keyPrefix, "SlidingDateRange" );
             if ( string.IsNullOrWhiteSpace( slidingDateRangeSettings ) )
             {
                 // default to current year
@@ -629,36 +658,36 @@ function(item) {
                 drpSlidingDateRange.DelimitedValues = slidingDateRangeSettings;
             }
 
-            hfGroupBy.Value = this.GetUserPreference( keyPrefix + "GroupBy" );
+            hfGroupBy.Value = GetSetting( keyPrefix, "GroupBy" );
 
-            nreAmount.DelimitedValues = this.GetUserPreference( keyPrefix + "AmountRange" );
+            nreAmount.DelimitedValues = GetSetting( keyPrefix, "AmountRange" );
 
-            var currencyTypeIdList = this.GetUserPreference( keyPrefix + "CurrencyTypeIds" ).Split( ',' ).ToList();
+            var currencyTypeIdList = GetSetting( keyPrefix, "CurrencyTypeIds" ).Split( ',' ).ToList();
             cblCurrencyTypes.SetValues( currencyTypeIdList );
 
-            var sourceIdList = this.GetUserPreference( keyPrefix + "SourceIds" ).Split( ',' ).ToList();
+            var sourceIdList = GetSetting( keyPrefix, "SourceIds" ).Split( ',' ).ToList();
             cblTransactionSource.SetValues( sourceIdList );
 
-            var accountIdList = this.GetUserPreference( keyPrefix + "AccountIds" ).Split( ',' ).ToList();
+            var accountIdList = GetSetting( keyPrefix, "AccountIds" ).Split( ',' ).ToList();
             foreach ( var cblAccounts in phAccounts.Controls.OfType<RockCheckBoxList>() )
             {
                 cblAccounts.SetValues( accountIdList );
             }
 
-            dvpDataView.SetValue( this.GetUserPreference( keyPrefix + "DataView" ) );
+            dvpDataView.SetValue( GetSetting( keyPrefix, "DataView" ) );
             HideShowDataViewResultOption();
 
-            rblDataViewAction.SetValue( this.GetUserPreference( keyPrefix + "DataViewAction" ) );
+            rblDataViewAction.SetValue( GetSetting( keyPrefix, "DataViewAction" ) );
 
-            hfGraphBy.Value = this.GetUserPreference( keyPrefix + "GraphBy" );
+            hfGraphBy.Value = GetSetting( keyPrefix, "GraphBy" );
 
-            ShowBy showBy = this.GetUserPreference( keyPrefix + "ShowBy" ).ConvertToEnumOrNull<ShowBy>() ?? ShowBy.Chart;
+            ShowBy showBy = GetSetting( keyPrefix, "ShowBy" ).ConvertToEnumOrNull<ShowBy>() ?? ShowBy.Chart;
             DisplayShowBy( showBy );
 
-            GiversViewBy viewBy = this.GetUserPreference( keyPrefix + "ViewBy" ).ConvertToEnumOrNull<GiversViewBy>() ?? GiversViewBy.Giver;
+            GiversViewBy viewBy = GetSetting( keyPrefix, "ViewBy" ).ConvertToEnumOrNull<GiversViewBy>() ?? GiversViewBy.Giver;
             hfViewBy.Value = viewBy.ConvertToInt().ToString();
 
-            GiversFilterBy giversFilterby = this.GetUserPreference( keyPrefix + "GiversFilterByType" ).ConvertToEnumOrNull<GiversFilterBy>() ?? GiversFilterBy.All;
+            GiversFilterBy giversFilterby = GetSetting( keyPrefix, "GiversFilterByType" ).ConvertToEnumOrNull<GiversFilterBy>() ?? GiversFilterBy.All;
 
             switch ( giversFilterby )
             {
@@ -673,7 +702,7 @@ function(item) {
                     break;
             }
 
-            string attendeesFilterByPattern = this.GetUserPreference( keyPrefix + "GiversFilterByPattern" );
+            string attendeesFilterByPattern = GetSetting( keyPrefix, "GiversFilterByPattern" );
             string[] attendeesFilterByPatternValues = attendeesFilterByPattern.Split( '|' );
             if ( attendeesFilterByPatternValues.Length == 3 )
             {
@@ -681,6 +710,24 @@ function(item) {
                 cbPatternAndMissed.Checked = attendeesFilterByPatternValues[1].AsBooleanOrNull() ?? false;
                 drpPatternDateRange.DelimitedValues = attendeesFilterByPatternValues[2];
             }
+        }
+
+        /// <summary>
+        /// Gets the setting.
+        /// </summary>
+        /// <param name="prefix">The prefix.</param>
+        /// <param name="key">The key.</param>
+        /// <returns></returns>
+        private string GetSetting( string prefix, string key )
+        {
+            string setting = Request.QueryString[key];
+            if ( setting != null )
+            {
+                FilterIncludedInURL = true;
+                return setting;
+            }
+
+            return this.GetUserPreference( prefix + key );
         }
 
         /// <summary>
@@ -702,7 +749,7 @@ function(item) {
             rblDataViewAction.Visible = dvpDataView.SelectedValueAsInt().HasValue;
         }
 
-        private IEnumerable<Rock.Chart.IChartData> GetChartData()
+        private IEnumerable<Rock.Chart.SummaryData> GetChartData()
         {
             var dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( drpSlidingDateRange.DelimitedValues );
 
@@ -736,8 +783,28 @@ function(item) {
         /// <summary>
         /// Binds the chart attendance grid.
         /// </summary>
-        private void BindChartAmountGrid( IEnumerable<Rock.Chart.IChartData> chartData )
+        private void BindChartAmountGrid( IEnumerable<Rock.Chart.SummaryData> chartData )
         {
+            var graphBy = hfGraphBy.Value.ConvertToEnumOrNull<TransactionGraphBy>() ?? TransactionGraphBy.Total;
+            switch( graphBy )
+            {
+                case TransactionGraphBy.Campus:
+                    gChartAmount.Columns[1].Visible = true;
+                    gChartAmount.Columns[1].HeaderText = "Campus";
+                    gChartAmount.Columns[2].Visible = false;
+                    break;
+                case TransactionGraphBy.FinancialAccount:
+                    gChartAmount.Columns[1].Visible = true;
+                    gChartAmount.Columns[1].HeaderText = "Account";
+                    gChartAmount.Columns[2].Visible = true;
+                    gChartAmount.Columns[2].HeaderText = "GL Code";
+                    break;
+                case TransactionGraphBy.Total:
+                    gChartAmount.Columns[1].Visible = false;
+                    gChartAmount.Columns[2].Visible = false;
+                    break;
+            }
+
             SortProperty sortProperty = gChartAmount.SortProperty;
 
             if ( sortProperty != null )
@@ -863,23 +930,26 @@ function(item) {
             numberGiftsField.ItemStyle.HorizontalAlign = HorizontalAlign.Right;
             gGiversGifts.Columns.Add( numberGiftsField );
 
-            // Add a column to indicate if this is a first time giver
-            gGiversGifts.Columns.Add(
-                new BoolField
-                {
-                    DataField = "IsFirstEverGift",
-                    HeaderText = "Is First Gift",
-                    SortExpression = "IsFirstEverGift"
-                } );
+            if ( !radFirstTime.Checked )
+            {
+                // Add a column to indicate if this is a first time giver
+                gGiversGifts.Columns.Add(
+                    new BoolField
+                    {
+                        DataField = "IsFirstEverGift",
+                        HeaderText = "Is First Gift",
+                        SortExpression = "IsFirstEverGift"
+                    } );
 
-            // Add a column for the first gift date ( that matches criteria )
-            gGiversGifts.Columns.Add(
-                new DateField
-                {
-                    DataField = "FirstGift",
-                    HeaderText = "First Gift",
-                    SortExpression = "FirstGift"
-                } );
+                // Add a column for the first gift date ( that matches criteria )
+                gGiversGifts.Columns.Add(
+                    new DateField
+                    {
+                        DataField = "FirstGift",
+                        HeaderText = "First Gift in Period",
+                        SortExpression = "FirstGift"
+                    } );
+            }
 
             // Add a column for the first-ever gift date ( to any tax-deductible account )
             gGiversGifts.Columns.Add(
@@ -890,6 +960,24 @@ function(item) {
                     SortExpression = "FirstEverGift"
                 } );
 
+
+            // Add a column for the first gift date ( that matches criteria )
+            gGiversGifts.Columns.Add(
+                new DateField
+                {
+                    DataField = "LastGift",
+                    HeaderText = "Last Gift in Period",
+                    SortExpression = "LastGift"
+                } );
+
+            // Add a column for the last-ever gift date ( to any tax-deductible account )
+            gGiversGifts.Columns.Add(
+                new DateField
+                {
+                    DataField = "LastEverGift",
+                    HeaderText = "Last Gift Ever",
+                    SortExpression = "LastEverGift"
+                } );
 
             var transactionDetailService = new FinancialTransactionDetailService( _rockContext );
             var personService = new PersonService( _rockContext );
@@ -955,22 +1043,28 @@ function(item) {
             // Get the results table
             DataTable dtResults = ds.Tables[0];
 
-            // Get the first-ever gift dates and load them into a dictionary for faster matching
+            // Get the first/last-ever gift dates and load them into a dictionary for faster matching
             DataTable dtFirstEver = ds.Tables[1];
             var firstEverVals = new Dictionary<int, DateTime>();
+            var lastEverVals = new Dictionary<int, DateTime>();
             foreach( DataRow row in ds.Tables[1].Rows )
             {
                 if ( !DBNull.Value.Equals( row["FirstEverGift"] ) )
                 {
                     firstEverVals.Add( (int)row["PersonId"], (DateTime)row["FirstEverGift"] );
                 }
+                if ( !DBNull.Value.Equals( row["LastEverGift"] ) )
+                {
+                    lastEverVals.Add( (int)row["PersonId"], (DateTime)row["LastEverGift"] );
+                }
             }
 
-            // Add columns to the result set for the first-ever data
+            // Add columns to the result set for the first/last-ever data
             dtResults.Columns.Add( new DataColumn( "IsFirstEverGift", typeof( bool ) ) );
             dtResults.Columns.Add( new DataColumn( "FirstEverGift", typeof( DateTime ) ) );
+            dtResults.Columns.Add( new DataColumn( "LastEverGift", typeof( DateTime ) ) );
 
-            foreach( DataRow row in dtResults.Rows )
+            foreach ( DataRow row in dtResults.Rows )
             {
                 bool rowValid = true;
 
@@ -1033,6 +1127,14 @@ function(item) {
                     {
                         row["IsFirstEverGift"] = isFirstEverGift;
                     }
+
+                    // Set the last ever information for each row
+                    if ( lastEverVals.ContainsKey( personId ) )
+                    {
+                        DateTime lastEverGift = lastEverVals[personId];
+                        row["LastEverGift"] = lastEverGift;
+                    }
+
                 }
 
                 if ( !rowValid )
@@ -1061,6 +1163,12 @@ function(item) {
                         .Select( f => f.Value )
                         .FirstOrDefault();
 
+                    // Check for a last ever gift date
+                    var lastEverGiftDate = lastEverVals
+                        .Where( f => f.Key == person.Id )
+                        .Select( f => f.Value )
+                        .FirstOrDefault();
+
                     DataRow row = dtResults.NewRow();
                     row["Id"] = person.Id;
                     row["Guid"] = person.Guid;
@@ -1070,6 +1178,7 @@ function(item) {
                     row["Email"] = person.Email;
                     row["IsFirstEverGift"] = false;
                     row["FirstEverGift"] = firstEverGiftDate;
+                    row["LastEverGift"] = lastEverGiftDate;
                     dtResults.Rows.Add( row );
                 }
             }
@@ -1176,5 +1285,5 @@ function(item) {
 
         #endregion
 
-}
+    }
 }

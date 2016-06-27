@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -117,8 +117,7 @@ namespace RockWeb
                     if ( channel.EnableRss )
                     {
                         // load merge fields
-                        var mergeFields = new Dictionary<string, object>();
-                        mergeFields.Add( "Campuses", CampusCache.All() );
+                        var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( null );
                         mergeFields.Add( "Channel", channel );
 
                         Dictionary<string, object> requestObjects = new Dictionary<string, object>();
@@ -133,9 +132,6 @@ namespace RockWeb
                         requestObjects.Add( "OriginalString", request.Url.OriginalString );
 
                         mergeFields.Add( "Request", requestObjects );
-
-                        var globalAttributeFields = Rock.Web.Cache.GlobalAttributesCache.GetMergeFields(null);
-                        globalAttributeFields.ToList().ForEach( d => mergeFields.Add( d.Key, d.Value ) );
                         
                         // check for new rss item limit
                         if ( request.QueryString["Count"] != null )
@@ -147,7 +143,7 @@ namespace RockWeb
                         ContentChannelItemService contentService = new ContentChannelItemService( rockContext );
 
                         var content = contentService.Queryable( "ContentChannelType" )
-                                        .Where( c => c.ContentChannelId == channel.Id && c.Status == ContentChannelItemStatus.Approved && c.StartDateTime <= RockDateTime.Now )
+                                        .Where( c => c.ContentChannelId == channel.Id && (c.Status == ContentChannelItemStatus.Approved || c.ContentChannel.RequiresApproval == false) && c.StartDateTime <= RockDateTime.Now )
                                         .OrderByDescending( c => c.StartDateTime )
                                         .Take( rssItemLimit );
 

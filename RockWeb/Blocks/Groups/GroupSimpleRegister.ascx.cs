@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -131,16 +131,16 @@ namespace RockWeb.Blocks.Groups
                                     // Send the confirmation
                                     if ( confirmationEmailTemplateGuid != Guid.Empty )
                                     {
-                                        var mergeObjects = GlobalAttributesCache.GetMergeFields( null );
-                                        mergeObjects.Add( "Member", member );
+                                        var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
+                                        mergeFields.Add( "Member", member );
 
                                         var pageParams = new Dictionary<string, string>();
                                         pageParams.Add( "gm", member.UrlEncodedKey );
                                         var pageReference = new Rock.Web.PageReference( linkedPage, pageParams );
-                                        mergeObjects.Add( "ConfirmationPage", pageReference.BuildUrl() );
+                                        mergeFields.Add( "ConfirmationPage", pageReference.BuildUrl() );
 
                                         var recipients = new List<RecipientData>();
-                                        recipients.Add( new RecipientData( person.Email, mergeObjects ) );
+                                        recipients.Add( new RecipientData( person.Email, mergeFields ) );
                                         Email.Send( confirmationEmailTemplateGuid, recipients, ResolveRockUrl( "~/" ), ResolveRockUrl( "~~/" ) );
                                     }
 

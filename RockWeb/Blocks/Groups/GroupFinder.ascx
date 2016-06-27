@@ -9,7 +9,7 @@
         <asp:Panel ID="pnlView" runat="server" CssClass="panel panel-block">
             <div class="panel-heading clearfix">
                 <h1 class="panel-title pull-left">
-                    <i class="fa fa-map-marker"></i>Group Finder
+                    <i class="fa fa-map-marker"></i> Group Finder
                 </h1>
             </div>
 
@@ -33,6 +33,8 @@
                 <asp:Panel ID="pnlResults" runat="server" Visible="false">
 
                     <asp:Literal ID="lMapStyling" runat="server" />
+
+                    <Rock:RockDropDownList ID="ddlPageSize" runat="server" OnSelectedIndexChanged="ddlPageSize_SelectedIndexChanged" AutoPostBack="true" Label="Number of groups to show" />
 
                     <asp:Panel ID="pnlMap" runat="server" CssClass="margin-v-sm">
                         <div id="map_wrapper">
@@ -165,6 +167,9 @@
                                             Help="Should the average group member age be displayed for each group in the result grid?" ValidationGroup="GroupFinderSettings" />
                                         <Rock:RockCheckBox ID="cbProximity" runat="server" Label="Show Distance" Text="Yes"
                                             Help="Should the distance to each group be displayed? Using this option will require the user to enter their address when searching for groups." ValidationGroup="GroupFinderSettings" />
+                                        <Rock:RockCheckBox ID="cbSortByDistance" runat="server" Label="Sort by Distance" Text="Yes"
+                                            Help="Should the results be sorted from closest to furthest distance?" ValidationGroup="GroupFinderSettings" />
+                                        <Rock:RockTextBox ID="tbPageSizes" runat="server" Label="Page Sizes" Help="To limit the number of groups displayed and to show a dropdown of page sizes, enter a comma delimited list of page sizes. For example: 10,20 will present a drop down with 10,20,All as options with the default as 10" />
                                         <Rock:RockCheckBoxList ID="cblGridAttributes" runat="server" Label="Show Attribute Columns" RepeatDirection="Horizontal"
                                             Help="The group attribute values that should be displayed in the result grid." ValidationGroup="GroupFinderSettings" />
                                     </div>

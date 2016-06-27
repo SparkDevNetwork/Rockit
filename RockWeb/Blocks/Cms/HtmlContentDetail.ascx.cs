@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@ using System.ComponentModel;
 using Rock.Data;
 using Rock.Web.Cache;
 using System.Text;
+using HtmlAgilityPack;
 
 namespace RockWeb.Blocks.Cms
 {
@@ -156,6 +157,27 @@ namespace RockWeb.Blocks.Cms
 
             // get the content depending on which mode we are in (codeeditor or ckeditor)
             string newContent = ceHtml.Visible ? ceHtml.Text : htmlEditor.Text;
+
+            // check if the new content is valid
+            // NOTE: This is a limited check that will only warn of invalid HTML the first 
+            // time a user clicks the save button. Any errors encountered on the second runthrough
+            // are assumed to be intentional.
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml( newContent );
+            if ( doc.ParseErrors.Count() > 0 && !nbInvalidHtml.Visible )
+            {
+                var reasons = doc.ParseErrors.Select( r => r.Reason ).ToList();
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine( "Warning: The HTML has the following errors:<ul>" );
+                foreach ( var reason in reasons )
+                {
+                    sb.AppendLine( String.Format( "<li>{0}</li>", reason.EncodeHtml() ) );
+                }
+                sb.AppendLine( "</ul> <br/> If you wish to save anyway, click the save button again." );
+                nbInvalidHtml.Text = sb.ToString();
+                nbInvalidHtml.Visible = true;
+                return;
+            }
 
             //// create a new record only in the following situations:
             ////   - this is the first time this htmlcontent block got content (new block and edited for the first time)
@@ -544,21 +566,6 @@ namespace RockWeb.Blocks.Cms
             return maxVersion;
         }
 
-        private Dictionary<string, object> GetPageProperties()
-        {
-            Dictionary<string, object> pageProperties = new Dictionary<string, object>();
-            pageProperties.Add( "Id", this.RockPage.PageId.ToString() );
-            pageProperties.Add( "BrowserTitle", this.RockPage.BrowserTitle );
-            pageProperties.Add( "PageTitle", this.RockPage.PageTitle );
-            pageProperties.Add( "Site", this.RockPage.Site.Name );
-            pageProperties.Add( "SiteId", this.RockPage.Site.Id.ToString() );
-            pageProperties.Add( "LayoutId", this.RockPage.Layout.Id.ToString() );
-            pageProperties.Add( "Layout", this.RockPage.Layout.Name );
-            pageProperties.Add( "SiteTheme", this.RockPage.Site.Theme );
-            pageProperties.Add( "PageIcon", this.RockPage.PageIcon );
-            pageProperties.Add( "Description", this.RockPage.MetaDescription );
-            return pageProperties;
-        }
 
         /// <summary>
         /// Shows the view.
@@ -593,38 +600,15 @@ namespace RockWeb.Blocks.Cms
 
                         if ( content.Content.HasMergeFields() || enableDebug )
                         {
-                            var mergeFields = Rock.Web.Cache.GlobalAttributesCache.GetMergeFields( CurrentPerson );
+                            var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
+                            mergeFields.Add( "CurrentPage", Rock.Lava.LavaHelper.GetPagePropertiesMergeObject( this.RockPage ) );
                             if ( CurrentPerson != null )
                             {
                                 // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
-                                mergeFields.Add( "Person", CurrentPerson );
-                                mergeFields.Add( "CurrentPerson", CurrentPerson );
+                                mergeFields.AddOrIgnore( "Person", CurrentPerson );
                             }
-
-                            mergeFields.Add( "Campuses", CampusCache.All() );
-                            mergeFields.Add( "PageParameter", PageParameters() );
-                            mergeFields.Add( "CurrentPage", GetPageProperties() );
-
-                            var contextObjects = new Dictionary<string, object>();
-                            foreach ( var contextEntityType in RockPage.GetContextEntityTypes() )
-                            {
-                                var contextEntity = RockPage.GetCurrentContext( contextEntityType );
-                                if ( contextEntity != null && contextEntity is DotLiquid.ILiquidizable )
-                                {
-                                    var type = Type.GetType( contextEntityType.AssemblyName ?? contextEntityType.Name );
-                                    if ( type != null )
-                                    {
-                                        contextObjects.Add( type.Name, contextEntity );
-                                    }
-                                }
-
-                            }
-
-                            if ( contextObjects.Any() )
-                            {
-                                mergeFields.Add( "Context", contextObjects );
-                            }
-
+                            
+                            
                             mergeFields.Add( "RockVersion", Rock.VersionInfo.VersionInfo.GetRockProductVersionNumber() );
                             mergeFields.Add( "CurrentPersonCanEdit", IsUserAuthorized( Authorization.EDIT ) );
                             mergeFields.Add( "CurrentPersonCanAdministrate", IsUserAuthorized( Authorization.ADMINISTRATE ) );

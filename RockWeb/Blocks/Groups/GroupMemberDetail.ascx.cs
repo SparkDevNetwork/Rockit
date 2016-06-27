@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,9 +38,35 @@ namespace RockWeb.Blocks.Groups
     [Category( "Groups" )]
     [Description( "Displays the details of the given group member for editing role, status, etc." )]
     [LinkedPage( "Registration Page", "Page used for viewing the registration(s) associated with a particular group member", false, "", "", 0 )]
+
+    [BooleanField( "Show 'Move to another group' button", "Set to false to hide the 'Move to another group' button", true, "", 1, "ShowMoveToOtherGroup" )]
     public partial class GroupMemberDetail : RockBlock, IDetailBlock
     {
         #region Control Methods
+
+        /// <summary>
+        /// Raises the <see cref="E:System.Web.UI.Control.Init" /> event.
+        /// </summary>
+        /// <param name="e">An <see cref="T:System.EventArgs" /> object that contains the event data.</param>
+        protected override void OnInit( EventArgs e )
+        {
+            base.OnInit( e );
+
+            // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
+            this.BlockUpdated += GroupMemberDetail_BlockUpdated;
+            this.AddConfigurationUpdateTrigger( upDetail );
+        }
+
+        /// <summary>
+        /// Handles the BlockUpdated event of the GroupMemberDetail control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        /// <exception cref="NotImplementedException"></exception>
+        protected void GroupMemberDetail_BlockUpdated( object sender, EventArgs e )
+        {
+            SetBlockOptions();
+        }
 
         /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Load" /> event.
@@ -54,6 +80,7 @@ namespace RockWeb.Blocks.Groups
 
             if ( !Page.IsPostBack )
             {
+                SetBlockOptions();
                 ShowDetail( PageParameter( "GroupMemberId" ).AsInteger(), PageParameter( "GroupId" ).AsIntegerOrNull() );
             }
             else
@@ -66,6 +93,15 @@ namespace RockWeb.Blocks.Groups
                     Rock.Attribute.Helper.AddEditControls( groupMember, phAttributes, false, BlockValidationGroup );
                 }
             }
+        }
+
+        /// <summary>
+        /// Sets the block options.
+        /// </summary>
+        public void SetBlockOptions()
+        {
+            bool showMoveToOtherGroup = this.GetAttributeValue( "ShowMoveToOtherGroup" ).AsBooleanOrNull() ?? true;
+            btnShowMoveDialog.Visible = showMoveToOtherGroup;
         }
 
         /// <summary>
@@ -123,6 +159,33 @@ namespace RockWeb.Blocks.Groups
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
         protected void btnSave_Click( object sender, EventArgs e )
         {
+            SaveGroupMember();
+
+            if ( cvGroupMember.IsValid )
+            {
+                Dictionary<string, string> qryString = new Dictionary<string, string>();
+                qryString["GroupId"] = hfGroupId.Value;
+                NavigateToParentPage( qryString );
+            }
+        }
+
+        /// <summary>
+        /// Handles the Click event of the btnSaveAndAdd control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void btnSaveThenAdd_Click( object sender, EventArgs e )
+        {
+            SaveGroupMember();
+
+            if ( cvGroupMember.IsValid )
+            {
+                ShowDetail( 0, hfGroupId.Value.AsIntegerOrNull() );
+            }
+        }
+
+        private void SaveGroupMember()
+        {
             if ( Page.IsValid )
             {
                 var rockContext = new RockContext();
@@ -177,7 +240,7 @@ namespace RockWeb.Blocks.Groups
                             {
                                 groupMemberRequirement = new GroupMemberRequirement();
                                 groupMemberRequirement.GroupRequirementId = groupRequirementId;
-                                
+
                                 groupMember.GroupMemberRequirements.Add( groupMemberRequirement );
                             }
 
@@ -207,7 +270,7 @@ namespace RockWeb.Blocks.Groups
                     return;
                 }
 
-                // if the groupMember IsValue is false, and the UI controls didn't report any errors, it is probably because the custom rules of GroupMember didn't pass.
+                // if the groupMember IsValid is false, and the UI controls didn't report any errors, it is probably because the custom rules of GroupMember didn't pass.
                 // So, make sure a message is displayed in the validation summary
                 cvGroupMember.IsValid = groupMember.IsValid;
 
@@ -235,13 +298,8 @@ namespace RockWeb.Blocks.Groups
                 if ( group.IsSecurityRole || group.GroupType.Guid.Equals( Rock.SystemGuid.GroupType.GROUPTYPE_SECURITY_ROLE.AsGuid() ) )
                 {
                     Rock.Security.Role.Flush( group.Id );
-                    Rock.Security.Authorization.Flush();
                 }
             }
-
-            Dictionary<string, string> qryString = new Dictionary<string, string>();
-            qryString["GroupId"] = hfGroupId.Value;
-            NavigateToParentPage( qryString );
         }
 
         /// <summary>
@@ -353,7 +411,7 @@ namespace RockWeb.Blocks.Groups
             {
                 cbIsNotified.Checked = groupMember.IsNotified;
                 cbIsNotified.Visible = true;
-                cbIsNotified.Help = "If this box is uncheked and a <a href=\"http://www.rockrms.com/Rock/BookContent/7/#servicejobsrelatingtogroups\">group leader notification job</a> is enabled then a notification will be sent to the group's leaders when this group member is saved.";
+                cbIsNotified.Help = "If this box is unchecked and a <a href=\"http://www.rockrms.com/Rock/BookContent/7/#servicejobsrelatingtogroups\">group leader notification job</a> is enabled then a notification will be sent to the group's leaders when this group member is saved.";
             }
             else
             {
@@ -376,10 +434,12 @@ namespace RockWeb.Blocks.Groups
             if ( groupMember.Id.Equals( 0 ) )
             {
                 lReadOnlyTitle.Text = ActionTitle.Add( groupMember.Group.GroupType.GroupTerm + " " + groupMember.Group.GroupType.GroupMemberTerm ).FormatAsHtmlTitle();
+                btnSaveThenAdd.Visible = true;
             }
             else
             {
                 lReadOnlyTitle.Text = groupMember.Person.FullName.FormatAsHtmlTitle();
+                btnSaveThenAdd.Visible = false;
             }
 
             if ( groupMember.DateTimeAdded.HasValue )
@@ -409,6 +469,12 @@ namespace RockWeb.Blocks.Groups
 
             btnSave.Visible = !readOnly;
 
+            if ( readOnly || groupMember.Id == 0) 
+            {
+                // hide the ShowMoveDialog if this is readOnly or if this is a new group member (can't move a group member that doesn't exist yet)
+                btnShowMoveDialog.Visible = false;
+            }
+            
             LoadDropDowns();
 
             ppGroupMemberPerson.SetValue( groupMember.Person );
@@ -707,12 +773,15 @@ namespace RockWeb.Blocks.Groups
         {
             var rockContext = new RockContext();
             var groupMember = new GroupMemberService( rockContext ).Get( hfGroupMemberId.Value.AsInteger() );
-            lCurrentGroup.Text = groupMember.Group.Name;
-            gpMoveGroupMember.SetValue( null );
-            grpMoveGroupMember.Visible = false;
-            nbMoveGroupMemberWarning.Visible = false;
-            mdMoveGroupMember.Visible = true;
-            mdMoveGroupMember.Show();
+            if ( groupMember != null )
+            {
+                lCurrentGroup.Text = groupMember.Group.Name;
+                gpMoveGroupMember.SetValue( null );
+                grpMoveGroupMember.Visible = false;
+                nbMoveGroupMemberWarning.Visible = false;
+                mdMoveGroupMember.Visible = true;
+                mdMoveGroupMember.Show();
+            }
         }
 
         /// <summary>

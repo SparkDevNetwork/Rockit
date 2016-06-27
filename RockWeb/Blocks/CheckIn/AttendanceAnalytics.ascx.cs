@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,12 +16,14 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.ComponentModel;
 using System.Data.Entity;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -29,6 +31,9 @@ using Rock.Model;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
+using System.Threading.Tasks;
+using System.Text;
+using Newtonsoft.Json;
 
 namespace RockWeb.Blocks.CheckIn
 {
@@ -38,16 +43,25 @@ namespace RockWeb.Blocks.CheckIn
     [DisplayName( "Attendance Analytics" )]
     [Category( "Check-in" )]
     [Description( "Shows a graph of attendance statistics which can be configured for specific groups, date range, etc." )]
-    [DefinedValueField( Rock.SystemGuid.DefinedType.CHART_STYLES, "Chart Style", DefaultValue = Rock.SystemGuid.DefinedValue.CHART_STYLE_ROCK )]
-    [LinkedPage( "Detail Page", "Select the page to navigate to when the chart is clicked" )]
-    [BooleanField( "Show Group Ancestry", "By default the group ancestry path is shown.  Unselect this to show only the group name.", true )]
-    [GroupTypeField( "Attendance Type", required: false, key: "GroupTypeTemplate" )]
-    [LinkedPage( "Check-in Detail Page", "Page that shows the user details for the check-in data.", false )]
+
+    [GroupTypesField( "Group Types", "Optional List of specific group types that should be included. If none are selected, an option to select an attendance type will be displayed and all of that attendance type's areas will be available.", false, "", "", 0 )]
+    [BooleanField( "Show Group Ancestry", "By default the group ancestry path is shown.  Unselect this to show only the group name.", true, "", 1 )]
+    [LinkedPage( "Detail Page", "Select the page to navigate to when the chart is clicked", false, "", "", 2 )]
+    [LinkedPage( "Check-in Detail Page", "Page that shows the user details for the check-in data.", false, "", "", 3 )]
+    [DefinedValueField( Rock.SystemGuid.DefinedType.CHART_STYLES, "Chart Style", "", true, false, Rock.SystemGuid.DefinedValue.CHART_STYLE_ROCK, "", 4 )]
     public partial class AttendanceAnalytics : RockBlock
     {
         #region Fields
 
         private RockContext _rockContext = null;
+        private bool FilterIncludedInURL = false;
+
+        private List<DateTime> _possibleAttendances = null;
+        private Dictionary<int, string> _scheduleNameLookup = null;
+        private Dictionary<int, Location> _personLocations = null;
+        private Dictionary<int, List<PhoneNumber>> _personPhoneNumbers = null;
+
+        private bool _currentlyExporting = false;
 
         #endregion
 
@@ -60,6 +74,15 @@ namespace RockWeb.Blocks.CheckIn
         protected override void OnInit( EventArgs e )
         {
             base.OnInit( e );
+
+            // Setup for being able to copy text to clipboard
+            RockPage.AddScriptLink( this.Page, "~/Scripts/ZeroClipboard/ZeroClipboard.js" );
+            string script = string.Format( @"
+    var client = new ZeroClipboard( $('#{0}'));
+    $('#{0}').tooltip();
+", btnCopyToClipboard.ClientID );
+            ScriptManager.RegisterStartupScript( btnCopyToClipboard, btnCopyToClipboard.GetType(), "share-copy", script, true );
+            btnCopyToClipboard.Attributes["data-clipboard-target"] = hfFilterUrl.ClientID;
 
             // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
             this.BlockUpdated += Block_BlockUpdated;
@@ -76,26 +99,6 @@ namespace RockWeb.Blocks.CheckIn
 
             // show / hide the checkin details page
             btnCheckinDetails.Visible = !string.IsNullOrWhiteSpace( GetAttributeValue( "Check-inDetailPage" ) );
-        }
-
-        /// <summary>
-        /// Handles the GridRebind event of the gAttendeesAttendance control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void gAttendeesAttendance_GridRebind( object sender, EventArgs e )
-        {
-            BindAttendeesGrid();
-        }
-
-        /// <summary>
-        /// Handles the GridRebind event of the gAttendance control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void gChartAttendance_GridRebind( object sender, EventArgs e )
-        {
-            BindChartAttendanceGrid();
         }
 
         /// <summary>
@@ -120,11 +123,15 @@ namespace RockWeb.Blocks.CheckIn
             if ( !Page.IsPostBack )
             {
                 lSlidingDateRangeHelp.Text = SlidingDateRangePicker.GetHelpHtml( RockDateTime.Now );
-                
+
                 LoadDropDowns();
                 try
                 {
-                    LoadSettingsFromUserPreferences();
+                    LoadSettings();
+                    if ( FilterIncludedInURL )
+                    {
+                        LoadChartAndGrids();
+                    }
                 }
                 catch ( Exception exception )
                 {
@@ -165,7 +172,31 @@ namespace RockWeb.Blocks.CheckIn
         protected void Block_BlockUpdated( object sender, EventArgs e )
         {
             BuildGroupTypesUI();
-            LoadChartAndGrids();
+
+            if ( pnlResults.Visible )
+            {
+                LoadChartAndGrids();
+            }
+        }
+
+        /// <summary>
+        /// Handles the GridRebind event of the GAttendeesAttendance control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="GridRebindEventArgs"/> instance containing the event data.</param>
+        protected void gAttendeesAttendance_GridRebind( object sender, GridRebindEventArgs e )
+        {
+            BindAttendeesGrid( e.IsExporting );
+        }
+
+        /// <summary>
+        /// Handles the GridRebind event of the gAttendance control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void gChartAttendance_GridRebind( object sender, EventArgs e )
+        {
+            BindChartAttendanceGrid();
         }
 
         #endregion
@@ -182,7 +213,7 @@ namespace RockWeb.Blocks.CheckIn
             noCampusListItem.Text = "<span title='Include records that are not associated with a campus'>No Campus</span>";
             noCampusListItem.Value = "null";
             clbCampuses.Items.Add( noCampusListItem );
-            foreach (var campus in CampusCache.All().OrderBy(a => a.Name))
+            foreach ( var campus in CampusCache.All().OrderBy( a => a.Name ) )
             {
                 var listItem = new ListItem();
                 listItem.Text = campus.Name;
@@ -190,10 +221,10 @@ namespace RockWeb.Blocks.CheckIn
                 clbCampuses.Items.Add( listItem );
             }
 
-            var groupTypeTemplateGuid = this.GetAttributeValue( "GroupTypeTemplate" ).AsGuidOrNull();
-            if ( !groupTypeTemplateGuid.HasValue )
+            var groupTypeGuids = this.GetAttributeValue( "GroupTypes" ).SplitDelimitedValues().AsGuidList();
+            if ( !groupTypeGuids.Any() )
             {
-                // show the CheckinType(GroupTypeTemplate) control if there isn't a block setting for it
+                // show the CheckinType control if there isn't a block setting for specific group types
                 ddlAttendanceType.Visible = true;
                 var groupTypeService = new GroupTypeService( _rockContext );
                 Guid groupTypePurposeGuid = Rock.SystemGuid.DefinedValue.GROUPTYPE_PURPOSE_CHECKIN_TEMPLATE.AsGuid();
@@ -203,7 +234,7 @@ namespace RockWeb.Blocks.CheckIn
             }
             else
             {
-                // hide the CheckinType(GroupTypeTemplate) control if there is a block setting for it
+                // hide the CheckinType control if there is a block setting for group types
                 ddlAttendanceType.Visible = false;
             }
         }
@@ -213,15 +244,14 @@ namespace RockWeb.Blocks.CheckIn
         /// </summary>
         private void BuildGroupTypesUI()
         {
-            var groupType = this.GetSelectedTemplateGroupType();
-
-            if ( groupType != null )
+            var groupTypes = this.GetSelectedGroupTypes();
+            if ( groupTypes.Any() )
             {
                 nbGroupTypeWarning.Visible = false;
-                var groupTypes = new GroupTypeService( _rockContext ).GetChildGroupTypes( groupType.Id ).OrderBy( a => a.Order ).ThenBy( a => a.Name );
 
-                // only add each group type once in case the group type is a child of multiple parents
+                // only add each grouptype/group once in case they are a child of multiple parents
                 _addedGroupTypeIds = new List<int>();
+                _addedGroupIds = new List<int>();
                 rptGroupTypes.DataSource = groupTypes.ToList();
                 rptGroupTypes.DataBind();
             }
@@ -236,22 +266,31 @@ namespace RockWeb.Blocks.CheckIn
         /// Gets the type of the selected template group (Check-In Type)
         /// </summary>
         /// <returns></returns>
-        private GroupTypeCache GetSelectedTemplateGroupType()
+        private List<GroupType> GetSelectedGroupTypes()
         {
-            var groupTypeTemplateGuid = this.GetAttributeValue( "GroupTypeTemplate" ).AsGuidOrNull();
-            if ( !groupTypeTemplateGuid.HasValue )
+            var groupTypeGuids = this.GetAttributeValue( "GroupTypes" ).SplitDelimitedValues().AsGuidList();
+            if ( groupTypeGuids.Any() )
+            {
+                return new GroupTypeService( _rockContext )
+                    .Queryable().AsNoTracking()
+                    .Where( t => groupTypeGuids.Contains( t.Guid ) )
+                    .OrderBy( t => t.Order )
+                    .ThenBy( t => t.Name )
+                    .ToList();
+            }
+            else
             {
                 if ( ddlAttendanceType.SelectedGroupTypeId.HasValue )
                 {
-                    var groupType = GroupTypeCache.Read( ddlAttendanceType.SelectedGroupTypeId.Value );
-                    if ( groupType != null )
-                    {
-                        groupTypeTemplateGuid = groupType.Guid;
-                    }
+                    return new GroupTypeService( _rockContext )
+                        .GetChildGroupTypes( ddlAttendanceType.SelectedGroupTypeId.Value )
+                        .OrderBy( a => a.Order )
+                        .ThenBy( a => a.Name )
+                        .ToList();
                 }
             }
 
-            return groupTypeTemplateGuid.HasValue ? GroupTypeCache.Read( groupTypeTemplateGuid.Value ) : null;
+            return new List<GroupType>();
         }
 
         /// <summary>
@@ -274,36 +313,33 @@ namespace RockWeb.Blocks.CheckIn
                 bcAttendance.ChartClick += lcAttendance_ChartClick;
             }
 
-            var lineChartDataSourceUrl = "~/api/Attendances/GetChartData";
-            var dataSourceParams = new Dictionary<string, object>();
             var dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( drpSlidingDateRange.DelimitedValues );
-            
             if ( !dateRange.Start.HasValue || !dateRange.End.HasValue )
             {
                 nbDateRangeWarning.Visible = true;
                 return;
             }
-
             nbDateRangeWarning.Visible = false;
 
-            if ( dateRange.Start.HasValue )
+            var selectedGroupIds = GetSelectedGroupIds();
+            // if no Groups are selected show a warning since no data will show up
+            nbGroupsWarning.Visible = false;
+            if ( !selectedGroupIds.Any() )
             {
-                dataSourceParams.AddOrReplace( "startDate", dateRange.Start.Value.ToString( "o" ) );
+                nbGroupsWarning.Visible = true;
+                return;
             }
 
-            if ( dateRange.End.HasValue )
+            if ( pnlShowByChart.Visible )
             {
-                dataSourceParams.AddOrReplace( "endDate", dateRange.End.Value.ToString( "o" ) );
-            }
-
-            var groupBy = hfGroupBy.Value.ConvertToEnumOrNull<ChartGroupBy>() ?? ChartGroupBy.Week;
-            lcAttendance.TooltipFormatter = null;
-            switch ( groupBy )
-            {
-                case ChartGroupBy.Week:
-                    {
-                        lcAttendance.Options.xaxis.tickSize = new string[] { "7", "day" };
-                        lcAttendance.TooltipFormatter = @"
+                var groupBy = hfGroupBy.Value.ConvertToEnumOrNull<ChartGroupBy>() ?? ChartGroupBy.Week;
+                lcAttendance.TooltipFormatter = null;
+                switch ( groupBy )
+                {
+                    case ChartGroupBy.Week:
+                        {
+                            lcAttendance.Options.xaxis.tickSize = new string[] { "7", "day" };
+                            lcAttendance.TooltipFormatter = @"
 function(item) {
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = 'Weekend of <br />' + itemDate.toLocaleDateString();
@@ -312,14 +348,14 @@ function(item) {
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
 ";
-                    }
+                        }
 
-                    break;
+                        break;
 
-                case ChartGroupBy.Month:
-                    {
-                        lcAttendance.Options.xaxis.tickSize = new string[] { "1", "month" };
-                        lcAttendance.TooltipFormatter = @"
+                    case ChartGroupBy.Month:
+                        {
+                            lcAttendance.Options.xaxis.tickSize = new string[] { "1", "month" };
+                            lcAttendance.TooltipFormatter = @"
 function(item) {
     var month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
@@ -329,14 +365,14 @@ function(item) {
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
 ";
-                    }
+                        }
 
-                    break;
+                        break;
 
-                case ChartGroupBy.Year:
-                    {
-                        lcAttendance.Options.xaxis.tickSize = new string[] { "1", "year" };
-                        lcAttendance.TooltipFormatter = @"
+                    case ChartGroupBy.Year:
+                        {
+                            lcAttendance.Options.xaxis.tickSize = new string[] { "1", "year" };
+                            lcAttendance.TooltipFormatter = @"
 function(item) {
     var itemDate = new Date(item.series.chartData[item.dataIndex].DateTimeStamp);
     var dateText = itemDate.getFullYear();
@@ -345,78 +381,60 @@ function(item) {
     return dateText + '<br />' + seriesLabel + ': ' + pointValue;
 }
 ";
-                    }
+                        }
 
-                    break;
-            }
+                        break;
+                }
 
-            string groupByTextPlural = groupBy.ConvertToString().ToLower().Pluralize();
-            lPatternXFor.Text = string.Format( " {0} for the selected date range", groupByTextPlural );
-            lPatternAndMissedXBetween.Text = string.Format( " {0} between", groupByTextPlural );
+                string groupByTextPlural = groupBy.ConvertToString().ToLower().Pluralize();
+                lPatternXFor.Text = string.Format( " {0} for the selected date range", groupByTextPlural );
+                lPatternAndMissedXBetween.Text = string.Format( " {0} between", groupByTextPlural );
 
-            var selectedDataViewId = dvpDataView.SelectedValue.AsIntegerOrNull();
-            if ( selectedDataViewId.HasValue )
-            {
-                dataSourceParams.AddOrReplace( "dataViewId", selectedDataViewId.Value.ToString() );
-            }
+                bcAttendance.TooltipFormatter = lcAttendance.TooltipFormatter;
 
-            dataSourceParams.AddOrReplace( "groupBy", hfGroupBy.Value.AsInteger() );
+                var chartData = this.GetAttendanceChartData().ToList();
+                var jsonSetting = new JsonSerializerSettings
+                {
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                    ContractResolver = new Rock.Utility.IgnoreUrlEncodedKeyContractResolver()
+                };
+                string chartDataJson = JsonConvert.SerializeObject( chartData, Formatting.None, jsonSetting );
 
-            dataSourceParams.AddOrReplace( "graphBy", hfGraphBy.Value.AsInteger() );
+                var singleDateTime = chartData.GroupBy( a => a.DateTimeStamp ).Count() == 1;
+                if ( singleDateTime )
+                {
+                    bcAttendance.Visible = true;
+                    lcAttendance.Visible = false;
+                    bcAttendance.ChartData = chartDataJson;
+                }
+                else
+                {
+                    bcAttendance.Visible = false;
+                    lcAttendance.Visible = true;
+                    lcAttendance.ChartData = chartDataJson;
+                }
+                bcAttendance.Visible = singleDateTime;
+                lcAttendance.Visible = !singleDateTime;
 
-            var selectedCampusValues = clbCampuses.SelectedValues;
-
-            string campusIdsValue = selectedCampusValues.AsDelimited( "," );
-            dataSourceParams.AddOrReplace( "campusIds", campusIdsValue );
-
-            var selectedGroupIds = GetSelectedGroupIds();
-
-            if ( selectedGroupIds.Any() )
-            {
-                dataSourceParams.AddOrReplace( "groupIds", selectedGroupIds.AsDelimited( "," ) );
-            }
-            else
-            {
-                // set the value to 0 to indicate that no groups where selected (and so that Rest Endpoint doesn't 404)
-                dataSourceParams.AddOrReplace( "groupIds", 0 );
-            }
-
-            SaveSettingsToUserPreferences();
-
-            lineChartDataSourceUrl += "?" + dataSourceParams.Select( s => string.Format( "{0}={1}", s.Key, s.Value ) ).ToList().AsDelimited( "&" );
-
-            // if no Groups are selected show a warning since no data will show up
-            nbGroupsWarning.Visible = false;
-            if ( !selectedGroupIds.Any() )
-            {
-                nbGroupsWarning.Visible = true;
-                return;
-            }
-
-            lcAttendance.DataSourceUrl = this.ResolveUrl( lineChartDataSourceUrl );
-            bcAttendance.TooltipFormatter = lcAttendance.TooltipFormatter;
-            bcAttendance.DataSourceUrl = this.ResolveUrl( lineChartDataSourceUrl );
-
-            var chartData = this.GetAttendanceChartData();
-            var singleDateTime = chartData.GroupBy(a => a.DateTimeStamp).Count() == 1;
-            bcAttendance.Visible = singleDateTime;
-            lcAttendance.Visible = !singleDateTime;
-
-            if ( pnlChartAttendanceGrid.Visible )
-            {
-                BindChartAttendanceGrid( chartData );
+                if ( pnlChartAttendanceGrid.Visible )
+                {
+                    BindChartAttendanceGrid( chartData );
+                }
             }
 
             if ( pnlShowByAttendees.Visible )
             {
                 BindAttendeesGrid();
             }
+
+            SaveSettings();
+
         }
 
         /// <summary>
         /// Saves the attendance reporting settings to user preferences.
         /// </summary>
-        private void SaveSettingsToUserPreferences()
+        private void SaveSettings()
         {
             string keyPrefix = string.Format( "attendance-reporting-{0}-", this.BlockId );
 
@@ -425,7 +443,8 @@ function(item) {
             this.SetUserPreference( keyPrefix + "SlidingDateRange", drpSlidingDateRange.DelimitedValues, false );
             this.SetUserPreference( keyPrefix + "GroupBy", hfGroupBy.Value, false );
             this.SetUserPreference( keyPrefix + "GraphBy", hfGraphBy.Value, false );
-            this.SetUserPreference( keyPrefix + "CampusIds", clbCampuses.SelectedValues.AsDelimited(","), false );
+            this.SetUserPreference( keyPrefix + "CampusIds", clbCampuses.SelectedValues.AsDelimited( "," ), false );
+            this.SetUserPreference( keyPrefix + "ScheduleIds", spSchedules.SelectedValues.ToList().AsDelimited( "," ), false );
             this.SetUserPreference( keyPrefix + "DataView", dvpDataView.SelectedValue, false );
 
             var selectedGroupIds = GetSelectedGroupIds();
@@ -454,6 +473,18 @@ function(item) {
             this.SetUserPreference( keyPrefix + "AttendeesFilterByPattern", string.Format( "{0}|{1}|{2}|{3}", tbPatternXTimes.Text, cbPatternAndMissed.Checked, tbPatternMissedXTimes.Text, drpPatternDateRange.DelimitedValues ), false );
 
             this.SaveUserPreferences( keyPrefix );
+
+            // Create URL for selected settings
+            var pageReference = CurrentPageReference;
+            foreach ( var setting in GetUserPreferences( keyPrefix ) )
+            {
+                string key = setting.Key.Substring( keyPrefix.Length );
+                pageReference.Parameters.AddOrReplace( key, setting.Value );
+            }
+
+            Uri uri = new Uri( Request.Url.ToString() );
+            hfFilterUrl.Value = uri.Scheme + "://" + uri.GetComponents( UriComponents.HostAndPort, UriFormat.UriEscaped ) + pageReference.BuildUrl();
+            btnCopyToClipboard.Disabled = false;
         }
 
         /// <summary>
@@ -475,14 +506,16 @@ function(item) {
         /// <summary>
         /// Loads the attendance reporting settings from user preferences.
         /// </summary>
-        private void LoadSettingsFromUserPreferences()
+        private void LoadSettings()
         {
+            FilterIncludedInURL = false;
+
             string keyPrefix = string.Format( "attendance-reporting-{0}-", this.BlockId );
 
-            ddlAttendanceType.SelectedGroupTypeId = this.GetUserPreference( keyPrefix + "TemplateGroupTypeId" ).AsIntegerOrNull();
+            ddlAttendanceType.SelectedGroupTypeId = GetSetting( keyPrefix, "TemplateGroupTypeId" ).AsIntegerOrNull();
             BuildGroupTypesUI();
 
-            string slidingDateRangeSettings = this.GetUserPreference( keyPrefix + "SlidingDateRange" );
+            string slidingDateRangeSettings = GetSetting( keyPrefix, "SlidingDateRange" );
             if ( string.IsNullOrWhiteSpace( slidingDateRangeSettings ) )
             {
                 // default to current year
@@ -494,29 +527,50 @@ function(item) {
                 drpSlidingDateRange.DelimitedValues = slidingDateRangeSettings;
             }
 
-            dvpDataView.SetValue( this.GetUserPreference( keyPrefix + "DataView" ) );
+            dvpDataView.SetValue( GetSetting( keyPrefix, "DataView" ) );
 
-            hfGroupBy.Value = this.GetUserPreference( keyPrefix + "GroupBy" );
-            hfGraphBy.Value = this.GetUserPreference( keyPrefix + "GraphBy" );
+            hfGroupBy.Value = GetSetting( keyPrefix, "GroupBy" );
+            hfGraphBy.Value = GetSetting( keyPrefix, "GraphBy" );
 
             var campusIdList = new List<string>();
-            string campusKey = keyPrefix + "CampusIds";
-            var sessionPreferences = RockPage.SessionUserPreferences();
-            if ( sessionPreferences.ContainsKey( campusKey ) )
+            string campusQryString = Request.QueryString["CampusIds"];
+            if ( campusQryString != null )
             {
-                campusIdList = sessionPreferences[campusKey].Split( ',' ).ToList();
+                FilterIncludedInURL = true;
+                campusIdList = campusQryString.Split( ',' ).ToList();
                 clbCampuses.SetValues( campusIdList );
             }
             else
             {
-                // if previous campus selection has never been made, default to showing all of them
-                foreach ( ListItem item in clbCampuses.Items )
+                string campusKey = keyPrefix + "CampusIds";
+
+                var sessionPreferences = RockPage.SessionUserPreferences();
+                if ( sessionPreferences.ContainsKey( campusKey ) )
                 {
-                    item.Selected = true;
+                    campusIdList = sessionPreferences[campusKey].Split( ',' ).ToList();
+                    clbCampuses.SetValues( campusIdList );
+                }
+                else
+                {
+                    // if previous campus selection has never been made, default to showing all of them
+                    foreach ( ListItem item in clbCampuses.Items )
+                    {
+                        item.Selected = true;
+                    }
                 }
             }
 
-            var groupIdList = this.GetUserPreference( keyPrefix + "GroupIds" ).Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).ToList();
+            var scheduleIdList = GetSetting( keyPrefix, "ScheduleIds" ).Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).AsIntegerList();
+            if ( scheduleIdList.Any() )
+            {
+                var schedules = new ScheduleService( _rockContext )
+                    .Queryable().AsNoTracking()
+                    .Where( s => scheduleIdList.Contains( s.Id ) )
+                    .ToList();
+                spSchedules.SetValues( schedules );
+            }
+
+            var groupIdList = GetSetting( keyPrefix, "GroupIds" ).Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).ToList();
 
             // if no groups are selected, default to showing all of them
             var selectAll = groupIdList.Count == 0;
@@ -530,13 +584,13 @@ function(item) {
                 }
             }
 
-            ShowBy showBy = this.GetUserPreference( keyPrefix + "ShowBy" ).ConvertToEnumOrNull<ShowBy>() ?? ShowBy.Chart;
+            ShowBy showBy = GetSetting( keyPrefix, "ShowBy" ).ConvertToEnumOrNull<ShowBy>() ?? ShowBy.Chart;
             DisplayShowBy( showBy );
 
-            ViewBy viewBy = this.GetUserPreference( keyPrefix + "ViewBy" ).ConvertToEnumOrNull<ViewBy>() ?? ViewBy.Attendees;
+            ViewBy viewBy = GetSetting( keyPrefix, "ViewBy" ).ConvertToEnumOrNull<ViewBy>() ?? ViewBy.Attendees;
             hfViewBy.Value = viewBy.ConvertToInt().ToString();
 
-            AttendeesFilterBy attendeesFilterBy = this.GetUserPreference( keyPrefix + "AttendeesFilterByType" ).ConvertToEnumOrNull<AttendeesFilterBy>() ?? AttendeesFilterBy.All;
+            AttendeesFilterBy attendeesFilterBy = GetSetting( keyPrefix, "AttendeesFilterByType" ).ConvertToEnumOrNull<AttendeesFilterBy>() ?? AttendeesFilterBy.All;
 
             switch ( attendeesFilterBy )
             {
@@ -557,8 +611,8 @@ function(item) {
                     break;
             }
 
-            ddlNthVisit.SelectedValue = this.GetUserPreference( keyPrefix + "AttendeesFilterByVisit" );
-            string attendeesFilterByPattern = this.GetUserPreference( keyPrefix + "AttendeesFilterByPattern" );
+            ddlNthVisit.SelectedValue = GetSetting( keyPrefix, "AttendeesFilterByVisit" );
+            string attendeesFilterByPattern = GetSetting( keyPrefix, "AttendeesFilterByPattern" );
             string[] attendeesFilterByPatternValues = attendeesFilterByPattern.Split( '|' );
             if ( attendeesFilterByPatternValues.Length == 4 )
             {
@@ -567,6 +621,24 @@ function(item) {
                 tbPatternMissedXTimes.Text = attendeesFilterByPatternValues[2];
                 drpPatternDateRange.DelimitedValues = attendeesFilterByPatternValues[3];
             }
+        }
+
+        /// <summary>
+        /// Gets the setting.
+        /// </summary>
+        /// <param name="prefix">The prefix.</param>
+        /// <param name="key">The key.</param>
+        /// <returns></returns>
+        private string GetSetting( string prefix, string key )
+        {
+            string setting = Request.QueryString[key];
+            if ( setting != null )
+            {
+                FilterIncludedInURL = true;
+                return setting;
+            }
+
+            return this.GetUserPreference( prefix + key );
         }
 
         /// <summary>
@@ -623,6 +695,16 @@ function(item) {
         /// <param name="chartData">The chart data.</param>
         private void BindChartAttendanceGrid( IEnumerable<Rock.Chart.IChartData> chartData )
         {
+            var graphBy = hfGraphBy.Value.ConvertToEnumOrNull<AttendanceGraphBy>() ?? AttendanceGraphBy.Total;
+            gChartAttendance.Columns[1].Visible = graphBy != AttendanceGraphBy.Total;
+            switch ( graphBy )
+            {
+                case AttendanceGraphBy.Group: gChartAttendance.Columns[1].HeaderText = "Group"; break;
+                case AttendanceGraphBy.Campus: gChartAttendance.Columns[1].HeaderText = "Campus"; break;
+                case AttendanceGraphBy.Location: gChartAttendance.Columns[1].HeaderText = "Location"; break;
+                case AttendanceGraphBy.Schedule: gChartAttendance.Columns[1].HeaderText = "Schedule"; break;
+            }
+
             SortProperty sortProperty = gChartAttendance.SortProperty;
 
             if ( sortProperty != null )
@@ -644,109 +726,95 @@ function(item) {
         private IEnumerable<Rock.Chart.IChartData> GetAttendanceChartData()
         {
             var dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( drpSlidingDateRange.DelimitedValues );
+            if ( dateRange.End == null )
+            {
+                dateRange.End = RockDateTime.Now;
+            }
+
+            // Adjust the start/end times to reflect the attendance dates who's SundayDate value would fall between the date range selected
+            DateTime start = dateRange.Start.HasValue ? 
+                dateRange.Start.Value.Date.AddDays(  0 - (dateRange.Start.Value.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)dateRange.Start.Value.DayOfWeek - 1)) :
+                new DateTime( 1900, 1, 1 );
+
+            DateTime end = dateRange.End.HasValue ?
+                dateRange.End.Value.AddDays( 0 - (int)dateRange.End.Value.DayOfWeek ) :
+                new DateTime( 2100, 1, 1, 23, 59, 59 );
+
+            if ( end < start )
+            {
+                end = end.AddDays( start.Subtract(end).Days + 6 );
+            }
 
             string groupIds = GetSelectedGroupIds().AsDelimited( "," );
 
             var selectedCampusIds = clbCampuses.SelectedValues;
             string campusIds = selectedCampusIds.AsDelimited( "," );
 
+            var scheduleIds = spSchedules.SelectedValues.ToList().AsDelimited( "," );
+
             var chartData = new AttendanceService( _rockContext ).GetChartData(
                 hfGroupBy.Value.ConvertToEnumOrNull<ChartGroupBy>() ?? ChartGroupBy.Week,
                 hfGraphBy.Value.ConvertToEnumOrNull<AttendanceGraphBy>() ?? AttendanceGraphBy.Total,
-                dateRange.Start,
-                dateRange.End,
+                start,
+                end,
                 groupIds,
                 campusIds,
-                dvpDataView.SelectedValueAsInt() );
+                dvpDataView.SelectedValueAsInt(),
+                scheduleIds );
             return chartData;
         }
-
-        private List<DateTime> _possibleAttendances = null;
-        private Dictionary<int, string> _scheduleNameLookup = null;
 
         /// <summary>
         /// Binds the attendees grid.
         /// </summary>
-        private void BindAttendeesGrid()
+        private void BindAttendeesGrid( bool isExporting = false )
         {
-            var dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( drpSlidingDateRange.DelimitedValues );
-            if ( dateRange.End == null || dateRange.End > RockDateTime.Now )
-            {
-                dateRange.End = RockDateTime.Now;
-            }
-
-            var rockContext = new RockContext();
-
-            // make a qryPersonAlias so that the generated SQL will be a "WHERE .. IN ()" instead of an OUTER JOIN (which is incredibly slow for this) 
-            var qryPersonAlias = new PersonAliasService( rockContext ).Queryable();
-
-            var qryAttendance = new AttendanceService( rockContext ).Queryable();
-
-            qryAttendance = qryAttendance.Where( a => a.DidAttend.HasValue && a.DidAttend.Value );
-            var groupType = this.GetSelectedTemplateGroupType();
-            var qryAllVisits = qryAttendance;
-            if ( groupType != null )
-            {
-                var childGroupTypeIds = new GroupTypeService( rockContext ).GetChildGroupTypes( groupType.Id ).Select( a => a.Id );
-                qryAllVisits = qryAttendance.Where( a => childGroupTypeIds.Any( b => b == a.Group.GroupTypeId ) );
-            }
-            else
+            // Get Group Type filter
+            var groupTypes = this.GetSelectedGroupTypes();
+            if ( groupTypes == null || !groupTypes.Any() )
             {
                 return;
             }
+            var groupTypeIdList = groupTypes.Select( t => t.Id ).ToList();
 
+            // Get the daterange filter
+            var dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( drpSlidingDateRange.DelimitedValues );
+            if ( dateRange.End == null )
+            {
+                dateRange.End = RockDateTime.Now;
+            }
+            var start = dateRange.Start;
+            var end = dateRange.End;
+
+            // Get the group filter
             var groupIdList = new List<int>();
             string groupIds = GetSelectedGroupIds().AsDelimited( "," );
             if ( !string.IsNullOrWhiteSpace( groupIds ) )
             {
                 groupIdList = groupIds.Split( ',' ).AsIntegerList();
-                qryAttendance = qryAttendance.Where( a => a.GroupId.HasValue && groupIdList.Contains( a.GroupId.Value ) );
             }
 
-            //// If campuses were included, filter attendances by those that have selected campuses
-            //// if 'null' is one of the campuses, treat that as a 'CampusId is Null'
+            // If campuses were included, filter attendances by those that have selected campuses
+            // if 'null' is one of the campuses, treat that as a 'CampusId is Null'
             var includeNullCampus = clbCampuses.SelectedValues.Any( a => a.Equals( "null", StringComparison.OrdinalIgnoreCase ) );
             var campusIdList = clbCampuses.SelectedValues.AsIntegerList();
-
-            // remove 0 from the list, just in case it is there 
-            campusIdList.Remove( 0 );
-
-            if ( campusIdList.Any() )
+            campusIdList.Remove( 0 ); // remove 0 from the list, just in case it is there 
+            if ( !includeNullCampus && !campusIdList.Any() )
             {
-                if ( includeNullCampus )
-                {
-                    // show records that have a campusId in the campusIdsList + records that have a null campusId
-                    qryAttendance = qryAttendance.Where( a => ( a.CampusId.HasValue && campusIdList.Contains( a.CampusId.Value ) ) || !a.CampusId.HasValue );
-                }
-                else
-                {
-                    // only show records that have a campusId in the campusIdList
-                    qryAttendance = qryAttendance.Where( a => a.CampusId.HasValue && campusIdList.Contains( a.CampusId.Value ) );
-                }
-            }
-            else if ( includeNullCampus )
-            {
-                // 'null' was the only campusId in the campusIds parameter, so only show records that have a null CampusId
-                qryAttendance = qryAttendance.Where( a => !a.CampusId.HasValue );
+                campusIdList = null;
             }
 
-            // have the "Missed" query be the same as the qry before the Main date range is applied since it'll have a different date range
-            var qryMissed = qryAttendance;
-
-            if ( dateRange.Start.HasValue )
+            // If schedules were included, filter attendance by those that have the selected schedules
+            var scheduleIdList = spSchedules.SelectedValues.AsIntegerList();
+            scheduleIdList.Remove( 0 );
+            if ( !scheduleIdList.Any() )
             {
-                qryAttendance = qryAttendance.Where( a => a.StartDateTime >= dateRange.Start.Value );
+                scheduleIdList = null;
             }
 
-            if ( dateRange.End.HasValue )
-            {
-                qryAttendance = qryAttendance.Where( a => a.StartDateTime < dateRange.End.Value );
-            }
-
-            // we want to get the first 2 visits at a minimum so we can show the date in the grid
+            // we want to get the first 2 visits at a minimum so we can show the dates in the grid
             int nthVisitsTake = 2;
             int? byNthVisit = null;
-
             if ( radByVisit.Checked )
             {
                 // If we are filtering by nth visit, we might want to get up to first 5
@@ -756,247 +824,429 @@ function(item) {
                     nthVisitsTake = byNthVisit.Value;
                 }
             }
+            bool showNonAttenders = byNthVisit.HasValue && byNthVisit.Value == 0;
 
+            // Get any attendance pattern filters
+            int? attendedMinCount = null;
+            int? attendedMissedCount = null;
+            DateRange attendedMissedDateRange = new DateRange();
+            if ( radByPattern.Checked )
+            {
+                attendedMinCount = tbPatternXTimes.Text.AsIntegerOrNull();
+                if ( cbPatternAndMissed.Checked )
+                {
+                    attendedMissedCount = tbPatternMissedXTimes.Text.AsIntegerOrNull();
+                    attendedMissedDateRange = new DateRange( drpPatternDateRange.LowerValue, drpPatternDateRange.UpperValue );
+                    if ( !attendedMissedDateRange.Start.HasValue || !attendedMissedDateRange.End.HasValue )
+                    {
+                        nbMissedDateRangeRequired.Visible = true;
+                        return;
+                    }
+                }
+            }
+            nbMissedDateRangeRequired.Visible = false;
+
+            // Determine how dates shold be grouped
             ChartGroupBy groupBy = hfGroupBy.Value.ConvertToEnumOrNull<ChartGroupBy>() ?? ChartGroupBy.Week;
 
-            IQueryable<PersonWithSummary> qryByPersonWithSummary = null;
+            // Determine if parents or children are being included with results
+            var includeParents = hfViewBy.Value.ConvertToEnumOrNull<ViewBy>().GetValueOrDefault( ViewBy.Attendees ) == ViewBy.ParentsOfAttendees;
+            var includeChildren = hfViewBy.Value.ConvertToEnumOrNull<ViewBy>().GetValueOrDefault( ViewBy.Attendees ) == ViewBy.ChildrenOfAttendees;
 
-            if ( byNthVisit.HasValue && byNthVisit.Value == 0 )
+            // Atttendance results
+            var allAttendeeDates = new Dictionary<int, AttendeeDates>();
+            var allResults = new List<AttendeeResult>();
+
+            // Collection of async queries to run before assembling date
+            var qryTasks = new List<Task>();
+
+            DataTable dtAttendeeLastAttendance = null;
+            DataTable dtAttendees = null;
+            DataTable dtAttendeeFirstDates = null;
+            List<int> personIdsWhoDidNotMiss = null;
+
+            if ( !showNonAttenders )
             {
-                // Show members of the selected groups that did not attend at all during selected date range
+                // Call the stored procedure to get all the person ids and their attendance dates for anyone 
+                // whith attendance that matches the selected criteria.
+                qryTasks.Add( Task.Run( () =>
+                {
+                    DataTable dtAttendeeDates = AttendanceService.GetAttendanceAnalyticsAttendeeDates(
+                        groupIdList, start, end, campusIdList, includeNullCampus, scheduleIdList ).Tables[0];
 
-                // Get all the person ids that did attend
-                var attendeePersonIds = qryAttendance.Select( a => a.PersonAlias.PersonId );
-
-                // Get all the active members of the selected groups who have no attendance within selected date range and campus
-                qryByPersonWithSummary = new GroupMemberService( rockContext )
-                    .Queryable().AsNoTracking()
-                    .Where( m => 
-                        groupIdList.Contains( m.GroupId ) &&
-                        !attendeePersonIds.Contains( m.PersonId ) &&
-                        m.GroupMemberStatus == GroupMemberStatus.Active )
-                    .Select( m => new PersonWithSummary
+                    foreach ( DataRow row in dtAttendeeDates.Rows )
                     {
-                        PersonId = m.PersonId,
-                        FirstVisits = new DateTime[] { }.AsQueryable(),
-                        LastVisit = new AttendancePersonAlias(),
-                        AttendanceSummary = new DateTime[] { }.AsQueryable()
-                    } );
+                        int personId = (int)row["PersonId"];
+                        allAttendeeDates.AddOrIgnore( personId, new AttendeeDates() );
+                        var result = allAttendeeDates[personId];
+                        result.PersonId = personId;
+
+                        DateTime summaryDate = DateTime.MinValue;
+                        switch ( groupBy )
+                        {
+                            case ChartGroupBy.Week: summaryDate = (DateTime)row["SundayDate"]; break;
+                            case ChartGroupBy.Month: summaryDate = (DateTime)row["MonthDate"]; break;
+                            case ChartGroupBy.Year: summaryDate = (DateTime)row["YearDate"]; break;
+                        }
+                        if ( !result.AttendanceSummary.Contains( summaryDate ) )
+                        {
+                            result.AttendanceSummary.Add( summaryDate );
+                        }
+                    }
+
+                } ) );
+
+                // Call the stored procedure to get the last attendance 
+                qryTasks.Add( Task.Run( () =>
+                {
+                    dtAttendeeLastAttendance = AttendanceService.GetAttendanceAnalyticsAttendeeLastAttendance(
+                        groupIdList, start, end, campusIdList, includeNullCampus, scheduleIdList ).Tables[0];
+                } ) );
+
+                // Call the stored procedure to get the names/demographic info for attendess
+                qryTasks.Add( Task.Run( () =>
+                {
+                    dtAttendees = AttendanceService.GetAttendanceAnalyticsAttendees(
+                        groupIdList, start, end, campusIdList, includeNullCampus, scheduleIdList, includeParents, includeChildren ).Tables[0];
+                } ) );
+
+                // If checking for missed attendance, get the people who missed that number of dates during the missed date range
+                if ( attendedMissedCount.HasValue &&
+                    attendedMissedDateRange.Start.HasValue &&
+                    attendedMissedDateRange.End.HasValue )
+                {
+                    qryTasks.Add( Task.Run( () =>
+                    {
+                        personIdsWhoDidNotMiss = new List<int>();
+
+                        DataTable dtAttendeeDatesMissed = AttendanceService.GetAttendanceAnalyticsAttendeeDates(
+                            groupIdList, attendedMissedDateRange.Start.Value, attendedMissedDateRange.End.Value,
+                            campusIdList, includeNullCampus, scheduleIdList ).Tables[0];
+
+                        var missedResults = new Dictionary<int, AttendeeResult>();
+                        foreach ( DataRow row in dtAttendeeDatesMissed.Rows )
+                        {
+                            int personId = (int)row["PersonId"];
+                            missedResults.AddOrIgnore( personId, new AttendeeResult() );
+                            var missedResult = missedResults[personId];
+                            missedResult.PersonId = personId;
+
+                            DateTime summaryDate = DateTime.MinValue;
+                            switch ( groupBy )
+                            {
+                                case ChartGroupBy.Week: summaryDate = (DateTime)row["SundayDate"]; break;
+                                case ChartGroupBy.Month: summaryDate = (DateTime)row["MonthDate"]; break;
+                                case ChartGroupBy.Year: summaryDate = (DateTime)row["YearDate"]; break;
+                            }
+
+                            if ( !missedResult.AttendanceSummary.Contains( summaryDate ) )
+                            {
+                                missedResult.AttendanceSummary.Add( summaryDate );
+                            }
+                        }
+
+                        var missedPossibleDates = GetPossibleAttendancesForDateRange( attendedMissedDateRange, groupBy );
+                        int missedPossibleCount = missedPossibleDates.Count();
+
+                        personIdsWhoDidNotMiss = missedResults
+                            .Where( m => missedPossibleCount - m.Value.AttendanceSummary.Count < attendedMissedCount.Value )
+                            .Select( m => m.Key )
+                            .ToList();
+
+                    } ) );
+
+                }
+
+                // Call the stored procedure to get the first five dates that any person attended this group type
+                qryTasks.Add( Task.Run( () =>
+                {
+                    dtAttendeeFirstDates = AttendanceService.GetAttendanceAnalyticsAttendeeFirstDates(
+                        groupTypeIdList, groupIdList, start, end, campusIdList, includeNullCampus, scheduleIdList ).Tables[0];
+                } ) );
+
+
             }
             else
             {
-                var qryAttendanceWithSummaryDateTime = qryAttendance.GetAttendanceWithSummaryDateTime( groupBy );
-                var qryGroup = new GroupService( rockContext ).Queryable();
-
-                var qryJoinPerson = qryAttendance.Join(
-                    qryPersonAlias,
-                    k1 => k1.PersonAliasId,
-                    k2 => k2.Id,
-                    ( a, pa ) => new
-                    {
-                        CampusId = a.CampusId,
-                        GroupId = a.GroupId,
-                        ScheduleId = a.ScheduleId,
-                        StartDateTime = a.StartDateTime,
-                        PersonAliasId = pa.Id,
-                        PersonAliasPersonId = pa.PersonId
-                    } );
-
-                var qryJoinFinal = qryJoinPerson.Join(
-                    qryGroup,
-                    k1 => k1.GroupId,
-                    k2 => k2.Id,
-                    ( a, g ) => new AttendancePersonAlias
-                    {
-                        CampusId = a.CampusId,
-                        GroupId = a.GroupId,
-                        GroupName = g.Name,
-                        ScheduleId = a.ScheduleId,
-                        StartDateTime = a.StartDateTime,
-                        PersonAliasId = a.PersonAliasId,
-                        PersonAliasPersonId = a.PersonAliasPersonId
-                    } );
-
-                var qryByPerson = qryJoinFinal.GroupBy( a => a.PersonAliasPersonId ).Select( a => new
+                qryTasks.Add( Task.Run( () =>
                 {
-                    PersonId = a.Key,
-                    Attendances = a
-                } );
+                    DataSet ds = AttendanceService.GetAttendanceAnalyticsNonAttendees(
+                        groupTypeIdList, groupIdList, start, end, campusIdList, includeNullCampus, scheduleIdList, includeParents, includeChildren );
 
-                int? attendedMinCount = null;
-                int? attendedMissedCount = null;
-                DateRange attendedMissedDateRange = new DateRange();
-                if ( radByPattern.Checked )
-                {
-                    attendedMinCount = tbPatternXTimes.Text.AsIntegerOrNull();
-                    if ( cbPatternAndMissed.Checked )
+                    DataTable dtNonAttenders = ds.Tables[0];
+                    dtAttendeeFirstDates = ds.Tables[1];
+                    dtAttendeeLastAttendance = ds.Tables[2];
+
+                    foreach ( DataRow row in dtNonAttenders.Rows )
                     {
-                        attendedMissedCount = tbPatternMissedXTimes.Text.AsIntegerOrNull();
-                        attendedMissedDateRange = new DateRange( drpPatternDateRange.LowerValue, drpPatternDateRange.UpperValue );
-                        if ( !attendedMissedDateRange.Start.HasValue || !attendedMissedDateRange.End.HasValue )
+
+                        int personId = (int)row["Id"];
+
+                        var result = new AttendeeResult();
+                        result.PersonId = personId;
+
+                        var person = new PersonInfo();
+                        person.NickName = row["NickName"].ToString();
+                        person.LastName = row["LastName"].ToString();
+                        person.Email = row["Email"].ToString();
+                        person.Birthdate = row["BirthDate"] as DateTime?;
+                        person.Age = Person.GetAge( person.Birthdate );
+
+                        person.ConnectionStatusValueId = row["ConnectionStatusValueId"] as int?;
+                        result.Person = person;
+
+                        if ( includeParents )
                         {
-                            nbMissedDateRangeRequired.Visible = true;
-                            return;
+                            result.ParentId = (int)row["ParentId"];
+                            var parent = new PersonInfo();
+                            parent.NickName = row["ParentNickName"].ToString();
+                            parent.LastName = row["ParentLastName"].ToString();
+                            parent.Email = row["ParentEmail"].ToString();
+                            parent.Birthdate = row["ParentBirthDate"] as DateTime?;
+                            parent.Age = Person.GetAge( parent.Birthdate );
+                            result.Parent = parent;
+                        }
+
+                        if ( includeChildren )
+                        {
+                            var child = new PersonInfo();
+                            result.ChildId = (int)row["ChildId"];
+                            child.NickName = row["ChildNickName"].ToString();
+                            child.LastName = row["ChildLastName"].ToString();
+                            child.Email = row["ChildEmail"].ToString();
+                            child.Birthdate = row["ChildBirthDate"] as DateTime?;
+                            child.Age = Person.GetAge( child.Birthdate );
+                            result.Child = child;
+                        }
+
+                        allResults.Add( result );
+                    }
+
+
+                } ) );
+            }
+
+            // If a dataview filter was included, find the people who match that criteria
+            List<int> dataViewPersonIds = null;
+            qryTasks.Add( Task.Run( () =>
+            {
+                var dataViewId = dvpDataView.SelectedValueAsInt();
+                if ( dataViewId.HasValue )
+                {
+                    dataViewPersonIds = new List<int>();
+                    var dataView = new DataViewService( _rockContext ).Get( dataViewId.Value );
+                    if ( dataView != null )
+                    {
+                        var errorMessages = new List<string>();
+                        var dvPersonService = new PersonService( _rockContext );
+                        ParameterExpression paramExpression = dvPersonService.ParameterExpression;
+                        Expression whereExpression = dataView.GetExpression( dvPersonService, paramExpression, out errorMessages );
+
+                        SortProperty sort = null;
+                        var dataViewPersonIdQry = dvPersonService
+                            .Queryable().AsNoTracking()
+                            .Where( paramExpression, whereExpression, sort )
+                            .Select( p => p.Id );
+                        dataViewPersonIds = dataViewPersonIdQry.ToList();
+                    }
+                }
+            } ) );
+
+            // Wait for all the queries to finish
+            Task.WaitAll( qryTasks.ToArray() );
+
+            if ( !showNonAttenders )
+            {
+                // If dataview filter was included remove anyone not in that dataview
+                if ( dataViewPersonIds != null )
+                {
+                    allAttendeeDates = allAttendeeDates
+                        .Where( p => dataViewPersonIds.Contains( p.Key ) )
+                        .ToDictionary( k => k.Key, v => v.Value );
+                }
+
+                // If filter for number missed was included, remove anyone who did not match that filter
+                if ( personIdsWhoDidNotMiss != null )
+                {
+                    allAttendeeDates = allAttendeeDates
+                        .Where( p => !personIdsWhoDidNotMiss.Contains( p.Key ) )
+                        .ToDictionary( k => k.Key, v => v.Value );
+                }
+
+                // If filtering by minimum times attended
+                if ( attendedMinCount.HasValue )
+                {
+                    allAttendeeDates = allAttendeeDates
+                        .Where( p => p.Value.AttendanceSummary.Count() >= attendedMinCount )
+                        .ToDictionary( k => k.Key, v => v.Value );
+                }
+
+                // Add the first visit dates for people
+                foreach ( DataRow row in dtAttendeeFirstDates.Rows )
+                {
+                    int personId = (int)row["PersonId"];
+                    if ( allAttendeeDates.ContainsKey( personId ) )
+                    {
+                        allAttendeeDates[personId].FirstVisits.Add( (DateTime)row["StartDate"] );
+                    }
+                }
+
+                // If filtering based on visit time, only include those who visited the selected time during the date range
+                if ( byNthVisit.HasValue )
+                {
+                    int skipCount = byNthVisit.Value - 1;
+                    allAttendeeDates = allAttendeeDates
+                        .Where( p => p.Value.FirstVisits.Skip( skipCount ).Take( 1 ).Any( d => d >= start && d < end ) )
+                        .ToDictionary( k => k.Key, v => v.Value );
+                }
+
+                // Add the Last Attended informatio
+                if ( dtAttendeeLastAttendance != null )
+                {
+                    foreach ( DataRow row in dtAttendeeLastAttendance.Rows )
+                    {
+                        int personId = (int)row["PersonId"];
+                        if ( allAttendeeDates.ContainsKey( personId ) )
+                        {
+                            var result = allAttendeeDates[personId];
+                            if ( result.LastVisit == null )
+                            {
+                                var lastAttendance = new PersonLastAttendance();
+                                lastAttendance.CampusId = row["CampusId"] as int?;
+                                lastAttendance.GroupId = row["GroupId"] as int?;
+                                lastAttendance.GroupName = row["GroupName"].ToString();
+                                lastAttendance.RoleName = row["RoleName"].ToString();
+                                lastAttendance.InGroup = !string.IsNullOrWhiteSpace( lastAttendance.RoleName );
+                                lastAttendance.ScheduleId = row["ScheduleId"] as int?;
+                                lastAttendance.StartDateTime = (DateTime)row["StartDateTime"];
+                                lastAttendance.LocationId = row["LocationId"] as int?;
+                                lastAttendance.LocationName = row["LocationName"].ToString();
+                                result.LastVisit = lastAttendance;
+                            }
                         }
                     }
                 }
 
-                nbMissedDateRangeRequired.Visible = false;
-
-                // get either the first 2 visits or the first 5 visits (using a const take of 2 or 5 vs a variable to help the SQL optimizer)
-                qryByPersonWithSummary = qryByPerson.Select( a => new PersonWithSummary
+                // Add the Demographic information
+                if ( dtAttendees != null )
                 {
-                    PersonId = a.PersonId,
-                    FirstVisits = qryAllVisits.Where( b => qryPersonAlias.Where( pa => pa.PersonId == a.PersonId ).Any( pa => pa.Id == b.PersonAliasId ) ).Select( s => s.StartDateTime ).OrderBy( x => x ).Take( 2 ),
-                    LastVisit = a.Attendances.OrderByDescending( x => x.StartDateTime ).FirstOrDefault(),
-                    AttendanceSummary = qryAttendanceWithSummaryDateTime.Where( x => qryPersonAlias.Where( pa => pa.PersonId == a.PersonId ).Any( pa => pa.Id == x.Attendance.PersonAliasId ) ).GroupBy( g => g.SummaryDateTime ).Select( s => s.Key )
-                } );
+                    var newResults = new Dictionary<int, AttendeeResult>();
 
-                if ( nthVisitsTake > 2 )
-                {
-                    qryByPersonWithSummary = qryByPerson.Select( a => new PersonWithSummary
+                    foreach ( DataRow row in dtAttendees.Rows )
                     {
-                        PersonId = a.PersonId,
-                        FirstVisits = qryAllVisits.Where( b => qryPersonAlias.Where( pa => pa.PersonId == a.PersonId ).Any( pa => pa.Id == b.PersonAliasId ) ).Select( s => s.StartDateTime ).OrderBy( x => x ).Take( 5 ),
-                        LastVisit = a.Attendances.OrderByDescending( x => x.StartDateTime ).FirstOrDefault(),
-                        AttendanceSummary = qryAttendanceWithSummaryDateTime.Where( x => qryPersonAlias.Where( pa => pa.PersonId == a.PersonId ).Any( pa => pa.Id == x.Attendance.PersonAliasId ) ).GroupBy( g => g.SummaryDateTime ).Select( s => s.Key )
-                    } );
-                }
+                        int personId = (int)row["Id"];
+                        if ( allAttendeeDates.ContainsKey( personId ) )
+                        {
+                            var result = new AttendeeResult( allAttendeeDates[personId] );
 
-                if ( byNthVisit.HasValue )
-                {
-                    // only return attendees where their nth visit is within the selected daterange
-                    int skipCount = byNthVisit.Value - 1;
-                    qryByPersonWithSummary = qryByPersonWithSummary.Where( a => a.FirstVisits.OrderBy( x => x ).Skip( skipCount ).Take( 1 ).Any( d => d >= dateRange.Start && d < dateRange.End ) );
-                }
+                            var person = new PersonInfo();
+                            person.NickName = row["NickName"].ToString();
+                            person.LastName = row["LastName"].ToString();
+                            person.Email = row["Email"].ToString();
+                            person.Birthdate = row["BirthDate"] as DateTime?;
+                            person.Age = Person.GetAge( person.Birthdate );
+                            person.ConnectionStatusValueId = row["ConnectionStatusValueId"] as int?;
+                            result.Person = person;
 
-                if ( attendedMinCount.HasValue )
-                {
-                    qryByPersonWithSummary = qryByPersonWithSummary.Where( a => a.AttendanceSummary.Count() >= attendedMinCount );
-                }
-
-                if ( attendedMissedCount.HasValue )
-                {
-                    if ( attendedMissedDateRange.Start.HasValue && attendedMissedDateRange.End.HasValue )
-                    {
-                        var attendedMissedPossible = GetPossibleAttendancesForDateRange( attendedMissedDateRange, groupBy );
-                        int attendedMissedPossibleCount = attendedMissedPossible.Count();
-
-                        qryMissed = qryMissed.Where( a => a.StartDateTime >= attendedMissedDateRange.Start.Value && a.StartDateTime < attendedMissedDateRange.End.Value );
-                        var qryMissedAttendanceByPersonAndSummary = qryMissed.GetAttendanceWithSummaryDateTime( groupBy )
-                            .GroupBy( g1 => new { g1.SummaryDateTime, g1.Attendance.PersonAlias.PersonId } )
-                            .GroupBy( a => a.Key.PersonId )
-                            .Select( a => new
+                            if ( includeParents )
                             {
-                                PersonId = a.Key,
-                                AttendanceCount = a.Count()
-                            } );
+                                result.ParentId = (int)row["ParentId"];
+                                var parent = new PersonInfo();
+                                parent.NickName = row["ParentNickName"].ToString();
+                                parent.LastName = row["ParentLastName"].ToString();
+                                parent.Email = row["ParentEmail"].ToString();
+                                parent.Birthdate = row["ParentBirthDate"] as DateTime?;
+                                parent.Age = Person.GetAge( parent.Birthdate );
+                                result.Parent = parent;
+                            }
 
-                        var qryMissedByPerson = qryMissedAttendanceByPersonAndSummary
-                            .Where( x => ( attendedMissedPossibleCount - x.AttendanceCount ) >= attendedMissedCount );
+                            if ( includeChildren )
+                            {
+                                var child = new PersonInfo();
+                                result.ChildId = (int)row["ChildId"];
+                                child.NickName = row["ChildNickName"].ToString();
+                                child.LastName = row["ChildLastName"].ToString();
+                                child.Email = row["ChildEmail"].ToString();
+                                child.Birthdate = row["ChildBirthDate"] as DateTime?;
+                                child.Age = Person.GetAge( child.Birthdate );
+                                result.Child = child;
+                            }
 
-                        // filter to only people that missed at least X weeks/months/years between specified missed date range
-                        qryByPersonWithSummary = qryByPersonWithSummary.Where( a => qryMissedByPerson.Any( b => b.PersonId == a.PersonId ) );
+                            allResults.Add( result );
+                        }
                     }
                 }
+
             }
-
-            var personService = new PersonService( rockContext );
-
-            // Filter by dataview
-            var dataViewId = dvpDataView.SelectedValueAsInt();
-            if ( dataViewId.HasValue )
+            else
             {
-                var dataView = new DataViewService( _rockContext ).Get( dataViewId.Value );
-                if ( dataView != null )
+                // If dataview filter was included remove anyone not in that dataview
+                if ( dataViewPersonIds != null )
                 {
-                    var errorMessages = new List<string>();
-                    ParameterExpression paramExpression = personService.ParameterExpression;
-                    Expression whereExpression = dataView.GetExpression( personService, paramExpression, out errorMessages );
-
-                    SortProperty sort = null;
-                    var dataViewPersonIdQry = personService
-                        .Queryable().AsNoTracking()
-                        .Where( paramExpression, whereExpression, sort )
-                        .Select( p => p.Id );
-
-                    qryByPersonWithSummary = qryByPersonWithSummary.Where( a => dataViewPersonIdQry.Contains( a.PersonId ) );
+                    allResults = allResults
+                        .Where( p => dataViewPersonIds.Contains( p.PersonId ) )
+                        .ToList();
                 }
-            }
 
-            // declare the qryResult that we'll use in case they didn't choose IncludeParents or IncludeChildren (and the Anonymous Type will also work if we do include parents or children)
-            var qryPerson = personService.Queryable();
+                // Add the first visit dates for people
+                foreach ( DataRow row in dtAttendeeFirstDates.Rows )
+                {
+                    int personId = (int)row["PersonId"];
+                    foreach ( var result in allResults.Where( r => r.PersonId == personId ) )
+                    {
+                        result.FirstVisits.Add( (DateTime)row["StartDate"] );
+                    }
+                }
 
-            var qryResult = qryByPersonWithSummary.Join(
-                    qryPerson,
-                    a => a.PersonId,
-                    p => p.Id,
-                    ( a, p ) => new
+                // Add the Last Attended information
+                if ( dtAttendeeLastAttendance != null )
+                {
+                    foreach ( DataRow row in dtAttendeeLastAttendance.Rows )
+                    {
+                        int personId = (int)row["PersonId"];
+                        foreach ( var result in allResults.Where( r => r.PersonId == personId ) )
                         {
-                            a.PersonId,
-                            ParentId = (int?)null,
-                            ChildId = (int?)null,
-                            Person = p,
-                            Parent = (Person)null,
-                            Child = (Person)null,
-                            a.FirstVisits,
-                            a.LastVisit,
-                            p.PhoneNumbers,
-                            a.AttendanceSummary
-                        } );
+                            if ( result.LastVisit == null )
+                            {
+                                var lastAttendance = new PersonLastAttendance();
+                                lastAttendance.CampusId = row["CampusId"] as int?;
+                                lastAttendance.GroupId = row["GroupId"] as int?;
+                                lastAttendance.GroupName = row["GroupName"].ToString();
+                                lastAttendance.RoleName = row["RoleName"].ToString();
+                                lastAttendance.InGroup = !string.IsNullOrWhiteSpace( lastAttendance.RoleName );
+                                lastAttendance.ScheduleId = row["ScheduleId"] as int?;
+                                lastAttendance.StartDateTime = (DateTime)row["StartDateTime"];
+                                lastAttendance.LocationId = row["LocationId"] as int?;
+                                lastAttendance.LocationName = row["LocationName"].ToString();
+                                result.LastVisit = lastAttendance;
+                            }
+                        }
+                    }
+                }
 
-            var includeParents = hfViewBy.Value.ConvertToEnumOrNull<ViewBy>().GetValueOrDefault( ViewBy.Attendees ) == ViewBy.ParentsOfAttendees;
-            var includeChildren = hfViewBy.Value.ConvertToEnumOrNull<ViewBy>().GetValueOrDefault( ViewBy.Attendees ) == ViewBy.ChildrenOfAttendees;
-
-            // if Including Parents, join with qryChildWithParent instead of qryPerson
-            if ( includeParents )
-            {
-                var qryChildWithParent = new PersonService( rockContext ).GetChildWithParent();
-                qryResult = qryByPersonWithSummary.Join(
-                    qryChildWithParent,
-                    a => a.PersonId,
-                    p => p.Child.Id,
-                    ( a, p ) => new
-                    {
-                        a.PersonId,
-                        ParentId = (int?)p.Parent.Id,
-                        ChildId = (int?)null,
-                        Person = p.Child,
-                        Parent = p.Parent,
-                        Child = (Person)null,
-                        a.FirstVisits,
-                        a.LastVisit,
-                        p.Parent.PhoneNumbers,
-                        a.AttendanceSummary
-                    } );
             }
 
-            if ( includeChildren )
+            var qryResult = allResults.AsQueryable();
+
+            var personUrlFormatString = ( (RockPage)this.Page ).ResolveRockUrl( "~/Person/{0}" );
+
+            var personHyperLinkField = gAttendeesAttendance.Columns.OfType<HyperLinkField>().FirstOrDefault( a => a.HeaderText == "Name" );
+            if ( personHyperLinkField != null )
             {
-                var qryParentWithChildren = new PersonService( rockContext ).GetParentWithChild();
-                qryResult = qryByPersonWithSummary.Join(
-                    qryParentWithChildren,
-                    a => a.PersonId,
-                    p => p.Parent.Id,
-                    ( a, p ) => new
-                    {
-                        a.PersonId,
-                        ParentId = (int?)null,
-                        ChildId = (int?)p.Child.Id,
-                        Person = p.Parent,
-                        Parent = (Person)null,
-                        Child = p.Child,
-                        a.FirstVisits,
-                        a.LastVisit,
-                        p.Child.PhoneNumbers,
-                        a.AttendanceSummary
-                    } );
+                personHyperLinkField.DataNavigateUrlFormatString = personUrlFormatString;
             }
 
-            var parentField = gAttendeesAttendance.Columns.OfType<PersonField>().FirstOrDefault( a => a.HeaderText == "Parent" );
+            var parentHyperLinkField = gAttendeesAttendance.Columns.OfType<HyperLinkField>().FirstOrDefault( a => a.HeaderText == "Parent" );
+            if ( parentHyperLinkField != null )
+            {
+                parentHyperLinkField.Visible = includeParents;
+                parentHyperLinkField.DataNavigateUrlFormatString = personUrlFormatString;
+            }
+
+            var parentField = gAttendeesAttendance.Columns.OfType<RockBoundField>().FirstOrDefault( a => a.HeaderText == "Parent" );
             if ( parentField != null )
             {
-                parentField.Visible = includeParents;
+                parentField.ExcelExportBehavior = includeParents ? ExcelExportBehavior.AlwaysInclude : ExcelExportBehavior.NeverInclude;
             }
 
             var parentEmailField = gAttendeesAttendance.Columns.OfType<RockBoundField>().FirstOrDefault( a => a.HeaderText == "Parent Email" );
@@ -1005,16 +1255,29 @@ function(item) {
                 parentEmailField.ExcelExportBehavior = includeParents ? ExcelExportBehavior.AlwaysInclude : ExcelExportBehavior.NeverInclude;
             }
 
-            var childField = gAttendeesAttendance.Columns.OfType<PersonField>().FirstOrDefault( a => a.HeaderText == "Child" );
-            if ( childField != null )
+            var childHyperLinkField = gAttendeesAttendance.Columns.OfType<HyperLinkField>().FirstOrDefault( a => a.HeaderText == "Child" );
+            if ( childHyperLinkField != null )
             {
-                childField.Visible = includeChildren;
+                childHyperLinkField.Visible = includeChildren;
+                childHyperLinkField.DataNavigateUrlFormatString = personUrlFormatString;
+            }
+
+            var childfield = gAttendeesAttendance.Columns.OfType<RockBoundField>().FirstOrDefault( a => a.HeaderText == "Child" );
+            if ( childfield != null )
+            {
+                childfield.ExcelExportBehavior = includeChildren ? ExcelExportBehavior.AlwaysInclude : ExcelExportBehavior.NeverInclude;
             }
 
             var childEmailField = gAttendeesAttendance.Columns.OfType<RockBoundField>().FirstOrDefault( a => a.HeaderText == "Child Email" );
             if ( childEmailField != null )
             {
                 childEmailField.ExcelExportBehavior = includeChildren ? ExcelExportBehavior.AlwaysInclude : ExcelExportBehavior.NeverInclude;
+            }
+
+            var childAgeField = gAttendeesAttendance.Columns.OfType<RockBoundField>().FirstOrDefault( a => a.HeaderText == "Child Age" );
+            if ( childAgeField != null )
+            {
+                childAgeField.ExcelExportBehavior = includeChildren ? ExcelExportBehavior.AlwaysInclude : ExcelExportBehavior.NeverInclude;
             }
 
             SortProperty sortProperty = gAttendeesAttendance.SortProperty;
@@ -1060,7 +1323,7 @@ function(item) {
             UpdatePossibleAttendances( dateRange, groupBy );
 
             // pre-load the schedule names since FriendlyScheduleText requires building the ICal object, etc
-            _scheduleNameLookup = new ScheduleService( rockContext ).Queryable()
+            _scheduleNameLookup = new ScheduleService( _rockContext ).Queryable()
                 .ToList()
                 .ToDictionary( k => k.Id, v => v.FriendlyScheduleText );
 
@@ -1087,19 +1350,92 @@ function(item) {
             {
                 nbAttendeesError.Visible = false;
 
-                // increase the timeout from 30 to 90. The Query can be slow if SQL hasn't calculated the Query Plan for the query yet.
-                // Sometimes, most of the time consumption is figuring out the Query Plan, but after it figures it out, it caches it so that the next time it'll be much faster
-                rockContext.Database.CommandTimeout = 90;
-                gAttendeesAttendance.SetLinqDataSource( qryResult.AsNoTracking() );
+                gAttendeesAttendance.SetLinqDataSource( qryResult );
+                var currentPageItems = gAttendeesAttendance.DataSource as List<AttendeeResult>;
+                if ( currentPageItems != null )
+                {
+                    var currentPagePersonIds = new List<int>();
+                    if ( includeParents )
+                    {
+                        currentPagePersonIds = currentPageItems.Select( i => i.ParentId ).ToList();
+                        gAttendeesAttendance.PersonIdField = "ParentId";
+                        gAttendeesAttendance.DataKeyNames = new string[] { "ParentId", "PersonId" };
+                    }
+                    else if ( includeChildren )
+                    {
+                        currentPagePersonIds = currentPageItems.Select( i => i.ChildId ).ToList();
+                        gAttendeesAttendance.PersonIdField = "ChildId";
+                        gAttendeesAttendance.DataKeyNames = new string[] { "ChildId", "PersonId" };
+                    }
+                    else
+                    {
+                        currentPagePersonIds = currentPageItems.Select( i => i.PersonId ).ToList();
+                        gAttendeesAttendance.PersonIdField = "PersonId";
+                        gAttendeesAttendance.DataKeyNames = new string[] { "PersonId" };
+                    }
 
+                    LoadCurrentPageObjects( currentPagePersonIds );
+                }
+
+                _currentlyExporting = isExporting;
                 gAttendeesAttendance.DataBind();
+                _currentlyExporting = false;
             }
+
             catch ( Exception exception )
             {
                 LogAndShowException( exception );
             }
         }
 
+
+        private void LoadCurrentPageObjects( List<int> personIds )
+        {
+            // Load the addresses
+            var familyGroupType = GroupTypeCache.Read( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY.AsGuid() );
+            Guid? homeAddressGuid = Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuidOrNull();
+
+            if ( familyGroupType != null && homeAddressGuid.HasValue && personIds != null )
+            {
+                var homeAddressDv = DefinedValueCache.Read( homeAddressGuid.Value );
+                if ( homeAddressDv != null )
+                {
+                    _personLocations = new Dictionary<int, Location>();
+                    foreach ( var item in new GroupMemberService( _rockContext )
+                        .Queryable().AsNoTracking()
+                        .Where( m =>
+                            personIds.Contains( m.PersonId ) &&
+                            m.Group.GroupTypeId == familyGroupType.Id )
+                        .Select( m => new
+                        {
+                            m.PersonId,
+                            Location = m.Group.GroupLocations
+                                .Where( l =>
+                                    l.GroupLocationTypeValueId == homeAddressDv.Id &&
+                                    l.IsMappedLocation )
+                                .Select( l => l.Location )
+                                .FirstOrDefault()
+                        } )
+                        .Where( l => l.Location != null ) )
+                    {
+                        _personLocations.AddOrIgnore( item.PersonId, item.Location );
+                    }
+                }
+            }
+
+            // Load the phone numbers
+            _personPhoneNumbers = new PhoneNumberService( _rockContext )
+                .Queryable().AsNoTracking()
+                .Where( n => personIds.Contains( n.PersonId ) )
+                .GroupBy( n => n.PersonId )
+                .Select( n => new
+                {
+                    PersonId = n.Key,
+                    PhoneNumbers = n.ToList()
+                } )
+                .ToDictionary( k => k.PersonId, v => v.PhoneNumbers );
+
+        }
         /// <summary>
         /// Logs the and show exception.
         /// </summary>
@@ -1265,8 +1601,8 @@ function(item) {
         /// <param name="e">The <see cref="GridViewRowEventArgs"/> instance containing the event data.</param>
         protected void gAttendeesAttendance_RowDataBound( object sender, GridViewRowEventArgs e )
         {
-            var dataItem = e.Row.DataItem;
-            if ( dataItem != null )
+            var personDates = e.Row.DataItem as AttendeeResult;
+            if ( personDates != null )
             {
                 Literal lFirstVisitDate = e.Row.FindControl( "lFirstVisitDate" ) as Literal;
                 if ( lFirstVisitDate == null )
@@ -1287,17 +1623,15 @@ function(item) {
                 Literal lSecondVisitDate = e.Row.FindControl( "lSecondVisitDate" ) as Literal;
                 Literal lServiceTime = e.Row.FindControl( "lServiceTime" ) as Literal;
                 Literal lHomeAddress = e.Row.FindControl( "lHomeAddress" ) as Literal;
+                Literal lPhoneNumbers = e.Row.FindControl( "lPhoneNumbers" ) as Literal;
                 Literal lAttendanceCount = e.Row.FindControl( "lAttendanceCount" ) as Literal;
                 Literal lAttendancePercent = e.Row.FindControl( "lAttendancePercent" ) as Literal;
-                var person = dataItem.GetPropertyValue( "Person" ) as Person;
 
-                var firstVisits = dataItem.GetPropertyValue( "FirstVisits" ) as IEnumerable<DateTime>;
-
-                if ( firstVisits != null )
+                if ( personDates.FirstVisits != null )
                 {
-                    if ( firstVisits.Count() >= 1 )
+                    if ( personDates.FirstVisits.Count() >= 1 )
                     {
-                        var firstVisit = firstVisits.Min();
+                        var firstVisit = personDates.FirstVisits.Min();
 
                         if ( firstVisit != null )
                         {
@@ -1308,9 +1642,9 @@ function(item) {
                             }
                         }
 
-                        if ( firstVisits.Count() >= 2 )
+                        if ( personDates.FirstVisits.Count() >= 2 )
                         {
-                            var secondVisit = firstVisits.Skip( 1 ).FirstOrDefault();
+                            var secondVisit = personDates.FirstVisits.Skip( 1 ).FirstOrDefault();
                             if ( secondVisit != null )
                             {
                                 DateTime? secondVisitDateTime = secondVisit;
@@ -1323,31 +1657,87 @@ function(item) {
                     }
                 }
 
-                var lastVisit = dataItem.GetPropertyValue( "LastVisit" ) as object;
-                if ( lastVisit != null )
+                if ( personDates.LastVisit != null )
                 {
-                    int? scheduleId = lastVisit.GetPropertyValue( "ScheduleId" ) as int?;
-                    if ( scheduleId.HasValue )
+                    if ( personDates.LastVisit.ScheduleId.HasValue )
                     {
-                        if ( _scheduleNameLookup.ContainsKey( scheduleId.Value ) )
+                        if ( _scheduleNameLookup.ContainsKey( personDates.LastVisit.ScheduleId.Value ) )
                         {
-                            lServiceTime.Text = _scheduleNameLookup[scheduleId.Value];
+                            lServiceTime.Text = _scheduleNameLookup[personDates.LastVisit.ScheduleId.Value];
                         }
                     }
                 }
 
-                if ( person != null )
+                int currentPersonId = personDates.PersonId;
+                if ( gAttendeesAttendance.PersonIdField == "ParentId" )
                 {
-                    // Yep, get the address one-row-at-a-time. It usually ends up being faster than joining (especially when there could be 1000s of records, and we only show 50 at a time)
-                    var address = person.GetHomeLocation( _rockContext );
-                    if ( address != null )
-                    {
-                        lHomeAddress.Text = address.FormattedHtmlAddress;
-                    }
+                    currentPersonId = personDates.ParentId;
+                }
+                else if ( gAttendeesAttendance.PersonIdField == "ChildId")
+                {
+                    currentPersonId = personDates.ChildId;
                 }
 
-                var attendanceSummary = dataItem.GetPropertyValue( "AttendanceSummary" ) as IEnumerable<DateTime>;
-                int attendanceSummaryCount = attendanceSummary.Count();
+                try
+                {
+                    if ( _personLocations != null && _personLocations.ContainsKey( currentPersonId ) )
+                    {
+                        lHomeAddress.Text = _personLocations[currentPersonId].FormattedHtmlAddress;
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    string msg = ex.Message;
+                }
+
+                bool isExporting = _currentlyExporting;
+                if ( !isExporting && e is RockGridViewRowEventArgs )
+                {
+                    isExporting = ( (RockGridViewRowEventArgs)e ).IsExporting;
+                }
+
+                if ( _personPhoneNumbers != null && _personPhoneNumbers.ContainsKey( currentPersonId ) )
+                {
+                    var sb = new StringBuilder();
+                    if ( !isExporting )
+                    {
+                        sb.Append( "<ul class='list-unstyled phonenumbers'>" );
+                    }
+                    foreach ( var phoneNumber in _personPhoneNumbers[currentPersonId] )
+                    {
+                        string formattedNumber = "Unlisted";
+                        if ( !phoneNumber.IsUnlisted )
+                        {
+                            formattedNumber = PhoneNumber.FormattedNumber( phoneNumber.CountryCode, phoneNumber.Number, false );
+                        }
+
+                        if ( phoneNumber.NumberTypeValueId.HasValue )
+                        {
+                            var phoneType = DefinedValueCache.Read( phoneNumber.NumberTypeValueId.Value );
+                            if ( phoneType != null )
+                            {
+                                formattedNumber = isExporting ?
+                                    string.Format( "{1}: {0}", formattedNumber, phoneType.Value ) :
+                                    string.Format( "{0} <small>{1}</small>", formattedNumber, phoneType.Value );
+                            }
+                        }
+                        if ( isExporting )
+                        {
+                            sb.AppendFormat( "{0}{1}", sb.Length > 0 ? Environment.NewLine : string.Empty, formattedNumber );
+                        }
+                        else
+                        {
+                            sb.AppendFormat( "<li>{0}</li>", formattedNumber );
+                        }
+                    }
+                    if ( !isExporting )
+                    {
+                        sb.Append( "</ul>" );
+                    }
+                    lPhoneNumbers.Text = sb.ToString();
+                }
+
+                int attendanceSummaryCount = personDates.AttendanceSummary.Count();
                 lAttendanceCount.Text = attendanceSummaryCount.ToString();
 
                 int? attendencePossibleCount = _possibleAttendances != null ? _possibleAttendances.Count() : (int?)null;
@@ -1386,6 +1776,7 @@ function(item) {
 
         // list of grouptype ids that have already been rendered (in case a group type has multiple parents )
         private List<int> _addedGroupTypeIds;
+        private List<int> _addedGroupIds;
 
         /// <summary>
         /// Adds the group type controls.
@@ -1409,8 +1800,9 @@ function(item) {
                     cblGroupTypeGroups.Label = groupType.Name;
                     cblGroupTypeGroups.Items.Clear();
 
+                    // limit to Groups that don't have a Parent, or the ParentGroup is a different grouptype so we don't end up with infinite recursion
                     foreach ( var group in groupType.Groups
-                        .Where( g => !g.ParentGroupId.HasValue )
+                        .Where( g => !g.ParentGroupId.HasValue || ( g.ParentGroup.GroupTypeId != groupType.Id ) )
                         .OrderBy( a => a.Order )
                         .ThenBy( a => a.Name )
                         .ToList() )
@@ -1430,12 +1822,12 @@ function(item) {
 
                 if ( groupType.ChildGroupTypes.Any() )
                 {
-                    var ulGroupTypeList = new HtmlGenericContainer( "ul", "rocktree-children" );
+                    var ulGroupTypeList = new HtmlGenericContainer( "ul", "list-unstyled" );
 
                     liGroupTypeItem.Controls.Add( ulGroupTypeList );
                     foreach ( var childGroupType in groupType.ChildGroupTypes.OrderBy( a => a.Order ).ThenBy( a => a.Name ) )
                     {
-                        var liChildGroupTypeItem = new HtmlGenericContainer( "li", "rocktree-item rocktree-folder" );
+                        var liChildGroupTypeItem = new HtmlGenericContainer( "li" );
                         liChildGroupTypeItem.ID = "liGroupTypeItem" + childGroupType.Id;
                         ulGroupTypeList.Controls.Add( liChildGroupTypeItem );
                         AddGroupTypeControls( childGroupType, liChildGroupTypeItem );
@@ -1456,20 +1848,24 @@ function(item) {
             // Only show groups that actually have a schedule
             if ( group != null )
             {
-                if ( group.ScheduleId.HasValue || group.GroupLocations.Any( l => l.Schedules.Any() ) )
+                if ( !_addedGroupIds.Contains( group.Id ) )
                 {
-                    string displayName = showGroupAncestry ? service.GroupAncestorPathName( group.Id ) : group.Name;
-                    checkBoxList.Items.Add( new ListItem( displayName, group.Id.ToString() ) );
-                }
-
-                if ( group.Groups != null )
-                {
-                    foreach ( var childGroup in group.Groups
-                        .OrderBy( a => a.Order )
-                        .ThenBy( a => a.Name )
-                        .ToList() )
+                    _addedGroupIds.Add( group.Id );
+                    if ( group.ScheduleId.HasValue || group.GroupLocations.Any( l => l.Schedules.Any() ) )
                     {
-                        AddGroupControls( childGroup, checkBoxList, service, showGroupAncestry );
+                        string displayName = showGroupAncestry ? service.GroupAncestorPathName( group.Id ) : group.Name;
+                        checkBoxList.Items.Add( new ListItem( displayName, group.Id.ToString() ) );
+                    }
+
+                    if ( group.Groups != null )
+                    {
+                        foreach ( var childGroup in group.Groups
+                            .OrderBy( a => a.Order )
+                            .ThenBy( a => a.Name )
+                            .ToList() )
+                        {
+                            AddGroupControls( childGroup, checkBoxList, service, showGroupAncestry );
+                        }
                     }
                 }
             }
@@ -1564,7 +1960,10 @@ function(item) {
         protected void btnShowByAttendees_Click( object sender, EventArgs e )
         {
             DisplayShowBy( ShowBy.Attendees );
-            BindAttendeesGrid();
+            if ( pnlResults.Visible )
+            {
+                LoadChartAndGrids();
+            }
         }
 
         /// <summary>
@@ -1575,7 +1974,10 @@ function(item) {
         protected void btnShowByChart_Click( object sender, EventArgs e )
         {
             DisplayShowBy( ShowBy.Chart );
-            BindChartAttendanceGrid();
+            if ( pnlResults.Visible )
+            {
+                LoadChartAndGrids();
+            }
         }
 
         /// <summary>
@@ -1615,34 +2017,76 @@ function(item) {
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void btnCheckinDetails_Click( object sender, EventArgs e )
         {
-            var groupType = GetSelectedTemplateGroupType();
+            var groupTypes = GetSelectedGroupTypes();
 
-            if ( groupType != null )
+            if ( groupTypes != null && groupTypes.Any() )
             {
+                var groupTypeIds = groupTypes.Select( t => t.Id ).ToList().AsDelimited( "," );
                 Dictionary<string, string> queryParams = new Dictionary<string, string>();
-                queryParams.Add( "GroupTypeId", groupType.Id.ToString() );
+                queryParams.Add( "GroupTypeIds", groupTypeIds );
 
                 NavigateToLinkedPage( "Check-inDetailPage", queryParams );
             }
         }
 
-        public class AttendancePersonAlias
+        public class AttendeeResult : AttendeeDates
+        {
+            public PersonInfo Person { get; set; }
+            public int ParentId { get; set; }
+            public PersonInfo Parent { get; set; }
+            public int ChildId { get; set; }
+            public PersonInfo Child { get; set; }
+
+            public AttendeeResult() : base() { }
+            public AttendeeResult( AttendeeDates attendeeDates )
+            {
+                this.PersonId = attendeeDates.PersonId;
+                this.FirstVisits = attendeeDates.FirstVisits;
+                this.LastVisit = attendeeDates.LastVisit;
+                this.AttendanceSummary = attendeeDates.AttendanceSummary;
+            }
+        }
+
+        public class AttendeeDates
+        {
+            public int PersonId { get; set; }
+            public List<DateTime> FirstVisits { get; set; }
+            public PersonLastAttendance LastVisit { get; set; }
+            public List<DateTime> AttendanceSummary { get; set; }
+            public AttendeeDates()
+            {
+                FirstVisits = new List<DateTime>();
+                AttendanceSummary = new List<DateTime>();
+            }
+        }
+
+        public class PersonInfo
+        {
+            public string NickName { get; set; }
+            public string LastName { get; set; }
+            public string Email { get; set; }
+            public int? Age { get; set; }
+            public DateTime? Birthdate { get; set; }
+            public int? ConnectionStatusValueId { get; set; }
+
+            public override string ToString()
+            {
+                return NickName + " " + LastName;
+            }
+        }
+
+        public class PersonLastAttendance
         {
             public int? CampusId { get; set; }
             public int? GroupId { get; set; }
             public string GroupName { get; set; }
+            public bool InGroup { get; set; }
+            public string RoleName { get; set; }
             public int? ScheduleId { get; set; }
-            public DateTime? StartDateTime { get; set; }
-            public int PersonAliasPersonId { get; set; }
-            public int PersonAliasId { get; set; }
+            public DateTime StartDateTime { get; set; }
+            public int? LocationId { get; set; }
+            public string LocationName { get; set; }
         }
 
-        public class PersonWithSummary
-        {
-            public int PersonId { get; set;}
-            public IQueryable<DateTime> FirstVisits { get; set; }
-            public AttendancePersonAlias LastVisit { get; set; }
-            public IQueryable<DateTime> AttendanceSummary {get; set;}
-        }
     }
 }

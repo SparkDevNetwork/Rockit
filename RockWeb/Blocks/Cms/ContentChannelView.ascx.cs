@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -242,6 +242,7 @@ $(document).ready(function() {
 
             rockContext.SaveChanges();
 
+            SetAttributeValue( "Status", cblStatus.SelectedValuesAsInt.AsDelimited(",") );
             SetAttributeValue( "Channel", ddlChannel.SelectedValue );
             SetAttributeValue( "EnableDebug", cbDebug.Checked.ToString() );
             SetAttributeValue( "MergeContent", cbMergeContent.Checked.ToString() );
@@ -399,7 +400,7 @@ $(document).ready(function() {
             pageRef.Parameters.AddOrReplace( "Page", "PageNum" );
 
             Dictionary<string, object> linkedPages = new Dictionary<string, object>();
-            linkedPages.Add( "DetailPage", LinkedPageUrl( "DetailPage", null ) );
+            linkedPages.Add( "DetailPage", LinkedPageRoute( "DetailPage" ) );
 
             var errorMessages = new List<string>();
             List<ContentChannelItem> content;
@@ -435,7 +436,7 @@ $(document).ready(function() {
             pagination.UrlTemplate = pageRef.BuildUrl();
             var currentPageContent = pagination.GetCurrentPageItems( content );
 
-            var globalAttributeFields = Rock.Web.Cache.GlobalAttributesCache.GetMergeFields( CurrentPerson );
+            var commonMergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
 
             // Merge content and attribute fields if block is configured to do so.
             if ( GetAttributeValue( "MergeContent" ).AsBoolean() )
@@ -445,9 +446,9 @@ $(document).ready(function() {
                 {
                     // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
                     itemMergeFields.Add( "Person", CurrentPerson );
-                    itemMergeFields.Add( "CurrentPerson", CurrentPerson );
                 }
-                globalAttributeFields.ToList().ForEach( d => itemMergeFields.Add( d.Key, d.Value ) );
+
+                commonMergeFields.ToList().ForEach( d => itemMergeFields.Add( d.Key, d.Value ) );
 
                 foreach ( var item in currentPageContent )
                 {
@@ -460,26 +461,10 @@ $(document).ready(function() {
                 }
             }
 
-            // add context to merge fields
-            var contextEntityTypes = RockPage.GetContextEntityTypes();
-
-            var contextObjects = new Dictionary<string, object>();
-            foreach ( var conextEntityType in contextEntityTypes )
-            {
-                var contextObject = RockPage.GetCurrentContext( conextEntityType );
-                contextObjects.Add( conextEntityType.FriendlyName, contextObject );
-            }
-            
-
-            var mergeFields = new  Dictionary<string, object>();
+            var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
             mergeFields.Add( "Pagination", pagination );
             mergeFields.Add( "LinkedPages", linkedPages );
             mergeFields.Add( "Items", currentPageContent );
-            mergeFields.Add( "Campuses", CampusCache.All() );
-            mergeFields.Add( "CurrentPerson", CurrentPerson );
-            mergeFields.Add( "Context", contextObjects );
-
-            globalAttributeFields.ToList().ForEach( d => mergeFields.Add( d.Key, d.Value ) );
             mergeFields.Add( "RockVersion", Rock.VersionInfo.VersionInfo.GetRockProductVersionNumber() );
 
             // enable showing debug info
@@ -500,7 +485,7 @@ $(document).ready(function() {
             }
 
             // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
-            mergeFields.Add( "Person", CurrentPerson );
+            mergeFields.AddOrIgnore( "Person", CurrentPerson );
 
             // set page title
             if ( GetAttributeValue( "SetPageTitle" ).AsBoolean() && content.Count > 0 )
@@ -592,11 +577,11 @@ $(document).ready(function() {
 
             if ( attributeEntityType == "C" )
             {
-                attributeValue = content.FirstOrDefault().ContentChannel.AttributeValues.Where( a => a.Key == attributeKey ).Select( a => a.Value.ToString() ).FirstOrDefault();
+                attributeValue = content.FirstOrDefault().ContentChannel.AttributeValues.Where( a => a.Key == attributeKey ).Select( a => a.Value.Value ).FirstOrDefault();
             }
             else
             {
-                attributeValue = content.FirstOrDefault().AttributeValues.Where( a => a.Key == attributeKey ).Select( a => a.Value.ToString() ).FirstOrDefault();
+                attributeValue = content.FirstOrDefault().AttributeValues.Where( a => a.Key == attributeKey ).Select( a => a.Value.Value ).FirstOrDefault();
             }
 
             return attributeValue;
@@ -742,14 +727,14 @@ $(document).ready(function() {
                                             if ( direction == SortDirection.Ascending )
                                             {
                                                 orderedQry = ( columnIndex == 0 ) ?
-                                                    itemQry.OrderBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType ) :
-                                                    orderedQry.ThenBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType );
+                                                    itemQry.OrderBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue ) :
+                                                    orderedQry.ThenBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue );
                                             }
                                             else
                                             {
                                                 orderedQry = ( columnIndex == 0 ) ?
-                                                    itemQry.OrderByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType ) :
-                                                    orderedQry.ThenByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.ValueAsType );
+                                                    itemQry.OrderByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue ) :
+                                                    orderedQry.ThenByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue );
                                             }
                                         }
                                         else

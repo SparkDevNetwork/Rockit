@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,6 +39,7 @@ namespace RockWeb.Blocks.Prayer
 
     [LinkedPage( "Detail Page", Order = 0 )]
     [IntegerField( "Expires After (Days)", "Number of days until the request will expire.", false, 14, "", 1, "ExpireDays" )]
+    [BooleanField( "Show Prayer Count", "If enabled, the block will show the current prayer count for each request in the list.", false, "", 2 )]
     public partial class PrayerRequestList : RockBlock
     {
         #region Fields
@@ -98,6 +99,7 @@ namespace RockWeb.Blocks.Prayer
             _canAddEditDelete = IsUserAuthorized( Authorization.EDIT );
             gPrayerRequests.Actions.ShowAdd = _canAddEditDelete;
             gPrayerRequests.IsDeleteEnabled = _canAddEditDelete;
+            gPrayerRequests.Columns[4].Visible = GetAttributeValue( "ShowPrayerCount" ).AsBoolean();
         }
 
         /// <summary>
@@ -277,6 +279,7 @@ namespace RockWeb.Blocks.Prayer
                     a.ExpirationDate,
                     a.Text,
                     a.FlagCount,
+                    PrayerCount = a.PrayerCount.HasValue ? a.PrayerCount : 0,
                     a.IsApproved,
                     a.CategoryId,
                     CategoryParentCategoryId = a.CategoryId.HasValue ? a.Category.ParentCategoryId : null,

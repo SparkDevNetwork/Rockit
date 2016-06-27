@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,9 +36,10 @@ namespace RockWeb.Blocks.Crm
     [Category( "CRM" )]
     [Description( "List of person records that have possible duplicates" )]
 
-    [DecimalField( "Confidence Score High", "The minimum confidence score required to be considered a likely match", true, 80.00 )]
-    [DecimalField( "Confidence Score Low", "The maximum confidence score required to be considered an unlikely match. Values lower than this will not be shown in the grid.", true, 60.00 )]
-    [LinkedPage( "Detail Page" )]
+    [DecimalField( "Confidence Score High", "The minimum confidence score required to be considered a likely match", true, 80.00, order: 0 )]
+    [DecimalField( "Confidence Score Low", "The maximum confidence score required to be considered an unlikely match. Values lower than this will not be shown in the grid.", true, 60.00, order: 1 )]
+    [BooleanField( "Include Inactive", "Set to true to also include potential matches when both records are inactive.", false, order: 2 )]
+    [LinkedPage( "Detail Page", order: 3 )]
     public partial class PersonDuplicateList : RockBlock
     {
         /// <summary>
@@ -142,12 +143,16 @@ namespace RockWeb.Blocks.Crm
             // list duplicates that:
             // - aren't confirmed as NotDuplicate and aren't IgnoreUntilScoreChanges,
             // - don't have the PersonAlias and DuplicatePersonAlias records pointing to the same person ( occurs after two people have been merged but before the Calculate Person Duplicates job runs).
-            // - don't include records where both the Person and Duplicate are inactive
+            // - don't include records where both the Person and Duplicate are inactive (block option)
             var personDuplicateQry = personDuplicateService.Queryable()
                 .Where( a => !a.IsConfirmedAsNotDuplicate )
                 .Where( a => !a.IgnoreUntilScoreChanges )
-                .Where( a => a.PersonAlias.PersonId != a.DuplicatePersonAlias.PersonId )
-                .Where( a => !( a.PersonAlias.Person.RecordStatusValueId == recordStatusInactiveId && a.DuplicatePersonAlias.Person.RecordStatusValueId == recordStatusInactiveId ) );
+                .Where( a => a.PersonAlias.PersonId != a.DuplicatePersonAlias.PersonId );
+
+            if ( this.GetAttributeValue( "IncludeInactive" ).AsBoolean() == false )
+            {
+                personDuplicateQry = personDuplicateQry.Where( a => !( a.PersonAlias.Person.RecordStatusValueId == recordStatusInactiveId && a.DuplicatePersonAlias.Person.RecordStatusValueId == recordStatusInactiveId ) );
+            }
 
             double? confidenceScoreLow = GetAttributeValue( "ConfidenceScoreLow" ).AsDoubleOrNull();
             if ( confidenceScoreLow.HasValue )

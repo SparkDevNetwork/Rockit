@@ -1,5 +1,11 @@
 ﻿<%@ Control Language="C#" AutoEventWireup="true" CodeFile="GivingAnalytics.ascx.cs" Inherits="RockWeb.Blocks.Finance.GivingAnalytics" %>
 
+<style>
+    .filter-options .rock-check-box-list label {
+        cursor: pointer;
+    }
+</style>
+
 <asp:UpdatePanel ID="upnlContent" runat="server">
     <ContentTemplate>
 
@@ -11,6 +17,13 @@
                     <a href="#" onclick="$('.js-slidingdaterange-help').toggle()">
                         <i class='fa fa-question-circle'></i>
                     </a>
+                    <button id="btnCopyToClipboard" runat="server" disabled="disabled" 
+                        data-toggle="tooltip" data-placement="top" data-title="Copy Report Link to Clipboard" 
+                        class="btn btn-link btn-copy-to-clipboard padding-all-none " 
+                        onmouseover="$(this).tooltip('hide').attr('data-original-title','Copy Report Link to Clipboard').tooltip('fixTitle').tooltip('show');"
+                        onclick="$(this).tooltip('hide').attr('data-original-title','Copied').tooltip('fixTitle').tooltip('show');return false;">
+                        <i class='fa fa-clipboard'></i>
+                    </button>
                 </div>
 
             </div>
@@ -25,11 +38,13 @@
                 <div class="row row-eq-height-md">
                     <div class="col-md-3 filter-options">
 
+                        <asp:HiddenField ID="hfFilterUrl" runat="server" />
+
                         <Rock:SlidingDateRangePicker ID="drpSlidingDateRange" runat="server" Label="Date Range" EnabledSlidingDateRangeTypes="Previous, Last, Current, DateRange"/>
                         <Rock:NumberRangeEditor ID="nreAmount" runat="server" CssClass="input-width-sm" NumberType="Currency" Label="Total Amount" />
                         <Rock:DataViewPicker ID="dvpDataView" runat="server" Label="Limit by DataView" AutoPostBack="true" OnSelectedIndexChanged="dvpDataView_SelectedIndexChanged" />
-                        <Rock:RockCheckBoxList ID="cblCurrencyTypes" runat="server" Label="Currency Types" RepeatDirection="Vertical" />
-                        <Rock:RockCheckBoxList ID="cblTransactionSource" runat="server" Label="Transaction Source" RepeatDirection="Vertical" />
+                        <Rock:RockCheckBoxList ID="cblCurrencyTypes" runat="server" FormGroupCssClass="currency-list js-currency-list" Label="Currency Types" RepeatDirection="Vertical" />
+                        <Rock:RockCheckBoxList ID="cblTransactionSource" runat="server" FormGroupCssClass="source-list js-source-list" Label="Transaction Source" RepeatDirection="Vertical" />
                         <asp:PlaceHolder ID="phAccounts" runat="server" />
 
                     </div>
@@ -117,6 +132,7 @@
                                             <Columns>
                                                 <Rock:DateField DataField="DateTime" HeaderText="Date" SortExpression="DateTimeStamp" />
                                                 <Rock:RockBoundField DataField="SeriesId" HeaderText="Series" SortExpression="SeriesId" />
+                                                <Rock:RockBoundField DataField="SeriesAddlInfo" HeaderText="Series Addl Info" SortExpression="SeriesAddlInfo" />
                                                 <Rock:CurrencyField DataField="YValue" HeaderText="Amount" SortExpression="YValue" />
                                             </Columns>
                                         </Rock:Grid>
@@ -260,6 +276,7 @@
                 });
 
                 showFilterByOptions();
+
             });
         </script>
     </ContentTemplate>

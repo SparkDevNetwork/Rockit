@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -126,6 +126,12 @@ namespace RockWeb.Blocks.Examples
                 if ( aClass.Methods.Any() )
                 {
                     sb.AppendLine( "<h2>Methods</h2><ul>" );
+
+                    if ( aClass.Methods.Where( m => m.IsInherited == false ).Count() == 0 )
+                    {
+                        sb.AppendLine( "<small class='text-muted'><i>all inherited</i></small>" );
+                    }
+
                     foreach ( var method in aClass.Methods.OrderBy( m => m.Name ) )
                     {
                         //<li data-expanded='false' data-model='Block' data-id='b{0}'><span>{1}{2}:{3}</span></li>{4}
@@ -137,6 +143,7 @@ namespace RockWeb.Blocks.Examples
                             method.IsInherited ? " (inherited)" : "",
                             Environment.NewLine );
                     }
+
                     sb.AppendLine( "</ul>" );
                 }
 
