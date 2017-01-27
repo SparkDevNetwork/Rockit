@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -241,6 +241,7 @@ namespace RockWeb.Blocks.Finance
                     {
                         if ( changes.Any() )
                         {
+                            pdAuditDetails.SetEntity( batch, ResolveRockUrl( "~" ) );
                             HistoryService.SaveChanges(
                                 rockContext,
                                 typeof( FinancialBatch ),
@@ -348,12 +349,16 @@ namespace RockWeb.Blocks.Finance
                 if ( batch != null )
                 {
                     editAllowed = batch.IsAuthorized( Authorization.EDIT, CurrentPerson );
+                    pdAuditDetails.SetEntity( batch, ResolveRockUrl( "~" ) );
                 }
             }
 
             if ( batch == null )
             {
                 batch = new FinancialBatch { Id = 0 };
+
+                // hide the panel drawer that show created and last modified dates
+                pdAuditDetails.Visible = false;
             }
 
             hfBatchId.Value = batch.Id.ToString();

@@ -39,8 +39,9 @@ namespace RockWeb.Blocks.Crm
     [Category( "CRM" )]
     [Description( "Displays list of people that match a given search type and term." )]
 
-    [LinkedPage("Person Detail Page")]
-    [BooleanField("Show Performance", "Displays how long the search took.", false)]
+    [LinkedPage("Person Detail Page", order: 0 )]
+    [BooleanField( "Show Birthdate", "Should a birthdate column be displayed?", false, "", 1 )]
+    [BooleanField("Show Performance", "Displays how long the search took.", false, "", 2 )]
     public partial class PersonSearch : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -213,6 +214,8 @@ namespace RockWeb.Blocks.Crm
 
         private void BindGrid()
         {
+            var birthDateCol = gPeople.ColumnsOfType<DateField>().First( c => c.DataField == "BirthDate" );
+            birthDateCol.Visible = GetAttributeValue( "ShowBirthdate" ).AsBoolean();
 
             string type = PageParameter( "SearchType" );
             string term = PageParameter( "SearchTerm" );
@@ -259,6 +262,10 @@ namespace RockWeb.Blocks.Crm
                         }
                 }
 
+                var personIdList = people.Select( p => p.Id ).ToList();
+
+                people = personService.Queryable(true).Where( p => personIdList.Contains( p.Id ) );
+				
                 SortProperty sortProperty = gPeople.SortProperty;
                 if ( sortProperty != null )
                 {
@@ -312,12 +319,12 @@ namespace RockWeb.Blocks.Crm
                 {
                     if ( type.ToLower() == "name" )
                     {
-                        var similiarNames = personService.GetSimiliarNames( term,
+                        var similarNames = personService.GetSimilarNames( term,
                             personList.Select( p => p.Id ).ToList(), true );
-                        if ( similiarNames.Any() )
+                        if ( similarNames.Any() )
                         {
                             var hyperlinks = new List<string>();
-                            foreach ( string name in similiarNames.Distinct() )
+                            foreach ( string name in similarNames.Distinct() )
                             {
                                 var pageRef = CurrentPageReference;
                                 pageRef.Parameters["SearchTerm"] = name;

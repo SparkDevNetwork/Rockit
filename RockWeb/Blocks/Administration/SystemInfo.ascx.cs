@@ -128,6 +128,9 @@ namespace RockWeb.Blocks.Administration
             Rock.Web.Cache.RockMemoryCache.Clear();
             msgs.Add( "RockMemoryCache has been cleared" );
 
+            // Flush Site Domains
+            Rock.Web.Cache.SiteCache.Flush();
+
             string webAppPath = Server.MapPath( "~" );
 
             // Check for any unregistered entity types, field types, and block types
@@ -272,7 +275,7 @@ namespace RockWeb.Blocks.Administration
         private string GetRoutesInfo()
         {
             var routes = new SortedDictionary<string, System.Web.Routing.Route>();
-            foreach ( System.Web.Routing.Route route in System.Web.Routing.RouteTable.Routes )
+            foreach ( System.Web.Routing.Route route in System.Web.Routing.RouteTable.Routes.OfType<System.Web.Routing.Route>() )
             {
                 if ( !routes.ContainsKey( route.Url ) ) routes.Add( route.Url, route );
             }

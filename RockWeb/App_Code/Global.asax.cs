@@ -44,6 +44,7 @@ using Rock.Jobs;
 using Rock.Model;
 using Rock.Plugin;
 using Rock.Transactions;
+using Rock.Utility;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 
@@ -242,6 +243,9 @@ namespace RockWeb
                         sched.Start();
                     }
 
+                    // set the encryption protocols that are permissible for external SSL connections
+                    System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls | System.Net.SecurityProtocolType.Tls11 | System.Net.SecurityProtocolType.Tls12;
+
                     // Force the static Liquid class to get instantiated so that the standard filters are loaded prior 
                     // to the custom RockFilter.  This is to allow the custom 'Date' filter to replace the standard 
                     // Date filter.
@@ -255,7 +259,11 @@ namespace RockWeb
                     Template.NamingConvention = new DotLiquid.NamingConventions.CSharpNamingConvention();
                     Template.FileSystem = new RockWeb.LavaFileSystem();
                     Template.RegisterSafeType( typeof( Enum ), o => o.ToString() );
+                    Template.RegisterSafeType( typeof( DBNull ), o => null );
                     Template.RegisterFilter( typeof( Rock.Lava.RockFilters ) );
+
+                    // Perform any Rock startups
+                    RunStartups();
 
                     // add call back to keep IIS process awake at night and to provide a timer for the queued transactions
                     AddCallBack();
@@ -532,6 +540,35 @@ namespace RockWeb
         }
 
         /// <summary>
+        /// Run any custom startup methods
+        /// </summary>
+        public void RunStartups()
+        {
+            try
+            {
+                var startups = new Dictionary<int, List<IRockStartup>>();
+                foreach ( var startupType in Rock.Reflection.FindTypes( typeof( IRockStartup ) ).Select( a => a.Value ).ToList() )
+                {
+                    var startup = Activator.CreateInstance( startupType ) as IRockStartup;
+                    startups.AddOrIgnore( startup.StartupOrder, new List<IRockStartup>() );
+                    startups[startup.StartupOrder].Add( startup );
+                }
+
+                foreach ( var startupList in startups.OrderBy( s => s.Key ).Select( s => s.Value ) )
+                {
+                    foreach ( var startup in startupList )
+                    {
+                        startup.OnStartup();
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                ExceptionLogService.LogException( ex, null );
+            }
+        }
+
+        /// <summary>
         /// Migrates the plugins.
         /// </summary>
         /// <param name="rockContext">The rock context.</param>
@@ -697,15 +734,20 @@ namespace RockWeb
 
             PageRouteService pageRouteService = new PageRouteService( rockContext );
 
-            //Add ingore rule for asp.net ScriptManager files. 
+            // Add ingore rule for asp.net ScriptManager files. 
             routes.Ignore("{resource}.axd/{*pathInfo}");
 
-
-            // find each page that has defined a custom routes.
-            foreach ( PageRoute pageRoute in pageRouteService.Queryable() )
+            // Add page routes
+            foreach ( var route in pageRouteService 
+                .Queryable().AsNoTracking()
+                .GroupBy( r => r.Route )
+                .Select( s => new {
+                    Name = s.Key,
+                    Pages = s.Select( pr => new Rock.Web.PageAndRouteId { PageId = pr.PageId, RouteId = pr.Id } ).ToList() 
+                } )
+                .ToList() )
             {
-                // Create the custom route and save the page id in the DataTokens collection
-                routes.AddPageRoute( pageRoute );
+                routes.AddPageRoute( route.Name, route.Pages );
             }
 
             // Add a default page route

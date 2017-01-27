@@ -187,6 +187,7 @@ namespace RockWeb.Blocks.Administration
                 tbPageName.Text = page.InternalName;
                 tbPageTitle.Text = page.PageTitle;
                 tbBrowserTitle.Text = page.BrowserTitle;
+                tbBodyCssClass.Text = page.BodyCssClass;
                 ppParentPage.SetValue( pageService.Get( page.ParentPageId ?? 0 ) );
                 tbIconCssClass.Text = page.IconCssClass;
 
@@ -277,9 +278,27 @@ namespace RockWeb.Blocks.Administration
 
                 if ( editorRoutes.Any() )
                 {
+                    int? siteId = null;
+                    if ( page != null && page.Layout != null )
+                    {
+                        siteId = page.Layout.SiteId;
+                    }
+
                     // validate for any duplicate routes
-                    var duplicateRoutes = routeService.Queryable()
-                        .Where( r => editorRoutes.Contains( r.Route ) && r.PageId != _pageId )
+                    var duplicateRouteQry = routeService.Queryable()
+                        .Where( r =>
+                            r.PageId != _pageId &&
+                            editorRoutes.Contains( r.Route ) );
+                    if ( siteId.HasValue )
+                    {
+                        duplicateRouteQry = duplicateRouteQry
+                            .Where( r =>
+                                r.Page != null &&
+                                r.Page.Layout != null &&
+                                r.Page.Layout.SiteId == siteId.Value );
+                    }
+
+                    var duplicateRoutes = duplicateRouteQry
                         .Select( r => r.Route )
                         .Distinct()
                         .ToList();
@@ -288,7 +307,7 @@ namespace RockWeb.Blocks.Administration
                     {
                         // Duplicate routes
                         nbPageRouteWarning.Title = "Duplicate Route(s)";
-                        nbPageRouteWarning.Text = string.Format( "<p>The page route <strong>{0}</strong>, already exists for another page. Please choose a different route name.</p>", duplicateRoutes.AsDelimited( "</strong> and <strong>" ) );
+                        nbPageRouteWarning.Text = string.Format( "<p>The page route <strong>{0}</strong>, already exists for another page in the same site. Please choose a different route name.</p>", duplicateRoutes.AsDelimited( "</strong> and <strong>" ) );
                         nbPageRouteWarning.Dismissable = true;
                         nbPageRouteWarning.Visible = true;
                         CurrentTab = "Advanced Settings";
@@ -367,6 +386,8 @@ namespace RockWeb.Blocks.Administration
                 page.InternalName = tbPageName.Text;
                 page.PageTitle = tbPageTitle.Text;
                 page.BrowserTitle = tbBrowserTitle.Text;
+                page.BodyCssClass = tbBodyCssClass.Text;
+
                 if ( parentPageId != 0 )
                 {
                     page.ParentPageId = parentPageId;
@@ -430,22 +451,21 @@ namespace RockWeb.Blocks.Administration
                 {
                     rockContext.SaveChanges();
 
-                    // remove any routes that were deleted
-                    foreach (var deletedRouteId in deletedRouteIds )
+                    // remove any routes for this page that are no longer configured
+                    foreach (var existingRoute in RouteTable.Routes.OfType<Route>().Where(a => a.PageIds().Contains( page.Id) ) )
                     {
-                        var existingRoute = RouteTable.Routes.OfType<Route>().FirstOrDefault( a => a.RouteId() == deletedRouteId );
-                        if ( existingRoute != null )
+                        if ( !editorRoutes.Any( a => a == existingRoute.Url ) )
                         {
-                            RouteTable.Routes.Remove( existingRoute );
-                        }
-                    }
-
-                    // ensure that there aren't any other extra routes for this page in the RouteTable
-                    foreach (var routeTableRoute in RouteTable.Routes.OfType<Route>().Where(a => a.PageId() == page.Id))
-                    {
-                        if ( !editorRoutes.Any( a => a == routeTableRoute.Url ) )
-                        {
-                            RouteTable.Routes.Remove( routeTableRoute );
+                            var pageAndRouteIds = existingRoute.DataTokens["PageRoutes"] as List<Rock.Web.PageAndRouteId>;
+                            pageAndRouteIds = pageAndRouteIds.Where( p => p.PageId != page.Id ).ToList();
+                            if ( pageAndRouteIds.Any() )
+                            {
+                                existingRoute.DataTokens["PageRoutes"] = pageAndRouteIds;
+                            }
+                            else
+                            {
+                                RouteTable.Routes.Remove( existingRoute );
+                            }
                         }
                     }
 
@@ -454,7 +474,21 @@ namespace RockWeb.Blocks.Administration
                     {
                         if ( addedRoutes.Contains( pageRoute.Route ) )
                         {
-                            RouteTable.Routes.AddPageRoute( pageRoute );
+                            var pageAndRouteId = new Rock.Web.PageAndRouteId { PageId = pageRoute.PageId, RouteId = pageRoute.Id };
+
+                            var existingRoute = RouteTable.Routes.OfType<Route>().FirstOrDefault( r => r.Url == pageRoute.Route );
+                            if ( existingRoute != null )
+                            {
+                                var pageAndRouteIds = existingRoute.DataTokens["PageRoutes"] as List<Rock.Web.PageAndRouteId>;
+                                pageAndRouteIds.Add( pageAndRouteId );
+                                existingRoute.DataTokens["PageRoutes"] = pageAndRouteIds;
+                            }
+                            else
+                            {
+                                var pageAndRouteIds = new List<Rock.Web.PageAndRouteId>();
+                                pageAndRouteIds.Add( pageAndRouteId );
+                                RouteTable.Routes.AddPageRoute( pageRoute.Route, pageAndRouteIds );
+                            }
                         }
                     }
 
