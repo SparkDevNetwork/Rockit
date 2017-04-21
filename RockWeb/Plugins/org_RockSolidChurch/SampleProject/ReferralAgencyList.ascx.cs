@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
 
-using org.rocksolidchurch.SampleProject.Data;
 using org.rocksolidchurch.SampleProject.Model;
 
 using Rock;
@@ -168,7 +167,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
         /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
         protected void gAgencies_Delete( object sender, RowEventArgs e )
         {
-            var dataContext = new SampleProjectContext();
+            var dataContext = new RockContext();
             var service = new ReferralAgencyService( dataContext );
             var referralAgency = service.Get( (int)e.RowKeyValue );
             if ( referralAgency != null )
@@ -222,7 +221,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
         /// </summary>
         private void BindGrid()
         {
-            var service = new ReferralAgencyService( new SampleProjectContext() );
+            var service = new ReferralAgencyService( new RockContext() );
             SortProperty sortProperty = gAgencies.SortProperty;
 
             var qry = service.Queryable( "Campus,AgencyTypeValue" );

@@ -8,7 +8,7 @@ using Rock.Plugin;
 
 namespace org.rocksolidchurch.SampleProject.Migrations
 {
-    [MigrationNumber( 1, "1.0.8" )]
+    [MigrationNumber( 1, "1.6.0" )]
     public class CreateDb : Migration
     {
         /// <summary>
@@ -31,7 +31,9 @@ namespace org.rocksolidchurch.SampleProject.Migrations
 	    [ModifiedDateTime] [datetime] NULL,
 	    [CreatedByPersonAliasId] [int] NULL,
 	    [ModifiedByPersonAliasId] [int] NULL,
-	    [ForeignId] [nvarchar](50) NULL,
+	    [ForeignKey] [nvarchar](50) NULL,
+	    [ForeignGuid] [uniqueidentifier] NULL,
+        [ForeignId] [nvarchar](50) NULL,
      CONSTRAINT [PK_dbo._org_rockSolidChurch_SampleProject_ReferralAgency] PRIMARY KEY CLUSTERED 
     (
 	    [Id] ASC

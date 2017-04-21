@@ -6,7 +6,6 @@ using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
-using org.rocksolidchurch.SampleProject.Data;
 using org.rocksolidchurch.SampleProject.Model;
 
 using Rock;
@@ -83,7 +82,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             int? referralAgencyId = PageParameter( "referralAgencyId" ).AsIntegerOrNull();
             if ( referralAgencyId.HasValue )
             {
-                _referralAgency = new ReferralAgencyService( new SampleProjectContext() ).Get( referralAgencyId.Value );
+                _referralAgency = new ReferralAgencyService( new RockContext() ).Get( referralAgencyId.Value );
                 if ( _referralAgency != null )
                 {
                     crumbName = _referralAgency.Name;
@@ -127,7 +126,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
         protected void btnSave_Click( object sender, EventArgs e )
         {
             ReferralAgency referralAgency;
-            var dataContext = new SampleProjectContext();
+            var dataContext = new RockContext();
             var service = new ReferralAgencyService( dataContext );
 
             int referralAgencyId = int.Parse( hfReferralAgencyId.Value );
@@ -177,7 +176,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             ReferralAgency referralAgency = null;
             if (referralAgencyId.HasValue)
             {
-                referralAgency = _referralAgency ?? new ReferralAgencyService( new SampleProjectContext() ).Get( referralAgencyId.Value );
+                referralAgency = _referralAgency ?? new ReferralAgencyService( new RockContext() ).Get( referralAgencyId.Value );
             }
 
             if (referralAgency != null)

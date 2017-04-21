@@ -17,6 +17,6 @@ namespace org.rocksolidchurch.SampleProject.Rest
         /// <summary>
         /// Initializes a new instance of the <see cref="ReferralAgenciesController"/> class.
         /// </summary>
-        public ReferralAgenciesController() : base( new ReferralAgencyService( new Data.SampleProjectContext() ) ) { }
+        public ReferralAgenciesController() : base( new ReferralAgencyService( new Rock.Data.RockContext() ) ) { }
     }
 }

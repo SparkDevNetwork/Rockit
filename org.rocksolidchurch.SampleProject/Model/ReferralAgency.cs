@@ -6,8 +6,6 @@ using System.Data.Entity.ModelConfiguration;
 using System.Linq;
 using System.Runtime.Serialization;
 
-using org.rocksolidchurch.SampleProject.Data;
-
 using Rock.Data;
 using Rock.Model;
 
@@ -18,9 +16,8 @@ namespace org.rocksolidchurch.SampleProject.Model
     /// </summary>
     [Table( "_org_rocksolidchurch_SampleProject_ReferralAgency" )]
     [DataContract]
-    public class ReferralAgency : Rock.Data.Model<ReferralAgency>, Rock.Security.ISecured
+    public class ReferralAgency : Model<ReferralAgency>, IRockEntity
     {
-
         #region Entity Properties
 
         /// <summary>
@@ -130,6 +127,9 @@ namespace org.rocksolidchurch.SampleProject.Model
         {
             this.HasOptional( r => r.Campus ).WithMany().HasForeignKey( r => r.CampusId).WillCascadeOnDelete( false );
             this.HasOptional( r => r.AgencyTypeValue ).WithMany().HasForeignKey( p => p.AgencyTypeValueId ).WillCascadeOnDelete( false );
+
+            // IMPORTANT!!
+            this.HasEntitySetName( "ReferralAgency" );
         }
     }
 
