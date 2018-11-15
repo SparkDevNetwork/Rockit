@@ -43,15 +43,15 @@ namespace RockWeb.Blocks.Groups
     [BooleanField( "Allow Campus Filter", "Should block add an option to allow filtering people and attendance counts by campus?", false, "", 2 )]
     [WorkflowTypeField( "Workflow", "An optional workflow type to launch whenever attendance is saved. The Group will be used as the workflow 'Entity' when processing is started. Additionally if a 'StartDateTime' and/or 'Schedule' attribute exist, their values will be set with the corresponding saved attendance values.", false, false, "", "", 3 )]
     [MergeTemplateField( "Attendance Roster Template", "", false, "", "", 4 )]
-    [CodeEditorField( "Lava Template", "An optional lava template to appear next to each person in the list.", CodeEditorMode.Lava, CodeEditorTheme.Rock, 400, true, "", "", 5 )]
-
+    [CodeEditorField( "Lava Template", "An optional lava template to appear next to each person in the list.", CodeEditorMode.Lava, CodeEditorTheme.Rock, 400, false, "", "", 5 )]
+    [BooleanField( "Restrict Future Occurrence Date", "Should user be prevented from selecting a future Occurrence date?", false, "", 6 )]
     public partial class GroupAttendanceDetail : RockBlock
     {
         #region Private Variables
 
         private RockContext _rockContext = null;
         private Group _group = null;
-        private bool _canEdit = false;
+        private bool _canManageMembers = false;
         private bool _allowAdd = false;
         private bool _allowCampusFilter = false;
         private ScheduleOccurrence _occurrence = null;
@@ -84,12 +84,13 @@ namespace RockWeb.Blocks.Groups
                 .Queryable( "GroupType,Schedule" ).AsNoTracking()
                 .FirstOrDefault( g => g.Id == groupId );
 
-            if ( _group != null && _group.IsAuthorized( Authorization.EDIT, CurrentPerson ) )
+            if ( _group != null && ( _group.IsAuthorized( Authorization.MANAGE_MEMBERS, CurrentPerson ) || _group.IsAuthorized( Authorization.EDIT, CurrentPerson ) ) )
             {
                 lHeading.Text = _group.Name + " Attendance";
-                _canEdit = true;
+                _canManageMembers = true;
             }
 
+            dpOccurrenceDate.AllowFutureDateSelection = !GetAttributeValue( "RestrictFutureOccurrenceDate").AsBoolean();
             _allowAdd = GetAttributeValue( "AllowAdd" ).AsBoolean();
 
             _allowCampusFilter = GetAttributeValue( "AllowCampusFilter" ).AsBoolean();
@@ -114,9 +115,9 @@ namespace RockWeb.Blocks.Groups
 
             if ( !Page.IsPostBack )
             {
-                pnlDetails.Visible = _canEdit;
+                pnlDetails.Visible = _canManageMembers;
 
-                if ( _canEdit )
+                if ( _canManageMembers )
                 {
                     if ( _allowCampusFilter )
                     {
@@ -310,13 +311,11 @@ namespace RockWeb.Blocks.Groups
 
                 rockContext.SaveChanges();
 
-                WorkflowType workflowType = null;
                 Guid? workflowTypeGuid = GetAttributeValue( "Workflow" ).AsGuidOrNull();
                 if ( workflowTypeGuid.HasValue )
                 {
-                    var workflowTypeService = new WorkflowTypeService( rockContext );
-                    workflowType = workflowTypeService.Get( workflowTypeGuid.Value );
-                    if ( workflowType != null )
+                    var workflowType = WorkflowTypeCache.Read( workflowTypeGuid.Value );
+                    if ( workflowType != null && ( workflowType.IsActive ?? true ) )
                     {
                         try
                         {
@@ -393,6 +392,7 @@ namespace RockWeb.Blocks.Groups
 
             var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
             mergeFields.Add( "Group", this._group );
+            mergeFields.Add("AttendanceDate", this._occurrence.Date);
 
             var mergeTemplate = new MergeTemplateService( rockContext ).Get( this.GetAttributeValue( "AttendanceRosterTemplate" ).AsGuid() );
 

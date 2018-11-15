@@ -60,6 +60,8 @@ namespace RockWeb.Blocks.Reporting
     [BooleanField( "Show Merge Template", "Show Export to Merge Template button in grid footer?", true, "CustomSetting" )]
     [IntegerField( "Timeout", "The amount of time in xxx to allow the query to run before timing out.", false, 30, Category = "CustomSetting" )]
     [TextField( "Merge Fields", "Any fields to make available as merge fields for any new communications", false, "", "CustomSetting" )]
+    [TextField( "Communication Recipient Person Id Columns", "Columns that contain a communication recipient person id.", false, "", "CustomSetting" )]
+    [TextField( "Encrypted Fields", "Any fields that need to be decrypted before displaying their value", false, "", "CustomSetting" )]
     [CodeEditorField( "Page Title Lava", "Optional Lava for setting the page title. If nothing is provided then the page's title will be used.",
         CodeEditorMode.Lava, CodeEditorTheme.Rock, 200, false, "", "CustomSetting" )]
     [BooleanField( "Paneled Grid", "Add the 'grid-panel' class to the grid to allow it to fit nicely in a block.", false, "Advanced" )]
@@ -232,15 +234,15 @@ namespace RockWeb.Blocks.Reporting
             SetAttributeValue( "FormattedOutput", ceFormattedOutput.Text );
             SetAttributeValue( "PageTitleLava", cePageTitleLava.Text );
             SetAttributeValue( "PersonReport", cbPersonReport.Checked.ToString() );
-
+            SetAttributeValue( "CommunicationRecipientPersonIdColumns", tbCommunicationRecipientPersonIdFields.Text );
             SetAttributeValue( "ShowCommunicate", ( cbPersonReport.Checked && cbShowCommunicate.Checked ).ToString() );
             SetAttributeValue( "ShowMergePerson", ( cbPersonReport.Checked && cbShowMergePerson.Checked ).ToString() );
             SetAttributeValue( "ShowBulkUpdate", ( cbPersonReport.Checked && cbShowBulkUpdate.Checked ).ToString() );
             SetAttributeValue( "ShowExcelExport", cbShowExcelExport.Checked.ToString() );
             SetAttributeValue( "ShowMergeTemplate", cbShowMergeTemplate.Checked.ToString() );
             SetAttributeValue( "ShowGridFilter", cbShowGridFilter.Checked.ToString() );
-
             SetAttributeValue( "MergeFields", tbMergeFields.Text );
+            SetAttributeValue( "EncryptedFields", tbEncryptedFields.Text );
             SaveAttributeValues();
 
             mdEdit.Hide();
@@ -309,8 +311,9 @@ namespace RockWeb.Blocks.Reporting
         /// Gets the data.
         /// </summary>
         /// <param name="errorMessage">The error message.</param>
+        /// <param name="schemaOnly">if set to <c>true</c> [schema only].</param>
         /// <returns></returns>
-        private DataSet GetData( out string errorMessage )
+        private DataSet GetData( out string errorMessage, bool schemaOnly = false  )
         {
             errorMessage = string.Empty;
 
@@ -332,7 +335,30 @@ namespace RockWeb.Blocks.Reporting
                     var parameters = GetParameters();
                     int timeout = GetAttributeValue( "Timeout" ).AsInteger();
 
-                    return DbService.GetDataSet( query, GetAttributeValue( "StoredProcedure" ).AsBoolean( false ) ? CommandType.StoredProcedure : CommandType.Text, parameters, timeout );
+                    if ( schemaOnly )
+                    {
+                        try
+                        {
+                            // GetDataSetSchema won't work in some cases, for example, if the SQL references a TEMP table.  So, fall back to use the regular GetDataSet if there is an exception or the schema does not return any tables
+                            var dataSet = DbService.GetDataSetSchema( query, GetAttributeValue( "StoredProcedure" ).AsBoolean( false ) ? CommandType.StoredProcedure : CommandType.Text, parameters, timeout );
+                            if ( dataSet != null && dataSet.Tables != null && dataSet.Tables.Count > 0 )
+                            {
+                                return dataSet;
+                            }
+                            else
+                            {
+                                return DbService.GetDataSet( query, GetAttributeValue( "StoredProcedure" ).AsBoolean( false ) ? CommandType.StoredProcedure : CommandType.Text, parameters, timeout );
+                            }
+                        }
+                        catch
+                        {
+                            return DbService.GetDataSet( query, GetAttributeValue( "StoredProcedure" ).AsBoolean( false ) ? CommandType.StoredProcedure : CommandType.Text, parameters, timeout );
+                        }
+                    }
+                    else
+                    {
+                        return DbService.GetDataSet( query, GetAttributeValue( "StoredProcedure" ).AsBoolean( false ) ? CommandType.StoredProcedure : CommandType.Text, parameters, timeout);
+                    }
                 }
                 catch ( System.Exception ex )
                 {
@@ -372,15 +398,15 @@ namespace RockWeb.Blocks.Reporting
             ceFormattedOutput.Text = GetAttributeValue( "FormattedOutput" );
             cePageTitleLava.Text = GetAttributeValue( "PageTitleLava" );
             cbPersonReport.Checked = GetAttributeValue( "PersonReport" ).AsBoolean();
-
+            tbCommunicationRecipientPersonIdFields.Text = GetAttributeValue( "CommunicationRecipientPersonIdColumns" );
             cbShowCommunicate.Checked = GetAttributeValue( "ShowCommunicate" ).AsBoolean();
             cbShowMergePerson.Checked = GetAttributeValue( "ShowMergePerson" ).AsBoolean();
             cbShowBulkUpdate.Checked = GetAttributeValue( "ShowBulkUpdate" ).AsBoolean();
             cbShowExcelExport.Checked = GetAttributeValue( "ShowExcelExport" ).AsBoolean();
             cbShowMergeTemplate.Checked = GetAttributeValue( "ShowMergeTemplate" ).AsBoolean();
             cbShowGridFilter.Checked = GetAttributeValue( "ShowGridFilter" ).AsBoolean();
-
             tbMergeFields.Text = GetAttributeValue( "MergeFields" );
+            tbEncryptedFields.Text = GetAttributeValue( "EncryptedFields" );
         }
 
         /// <summary>
@@ -410,7 +436,9 @@ namespace RockWeb.Blocks.Reporting
         {
             var showGridFilterControls = GetAttributeValue( "ShowGridFilter" ).AsBoolean();
             string errorMessage = string.Empty;
-            var dataSet = GetData( out errorMessage );
+
+            // get just the schema of the data until we actually need the data
+            var dataSetSchema = GetData( out errorMessage, true );
 
             if ( !string.IsNullOrWhiteSpace( errorMessage ) )
             {
@@ -425,7 +453,7 @@ namespace RockWeb.Blocks.Reporting
 
                 var mergeFields = GetDynamicDataMergeFields();
 
-                if ( dataSet != null )
+                if ( dataSetSchema != null )
                 {
                     string formattedOutput = GetAttributeValue( "FormattedOutput" );
 
@@ -433,6 +461,9 @@ namespace RockWeb.Blocks.Reporting
                     if ( !string.IsNullOrWhiteSpace( GetAttributeValue( "PageTitleLava" ) ) || !string.IsNullOrWhiteSpace( formattedOutput ) )
                     {
                         int i = 1;
+                        
+                        // Formatted output needs all the rows, so get the data regardless of the setData parameter
+                        var dataSet = GetData( out errorMessage);
                         foreach ( DataTable dataTable in dataSet.Tables )
                         {
                             var dropRows = new List<DataRowDrop>();
@@ -470,6 +501,16 @@ namespace RockWeb.Blocks.Reporting
                         bool personReport = GetAttributeValue( "PersonReport" ).AsBoolean();
 
                         int tableId = 0;
+                        DataSet dataSet;
+                        if ( setData == false )
+                        {
+                            dataSet = dataSetSchema;
+                        }
+                        else
+                        {
+                            dataSet = GetData( out errorMessage );
+                        }
+                         
                         foreach ( DataTable dataTable in dataSet.Tables )
                         {
                             var div = new HtmlGenericControl( "div" );
@@ -513,7 +554,9 @@ namespace RockWeb.Blocks.Reporting
                             {
                                 grid.PersonIdField = null;
                             }
+
                             grid.CommunicateMergeFields = GetAttributeValue( "MergeFields" ).SplitDelimitedValues().ToList<string>();
+                            grid.CommunicationRecipientPersonIdFields = GetAttributeValue( "CommunicationRecipientPersonIdColumns" ).SplitDelimitedValues().ToList();
 
                             AddGridColumns( grid, dataTable );
                             SetDataKeyNames( grid, dataTable );
@@ -524,7 +567,7 @@ namespace RockWeb.Blocks.Reporting
                                 SortTable( grid, dataTable );
                                 grid.DataSource = dataTable;
                                 
-                                if ( personReport)
+                                if ( personReport )
                                 {
                                     grid.EntityTypeId = EntityTypeCache.GetId<Person>();
                                 }
@@ -632,6 +675,7 @@ namespace RockWeb.Blocks.Reporting
         {
             bool showColumns = GetAttributeValue( "ShowColumns" ).AsBoolean();
             var columnList = GetAttributeValue( "Columns" ).SplitDelimitedValues().ToList();
+            var encryptedFields = GetAttributeValue( "EncryptedFields" ).SplitDelimitedValues().ToList();
 
             int rowsToEval = 10;
             if ( dataTable.Rows.Count < 10 )
@@ -738,6 +782,11 @@ namespace RockWeb.Blocks.Reporting
                 }
                 else
                 {
+                    if ( encryptedFields.Contains( dataTableColumn.ColumnName ) )
+                    {
+                        bf = new EncryptedField();
+                    }
+
                     bf.HtmlEncode = false;
 
                     if ( GridFilter != null )

@@ -32,7 +32,7 @@
 {% assign item = Items | First %}
 {% if item  %}
 	
-	<artcile class="series-detail">
+	<article class="series-detail">
 		{% assign seriesImageGuid = item | Attribute:'SeriesImage','RawValue' %}
 		<div class="series-banner" style="background-image: url('/GetImage.ashx?Guid={{ seriesImageGuid }}');" ></div>
 
@@ -55,12 +55,12 @@
 				</a>
 			</li>
 			<li>
-				<a href="http://twitter.com/home?status={{ 'Global' | Page:'Url' | Escape }}" class="socialicon socialicon-twitter" title="" data-original-title="Share via Twitter">
+				<a href="http://twitter.com/home?status={{ 'Global' | Page:'Url' | EscapeDataString }}" class="socialicon socialicon-twitter" title="" data-original-title="Share via Twitter">
 					<i class="fa fa-fw fa-twitter"></i>
 				</a>
 			</li>
 			<li>
-				<a href="mailto:?Subject={{ Event.Name | Escape }}&Body={{ 'Global' | Page:'Url' }}"  class="socialicon socialicon-email" title="" data-original-title="Share via Email">
+				<a href="mailto:?Subject={{ Event.Name | EscapeDataString }}&Body={{ 'Global' | Page:'Url' }}"  class="socialicon socialicon-email" title="" data-original-title="Share via Email">
 					<i class="fa fa-fw fa-envelope-o"></i>
 				</a>
 			</li>
@@ -75,10 +75,11 @@
 			{% for message in item.ChildItems %}
 				<li>
 					<a href="{{ LinkedPages.DetailPage }}?Item={{ message.ChildContentChannelItem.Id }}">
-						{{ message.ChildContentChannelItem.Title }}</li>
+						{{ message.ChildContentChannelItem.Title }}
 					</a>
+        </li>
 			{% endfor %}
-		</o/>
+		</ol>
 		
 	</article>
 	

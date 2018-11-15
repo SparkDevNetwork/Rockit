@@ -313,13 +313,11 @@ namespace RockWeb.Blocks.Crm
 
                             if ( CurrentPageIndex >= FormState.Count )
                             {
-                                WorkflowType workflowType = null;
                                 Guid? workflowTypeGuid = GetAttributeValue( "Workflow" ).AsGuidOrNull();
                                 if ( workflowTypeGuid.HasValue )
                                 {
-                                    var workflowTypeService = new WorkflowTypeService( rockContext );
-                                    workflowType = workflowTypeService.Get( workflowTypeGuid.Value );
-                                    if ( workflowType != null )
+                                    var workflowType = WorkflowTypeCache.Read( workflowTypeGuid.Value );
+                                    if ( workflowType != null && ( workflowType.IsActive ?? true ) )
                                     {
                                         try
                                         {
@@ -409,6 +407,9 @@ namespace RockWeb.Blocks.Crm
             SetAttributeValue( "Forms", json );
 
             SaveAttributeValues();
+
+            mdEdit.Hide();
+            pnlEditModal.Visible = false;
 
             ShowDetail();
 
@@ -596,7 +597,7 @@ namespace RockWeb.Blocks.Crm
         {
             _mode = "VIEW";
 
-            pnlEdit.Visible = false;
+            pnlEditModal.Visible = false;
 
             string json = GetAttributeValue( "Forms" );
             if ( string.IsNullOrWhiteSpace( json ) )
@@ -713,7 +714,7 @@ namespace RockWeb.Blocks.Crm
 
         private void ParseViewControls()
         {
-            if ( FormState.Count > CurrentPageIndex )
+            if ( FormState != null && FormState.Count > CurrentPageIndex )
             {
                 var form = FormState[CurrentPageIndex];
                 foreach ( var field in form.Fields
@@ -742,6 +743,10 @@ namespace RockWeb.Blocks.Crm
         /// </summary>
         protected override void ShowSettings()
         {
+            //NOTE: This isn't shown in a modal :(
+            
+
+
             cbDisplayProgressBar.Checked = GetAttributeValue( "DisplayProgressBar" ).AsBoolean();
             ddlSaveValues.SetValue( GetAttributeValue( "SaveValues" ) );
 
@@ -774,8 +779,9 @@ namespace RockWeb.Blocks.Crm
 
             BuildEditControls( true );
 
-            pnlEdit.Visible = true;
+            pnlEditModal.Visible = true;
             pnlView.Visible = false;
+            mdEdit.Show();
 
             _mode = "EDIT";
 
@@ -817,7 +823,7 @@ namespace RockWeb.Blocks.Crm
             control.ID = form.Guid.ToString( "N" );
             parentControl.Controls.Add( control );
 
-            control.ValidationGroup = btnSave.ValidationGroup;
+            control.ValidationGroup = mdEdit.ValidationGroup;
 
             control.DeleteFieldClick += tfeForm_DeleteFieldClick;
             control.ReorderFieldClick += tfeForm_ReorderFieldClick;

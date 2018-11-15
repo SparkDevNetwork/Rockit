@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +37,7 @@ namespace RockWeb.Blocks.Finance
     [Category( "Finance" )]
     [Description( "Block for viewing list of financial accounts." )]
     [LinkedPage( "Detail Page" )]
-    public partial class AccountList : RockBlock
+    public partial class AccountList : RockBlock, ISecondaryBlock, ICustomGridColumns
     {
         #region Control Methods
 
@@ -58,7 +58,11 @@ namespace RockWeb.Blocks.Finance
             if ( campusList.Count > 0 )
             {
                 ddlCampus.Visible = true;
-                rGridAccount.Columns[3].Visible = true;
+                var isActiveColumn = rGridAccount.ColumnsOfType<BoolField>().FirstOrDefault( a => a.DataField == "IsActive" );
+                if ( isActiveColumn != null )
+                {
+                    isActiveColumn.Visible = true;
+                }
             }
 
             rGridAccount.DataKeyNames = new string[] { "Id" };
@@ -67,6 +71,12 @@ namespace RockWeb.Blocks.Finance
             rGridAccount.GridReorder += rGridAccount_GridReorder;
             rGridAccount.GridRebind += rGridAccounts_GridRebind;
             rGridAccount.IsDeleteEnabled = canEdit;
+
+            AddAttributeColumns();
+
+            var deleteField = new DeleteField();
+            rGridAccount.Columns.Add( deleteField );
+            deleteField.Click += rGridAccount_Delete;
         }
 
         /// <summary>
@@ -95,9 +105,13 @@ namespace RockWeb.Blocks.Finance
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void rGridAccount_Add( object sender, EventArgs e )
         {
-            var parms = new Dictionary<string, string>();
-            parms.Add( "accountId", "0" );
-            NavigateToLinkedPage( "DetailPage", parms );
+            Dictionary<string, string> queryParams = new Dictionary<string, string>();
+            queryParams.Add( "AccountId", 0.ToString() );
+            int? parentAccountId = PageParameter( "AccountId" ).AsIntegerOrNull();
+            queryParams.Add( "ParentAccountId", parentAccountId.ToString() );
+            queryParams.Add( "ExpandedIds", PageParameter("ExpandedIds"));
+
+            NavigateToLinkedPage( "DetailPage", queryParams );
         }
 
         /// <summary>
@@ -107,9 +121,9 @@ namespace RockWeb.Blocks.Finance
         /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
         protected void rGridAccount_Edit( object sender, RowEventArgs e )
         {
-            var parms = new Dictionary<string, string>();
-            parms.Add( "accountId", e.RowKeyValue.ToString() );
-            NavigateToLinkedPage( "DetailPage", parms );
+            var queryParams = new Dictionary<string, string>();
+            queryParams.Add( "AccountId", e.RowKeyValue.ToString() );
+            NavigateToLinkedPage( "DetailPage", queryParams );
         }
 
         /// <summary>
@@ -153,7 +167,7 @@ namespace RockWeb.Blocks.Finance
                 rockContext.SaveChanges();
             }
 
-            BindGrid();
+            NavigateToCurrentPageReference();
         }
 
         /// <summary>
@@ -188,6 +202,15 @@ namespace RockWeb.Blocks.Finance
                     }
 
                     break;
+                case "Account Name":
+                case "Active":
+                case "Public":
+                case "Tax Deductible":
+                    e.Value = e.Value;
+                    break;
+                default:
+                    e.Value = string.Empty;
+                    break;
             }
         }
 
@@ -217,9 +240,30 @@ namespace RockWeb.Blocks.Finance
         /// <returns></returns>
         private IQueryable<FinancialAccount> GetAccounts( RockContext rockContext )
         {
+            int? parentAccountId = PageParameter( "AccountId" ).AsIntegerOrNull();
+            bool topLevelOnly = PageParameter( "TopLevel" ).AsBoolean();
+
+            if ( parentAccountId.HasValue )
+            {
+                lActionTitle.Text = "Child Accounts".FormatAsHtmlTitle();
+            }
+            else
+            {
+                lActionTitle.Text = "List Accounts".FormatAsHtmlTitle();
+            }
+
             var accountService = new FinancialAccountService( rockContext );
             SortProperty sortProperty = rGridAccount.SortProperty;
             var accountQuery = accountService.Queryable();
+
+            if ( parentAccountId.HasValue )
+            {
+                accountQuery = accountQuery.Where( account => account.ParentAccountId == parentAccountId.Value );
+            }
+            else if ( topLevelOnly )
+            {
+                accountQuery = accountQuery.Where( account => account.ParentAccountId == null );
+            }
 
             string accountNameFilter = rAccountFilter.GetUserPreference( "Account Name" );
             if ( !string.IsNullOrEmpty( accountNameFilter ) )
@@ -251,7 +295,7 @@ namespace RockWeb.Blocks.Finance
                 accountQuery = accountQuery.Where( account => account.IsTaxDeductible == ( taxDeductibleFilter == "Yes" ) );
             }
 
-            accountQuery = accountQuery.OrderBy( a => a.Order );
+            accountQuery = accountQuery.OrderBy( a => a.Order ).ThenBy( f => f.Name );
 
             return accountQuery;
         }
@@ -282,6 +326,51 @@ namespace RockWeb.Blocks.Finance
             ddlIsActive.SelectedValue = rAccountFilter.GetUserPreference( "Active" );
             ddlIsPublic.SelectedValue = rAccountFilter.GetUserPreference( "Public" );
             ddlIsTaxDeductible.SelectedValue = rAccountFilter.GetUserPreference( "Tax Deductible" );
+        }
+
+        /// <summary>
+        /// Adds columns for any Account attributes marked as Show In Grid
+        /// </summary>
+        protected void AddAttributeColumns()
+        {
+            // Remove attribute columns
+            foreach ( var column in rGridAccount.Columns.OfType<AttributeField>().ToList() )
+            {
+                rGridAccount.Columns.Remove( column );
+            }
+
+            int entityTypeId = new FinancialAccount().TypeId;
+            foreach ( var attribute in new AttributeService( new RockContext() ).Queryable()
+                .Where( a =>
+                    a.EntityTypeId == entityTypeId &&
+                    a.IsGridColumn
+                   )
+                .OrderBy( a => a.Order )
+                .ThenBy( a => a.Name ) )
+            {
+                string dataFieldExpression = attribute.Key;
+                bool columnExists = rGridAccount.Columns.OfType<AttributeField>().FirstOrDefault( a => a.DataField.Equals( dataFieldExpression ) ) != null;
+                if ( !columnExists )
+                {
+                    AttributeField boundField = new AttributeField();
+                    boundField.DataField = dataFieldExpression;
+                    boundField.AttributeId = attribute.Id;
+                    boundField.HeaderText = attribute.Name;
+
+                    var attributeCache = Rock.Web.Cache.AttributeCache.Read( attribute.Id );
+                    if ( attributeCache != null )
+                    {
+                        boundField.ItemStyle.HorizontalAlign = attributeCache.FieldType.Field.AlignValue;
+                    }
+
+                    rGridAccount.Columns.Add( boundField );
+                }
+            }
+        }
+
+        public void SetVisible( bool visible )
+        {
+            divDetails.Visible = visible;
         }
 
         #endregion

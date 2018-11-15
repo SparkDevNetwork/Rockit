@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@ using Rock.Data;
 using Rock.Model;
 using Rock.Security;
 using Rock.Web.Cache;
+using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
 namespace RockWeb.Blocks.Security
@@ -34,7 +35,7 @@ namespace RockWeb.Blocks.Security
     [Category( "Security" )]
     [Description( "Lists all the REST API Keys" )]
     [LinkedPage( "Detail Page" )]
-    public partial class RestKeyList : Rock.Web.UI.RockBlock
+    public partial class RestKeyList : RockBlock, ICustomGridColumns
     {
         #region Control Methods
 

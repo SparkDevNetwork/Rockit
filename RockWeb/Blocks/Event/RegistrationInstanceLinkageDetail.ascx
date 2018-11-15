@@ -45,8 +45,8 @@
                 </div>
 
                 <div class="actions">
-                    <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" />
-                    <asp:LinkButton ID="btnCancel" runat="server" AccessKey="c" Text="Cancel" CssClass="btn btn-link" CausesValidation="false" OnClick="btnCancel_Click" />
+                    <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" ToolTip="Alt+s" Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" />
+                    <asp:LinkButton ID="btnCancel" runat="server" AccessKey="c" ToolTip="Alt+c" Text="Cancel" CssClass="btn btn-link" CausesValidation="false" OnClick="btnCancel_Click" />
                 </div>
 
             </div>
@@ -78,7 +78,7 @@
                             DataTextField="Name" DataValueField="Id" AutoPostBack="true" OnSelectedIndexChanged="ddlCalendarItem_SelectedIndexChanged"/>
                     </div>
                     <div class="col-md-6">
-                        <Rock:RockDropDownList ID="ddlCalendarItemOccurrence" runat="server" Label="Campus" Required="true" ValidationGroup="DlgPage3"
+                        <Rock:RockDropDownList ID="ddlCalendarItemOccurrence" runat="server" Label="Occurrence" Required="true" ValidationGroup="DlgPage3"
                             DataTextField="Name" DataValueField="Id"  />
                     </div>
                 </div>

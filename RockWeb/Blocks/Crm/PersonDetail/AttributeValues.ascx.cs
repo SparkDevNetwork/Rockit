@@ -223,7 +223,6 @@ namespace RockWeb.Blocks.Crm.PersonDetail
 
                     var rockContext = new RockContext();
 
-                    var changes = new List<string>();
                     foreach ( int attributeId in AttributeList )
                     {
                         var attribute = AttributeCache.Read( attributeId );
@@ -237,33 +236,8 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                                 string originalValue = Person.GetAttributeValue( attribute.Key );
                                 string newValue = attribute.FieldType.Field.GetEditValue( attributeControl, attribute.QualifierValues );
                                 Rock.Attribute.Helper.SaveAttributeValue( Person, attribute, newValue, rockContext );
-
-                                // Check for changes to write to history
-                                if ( ( originalValue ?? string.Empty ).Trim() != ( newValue ?? string.Empty ).Trim() )
-                                {
-                                    string formattedOriginalValue = string.Empty;
-                                    if ( !string.IsNullOrWhiteSpace( originalValue ) )
-                                    {
-                                        formattedOriginalValue = attribute.FieldType.Field.FormatValue( null, originalValue, attribute.QualifierValues, false );
-                                    }
-
-                                    string formattedNewValue = string.Empty;
-                                    if ( !string.IsNullOrWhiteSpace( newValue ) )
-                                    {
-                                        formattedNewValue = attribute.FieldType.Field.FormatValue( null, newValue, attribute.QualifierValues, false );
-                                    }
-
-                                    
-                                    History.EvaluateChange( changes, attribute.Name, formattedOriginalValue, formattedNewValue, attribute.FieldType.Field.IsSensitive());
-                                }
                             }
                         }
-                    }
-
-                    if ( changes.Any() )
-                    {
-                        HistoryService.SaveChanges( rockContext, typeof( Person ), Rock.SystemGuid.Category.HISTORY_PERSON_DEMOGRAPHIC_CHANGES.AsGuid(),
-                            Person.Id, changes );
                     }
                 }
                 else if ( ViewMode == VIEW_MODE_ORDER && _canAdministrate )
@@ -383,16 +357,23 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                         {
                             if ( attribute.FieldType.Class == typeof(Rock.Field.Types.ImageFieldType).FullName )
                             {
-                                formattedValue = attribute.FieldType.Field.FormatValueAsHtml( fsAttributes, attributeValue, attribute.QualifierValues, true );
+                                formattedValue = attribute.FieldType.Field.FormatValueAsHtml( fsAttributes, attribute.EntityTypeId, Person.Id, attributeValue, attribute.QualifierValues, true );
                             }
                             else
                             {
-                                formattedValue = attribute.FieldType.Field.FormatValueAsHtml( fsAttributes, attributeValue, attribute.QualifierValues, false );
+                                formattedValue = attribute.FieldType.Field.FormatValueAsHtml( fsAttributes, attribute.EntityTypeId, Person.Id, attributeValue, attribute.QualifierValues, false );
                             }
                             
                             if ( !string.IsNullOrWhiteSpace( formattedValue ) )
                             {
-                                fsAttributes.Controls.Add( new RockLiteral { Label = attribute.Name, Text = formattedValue } );
+                                if ( attribute.FieldType.Class == typeof( Rock.Field.Types.MatrixFieldType ).FullName )
+                                {
+                                    fsAttributes.Controls.Add( new RockLiteral { Label = attribute.Name, Text = formattedValue, CssClass= "matrix-attribute" } );
+                                    }
+                                else
+                                {
+                                    fsAttributes.Controls.Add( new RockLiteral { Label = attribute.Name, Text = formattedValue } );
+                                }
                             }
                         }
                     }

@@ -29,18 +29,20 @@ using Rock.Model;
 
 namespace RockWeb.Blocks.CheckIn
 {
-    [DisplayName("Family Select")]
-    [Category("Check-in")]
+    [DisplayName( "Family Select" )]
+    [Category( "Check-in" )]
     [Description( "Displays a list of families to select for checkin." )]
 
-    [LinkedPage( "Next Page (Family Check-in)", "", false, "", "", 5, "FamilyNextPage" )]
+    [TextField( "Title", "Title to display.", false, "Families", "Text", 5 )]
+    [TextField( "Caption", "", false, "Select Your Family", "Text", 6 )]
+    [TextField( "No Option Message", "", false, "Sorry, no one in your family is eligible to check-in at this location.", "Text", 7 )]
+
     public partial class FamilySelect : CheckInBlock
     {
         protected override void OnLoad( EventArgs e )
         {
             base.OnLoad( e );
 
-            RockPage.AddScriptLink( "~/Scripts/iscroll.js" );
             RockPage.AddScriptLink( "~/Scripts/CheckinClient/checkin-core.js" );
 
             var bodyTag = this.Page.Master.FindControl( "bodyTag" ) as HtmlGenericControl;
@@ -77,6 +79,9 @@ namespace RockWeb.Blocks.CheckIn
                     }
                     else
                     {
+                        lTitle.Text = GetAttributeValue( "Title" );
+                        lCaption.Text = GetAttributeValue( "Caption" );
+
                         rSelection.DataSource = CurrentCheckInState.CheckIn.Families
                             .OrderBy( f => f.Caption )
                             .ThenBy( f => f.SubCaption )
@@ -97,6 +102,8 @@ namespace RockWeb.Blocks.CheckIn
             {
                 family.Selected = false;
                 family.People = new List<CheckInPerson>();
+                family.Action = CheckinAction.CheckIn;
+                family.CheckOutPeople = new List<CheckOutPerson>();
             }
         }
 
@@ -150,26 +157,15 @@ namespace RockWeb.Blocks.CheckIn
 
         private void ProcessSelection()
         {
-            if ( !ProcessSelection( maWarning, () => 
-                CurrentCheckInState.CheckIn.Families.All( f => f.People.Count == 0 ),
-                "<p>Sorry, no one in your family is eligible to check-in at this location.</p>" ) )            
+            if ( !ProcessSelection( maWarning, () =>
+                ( 
+                    CurrentCheckInState.CheckIn.Families.All( f => f.People.Count == 0 ) && 
+                    CurrentCheckInState.CheckIn.Families.All( f => f.Action == CheckinAction.CheckIn )
+                ),
+                string.Format( "<p>{0}</p>", GetAttributeValue( "NoOptionMessage" ) ) ) )            
             {
                 ClearSelection();
             }
-        }
-
-        protected override void NavigateToNextPage( Dictionary<string, string> queryParams, bool validateSelectionRequired )
-        {
-            string pageAttributeKey = "NextPage";
-            if ( CurrentCheckInType != null &&
-                CurrentCheckInType.TypeOfCheckin == TypeOfCheckin.Family &&
-                !string.IsNullOrWhiteSpace( LinkedPageUrl( "FamilyNextPage" ) ) )
-            {
-                pageAttributeKey = "FamilyNextPage";
-            }
-
-            queryParams = CheckForOverride( queryParams );
-            NavigateToLinkedPage( pageAttributeKey, queryParams );
         }
     }
 }

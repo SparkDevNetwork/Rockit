@@ -20,6 +20,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.ServiceModel.Web;
+using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.SessionState;
 
@@ -132,9 +133,15 @@ namespace RockWeb
             // validate file type (child FileUploader classes, like ImageUploader, can do additional validation);
             this.ValidateFileType( context, uploadedFile );
 
+            //
+            // Get filename and scrub invalid characters.
+            //
+            var filename = Path.GetFileName( uploadedFile.FileName );
+            filename = Regex.Replace( filename, @"[<>*%&:\\]", string.Empty, RegexOptions.CultureInvariant );
+
             // get folderPath and construct filePath
             string relativeFolderPath = context.Request.Form["folderPath"] ?? string.Empty;
-            string relativeFilePath = Path.Combine( relativeFolderPath, Path.GetFileName( uploadedFile.FileName ) );
+            string relativeFilePath = Path.Combine( relativeFolderPath, filename );
             string rootFolderParam = context.Request.QueryString["rootFolder"];
 
             string rootFolder = string.Empty;
@@ -153,7 +160,14 @@ namespace RockWeb
 
             string physicalRootFolder = context.Request.MapPath( rootFolder );
             string physicalContentFolderName = Path.Combine( physicalRootFolder, relativeFolderPath.TrimStart( new char[] { '/', '\\' } ) );
-            string physicalFilePath = Path.Combine( physicalContentFolderName, uploadedFile.FileName );
+
+            // Make sure the physicalContentFolderName doesn't have any special directory navigation indicators
+            if ( physicalContentFolderName != System.IO.Path.GetFullPath( physicalContentFolderName ) )
+            {
+                throw new Rock.Web.FileUploadException( "Unable to upload file", System.Net.HttpStatusCode.BadRequest );
+            }
+
+            string physicalFilePath = Path.Combine( physicalContentFolderName, filename );
             var fileContent = GetFileContentStream( context, uploadedFile );
 
             // store the content file in the specified physical content folder
@@ -187,6 +201,16 @@ namespace RockWeb
         }
 
         /// <summary>
+        /// Dictionary of deprecated or incorrect mimetypes and what they should be mapped to instead
+        /// </summary>
+        private Dictionary<string, string> _mimeTypeRemap = new Dictionary<string, string>
+        {
+            { "text/directory", "text/vcard" },
+            { "text/directory; profile=vCard", "text/vcard" },
+            { "text/x-vcard", "text/vcard" }
+        };
+
+        /// <summary>
         /// Processes the binary file.
         /// </summary>
         /// <param name="context">The context.</param>
@@ -211,6 +235,13 @@ namespace RockWeb
                 }
             }
 
+            char[] illegalCharacters = new char[] { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
+
+            if ( uploadedFile.FileName.IndexOfAny( illegalCharacters ) >= 0 )
+            {
+                throw new Rock.Web.FileUploadException( "Invalid Filename.  Please remove any special characters (" + string.Join(" ", illegalCharacters) + ").", System.Net.HttpStatusCode.UnsupportedMediaType );
+            }
+
             // always create a new BinaryFile record of IsTemporary when a file is uploaded
             var binaryFileService = new BinaryFileService( rockContext );
             var binaryFile = new BinaryFile();
@@ -220,14 +251,21 @@ namespace RockWeb
             binaryFile.IsTemporary = context.Request.QueryString["IsTemporary"].AsBooleanOrNull() ?? true;
             binaryFile.BinaryFileTypeId = binaryFileType.Id;
             binaryFile.MimeType = uploadedFile.ContentType;
+            binaryFile.FileSize = uploadedFile.ContentLength;
             binaryFile.FileName = Path.GetFileName( uploadedFile.FileName );
+
+            if ( _mimeTypeRemap.ContainsKey( binaryFile.MimeType ) )
+            {
+                binaryFile.MimeType = _mimeTypeRemap[binaryFile.MimeType];
+            }
+
             binaryFile.ContentStream = GetFileContentStream( context, uploadedFile );
             rockContext.SaveChanges();
 
             var response = new
             {
                 Id = binaryFile.Id,
-                FileName = binaryFile.FileName
+                FileName = binaryFile.FileName.UrlEncode()
             };
 
             context.Response.Write( response.ToJson() );

@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,7 @@ namespace RockWeb.Blocks.Administration
     [Description( "Lists all scheduled jobs." )]
 
     [LinkedPage("Detail Page")]
-    public partial class ScheduledJobList : RockBlock
+    public partial class ScheduledJobList : RockBlock, ICustomGridColumns
     {
         #region Control Methods
 
@@ -255,7 +255,7 @@ namespace RockWeb.Blocks.Administration
             }
             else
             {
-                gScheduledJobs.DataSource = jobService.GetAllJobs().OrderByDescending( a => a.LastRunDateTime ).ToList();
+                gScheduledJobs.DataSource = jobService.GetAllJobs().OrderByDescending( a => a.LastRunDateTime ).ThenBy( a => a.Name ).ToList();
             }
             
             gScheduledJobs.DataBind();

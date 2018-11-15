@@ -23,6 +23,8 @@ using Rock;
 using Rock.Attribute;
 using Rock.Security;
 using System.Text;
+using System.Text.RegularExpressions;
+using Rock.Model;
 
 namespace RockWeb.Blocks.Security
 {
@@ -77,7 +79,7 @@ namespace RockWeb.Blocks.Security
                 lHello.Text = string.Format( "<span>Hello {0}</span>", currentPerson.NickName );
 
                 var currentUser = CurrentUser;
-                if ( currentUser == null || !currentUser.IsAuthenticated )
+                if ( currentUser == null )
                 {
                     phMyAccount.Visible = false;
                     phMySettings.Visible = false;
@@ -189,14 +191,15 @@ namespace RockWeb.Blocks.Security
                     Rock.Transactions.RockQueue.TransactionQueue.Enqueue( transaction );
                 }
 
-                FormsAuthentication.SignOut();
+                Authorization.SignOut();
 
                 // After logging out check to see if an anonymous user is allowed to view the current page.  If so
                 // redirect back to the current page, otherwise redirect to the site's default page
                 var currentPage = Rock.Web.Cache.PageCache.Read( RockPage.PageId );
                 if ( currentPage != null && currentPage.IsAuthorized(Authorization.VIEW, null))
                 {
-                    Response.Redirect( CurrentPageReference.BuildUrl() );
+                    string url = CurrentPageReference.BuildUrl( true );
+                    Response.Redirect( url );
                     Context.ApplicationInstance.CompleteRequest();
                 }
                 else

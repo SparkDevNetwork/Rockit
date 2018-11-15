@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,6 +40,8 @@ namespace RockWeb.Blocks.Crm.PersonDetail
     [LinkedPage( "Connection Request Detail" )]
     public partial class ConnectionRequests : Rock.Web.UI.PersonBlock
     {
+        DateTime _midnightTomorrow = RockDateTime.Today.AddDays( 1 );
+
         /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Load" /> event.
         /// </summary>
@@ -71,7 +73,15 @@ namespace RockWeb.Blocks.Crm.PersonDetail
             {
                 var rockContext = new RockContext();
                 var connectionTypeService = new ConnectionTypeService( rockContext );
-                var connectionTypesQry = connectionTypeService.Queryable().Where( a => a.ConnectionOpportunities.Any( b => b.ConnectionRequests.Any( r => r.PersonAlias.PersonId == this.Person.Id) ) ).OrderBy( a => a.Name );
+                var connectionTypesQry = connectionTypeService
+                    .Queryable()
+                    .Where( t => t.ConnectionOpportunities.Any( o => o.IsActive == true ) )
+                    .Where( t => t.ConnectionOpportunities.Any( o => o.ConnectionRequests.Any( r => r.PersonAlias.PersonId == this.Person.Id ) ) )
+                    .Where( t => t.ConnectionOpportunities
+                        .Any( o => o.ConnectionRequests
+                            .Any( r => r.ConnectionState == ConnectionState.Active ||
+                                ( r.ConnectionState == ConnectionState.FutureFollowUp && r.FollowupDate.HasValue && r.FollowupDate.Value <= _midnightTomorrow ) ) ) )
+                    .OrderBy( a => a.Name );
 
                 var connectionTypesList = connectionTypesQry.AsNoTracking().ToList();
 
@@ -102,10 +112,19 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                 {
                     using ( var rockContext = new RockContext() )
                     {
+                        string listHtml = string.Empty;
+
                         int personId = this.Person.Id;
                         var connectionRequestService = new ConnectionRequestService( rockContext );
-                        var connectionRequestList = connectionRequestService.Queryable().Where( a => a.PersonAlias.PersonId == personId && a.ConnectionOpportunity.ConnectionTypeId == connectionType.Id ).OrderBy( a => a.ConnectionOpportunity.Name ).AsNoTracking().ToList();
-                        string listHtml = string.Empty;
+                        var connectionRequestList = connectionRequestService
+                            .Queryable()
+                            .Where( a => a.PersonAlias.PersonId == personId && a.ConnectionOpportunity.ConnectionTypeId == connectionType.Id )
+                            .Where( r => r.ConnectionState == ConnectionState.Active || 
+                                ( r.ConnectionState == ConnectionState.FutureFollowUp && r.FollowupDate.HasValue && r.FollowupDate.Value <= _midnightTomorrow ) )
+                            .OrderBy( a => a.ConnectionOpportunity.Name )
+                            .AsNoTracking()
+                            .ToList();
+
                         foreach ( var connectionRequest in connectionRequestList )
                         {
                             string connectionNameHtml;
@@ -134,7 +153,7 @@ namespace RockWeb.Blocks.Crm.PersonDetail
 
                             listHtml += string.Format(
                                 "<li {0}>{1} - <small>{2}</small></li>",
-                                connectionRequest.ConnectionState == ConnectionState.Connected ? "class='is-inactive'" : string.Empty,
+                                ( connectionRequest.ConnectionState == ConnectionState.Connected || connectionRequest.ConnectionState == ConnectionState.Inactive ) ? "class='is-inactive'" : string.Empty,
                                 connectionNameHtml,
                                 connectionRequest.ConnectionState == ConnectionState.Connected ? "Connected" : connectionRequest.ConnectionStatus.ToString() );
                         }

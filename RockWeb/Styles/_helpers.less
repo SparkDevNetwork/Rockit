@@ -1,4 +1,4 @@
-﻿/*
+﻿cmd/*
 
   Used to provide extensible classes for plugin developers to use to help them match the themes they are running in
 
@@ -162,10 +162,26 @@
   background-color: @body-bg;
 }
 
+// font weights
 .text-color {
   color: @text-color;
 }
 
+.text-normal {
+  font-weight: normal;
+}
+
+.text-light {
+  font-weight: @font-weight-light;
+}
+
+.text-semibold {
+  font-weight: @font-weight-semibold;
+}
+
+.text-bold {
+  font-weight: @font-weight-bold;
+}
 
 .is-inactive {
   opacity: .6;
@@ -503,3 +519,30 @@
 
 // 5. Utilities
 // -------------------------
+.width-full {
+  width: 100%;
+}
+
+.width-half {
+  width: 50%;
+}
+
+.width-quarter {
+  width: 25%;
+}
+
+.width-third {
+  width: 33.33333%;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}

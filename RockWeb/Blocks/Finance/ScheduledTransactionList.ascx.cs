@@ -41,10 +41,14 @@ namespace RockWeb.Blocks.Finance
     [Category( "Finance" )]
     [Description( "Lists scheduled transactions either for current person (Person Detail Page) or all scheduled transactions." )]
 
-    [LinkedPage( "View Page" )]
-    [LinkedPage( "Add Page" )]
+    [LinkedPage( "View Page", "", false )]
+    [LinkedPage( "Add Page", "", false )]
+    [AccountsField( "Accounts", "Limit the results to scheduled transactions that match the selected accounts.", false, "", "", 2 )]
+
+    [IntegerField( "Person Token Expire Minutes", "When adding a new scheduled transaction from a person detail page, the number of minutes the person token for the transaction is valid after it is issued.", true, 60, "", 3 )]
+    [IntegerField( "Person Token Usage Limit", "When adding a new scheduled transaction from a person detail page, the maximum number of times the person token for the transaction can be used.", false, 1, "", 4 )]
     [ContextAware]
-    public partial class ScheduledTransactionList : Rock.Web.UI.RockBlock
+    public partial class ScheduledTransactionList : RockBlock, ISecondaryBlock, ICustomGridColumns
     {
         private bool _isExporting = false;
 
@@ -77,9 +81,15 @@ namespace RockWeb.Blocks.Finance
 
             gList.DataKeyNames = new string[] { "Id" };
             gList.Actions.ShowAdd = canEdit && !string.IsNullOrWhiteSpace( GetAttributeValue( "AddPage" ) );
+            gList.Actions.AddClick += gList_Add;
+
             gList.IsDeleteEnabled = canEdit;
 
-            gList.Actions.AddClick += gList_Add;
+            if ( !string.IsNullOrWhiteSpace( GetAttributeValue( "ViewPage" ) ) )
+            {
+                gList.RowSelected += gList_Edit;
+            }
+
             gList.GridRebind += gList_GridRebind;
 
             TargetPerson = ContextEntity<Person>();
@@ -150,7 +160,7 @@ namespace RockWeb.Blocks.Finance
                 case "Account":
 
                     int accountId = 0;
-                    if ( int.TryParse( e.Value, out accountId ) )
+                    if ( int.TryParse( e.Value, out accountId ) && ddlAccount.Visible )
                     {
                         var service = new FinancialAccountService( new RockContext() );
                         var account = service.Get( accountId );
@@ -158,6 +168,10 @@ namespace RockWeb.Blocks.Finance
                         {
                             e.Value = account.Name;
                         }
+                    }
+                    else
+                    {
+                        e.Value = string.Empty;
                     }
 
                     break;
@@ -191,7 +205,17 @@ namespace RockWeb.Blocks.Finance
         protected void gList_Add( object sender, EventArgs e )
         {
             var parms = new Dictionary<string, string>();
-            parms.Add( "Person", TargetPerson.UrlEncodedKey );
+            var addScheduledTransactionPage = new Rock.Web.PageReference( GetAttributeValue( "AddPage" ) );
+            if ( addScheduledTransactionPage != null )
+            {
+                // create a limited-use personkey that will last long enough for them to go thru all the 'postbacks' while posting a transaction
+                if ( this.TargetPerson != null )
+                {
+                    var impersonationToken = this.TargetPerson.GetImpersonationToken( DateTime.Now.AddMinutes( this.GetAttributeValue( "PersonTokenExpireMinutes" ).AsIntegerOrNull() ?? 60 ), this.GetAttributeValue( "PersonTokenUsageLimit" ).AsIntegerOrNull(), addScheduledTransactionPage.PageId );
+                    parms.Add( "Person", impersonationToken );
+                }
+            }
+            
             NavigateToLinkedPage( "AddPage", parms );
         }
 
@@ -231,6 +255,7 @@ namespace RockWeb.Blocks.Finance
                 .Queryable().AsNoTracking()
                 .Where( a => a.IsActive );
 
+            ddlAccount.Visible = string.IsNullOrWhiteSpace( GetAttributeValue( "Accounts" ) );
             ddlAccount.Items.Add( new ListItem( string.Empty, string.Empty ) );
             foreach ( FinancialAccount account in accounts.OrderBy( a => a.Order ) )
             {
@@ -274,6 +299,13 @@ namespace RockWeb.Blocks.Finance
                     .Queryable( "ScheduledTransactionDetails,FinancialPaymentDetail.CurrencyTypeValue,FinancialPaymentDetail.CreditCardTypeValue" )
                     .AsNoTracking();
 
+                // Valid Accounts
+                var accountGuids = GetAttributeValue( "Accounts" ).SplitDelimitedValues().AsGuidList();
+                if ( accountGuids.Any() )
+                {
+                    qry = qry.Where( t => t.ScheduledTransactionDetails.Any( d => accountGuids.Contains( d.Account.Guid ) ) );
+                }
+
                 // Amount Range
                 var nre = new NumberRangeEditor();
                 nre.DelimitedValues = gfSettings.GetUserPreference( "Amount" );
@@ -310,7 +342,7 @@ namespace RockWeb.Blocks.Finance
 
                 // Account Id
                 int accountId = int.MinValue;
-                if ( int.TryParse( gfSettings.GetUserPreference( "Account" ), out accountId ) )
+                if ( int.TryParse( gfSettings.GetUserPreference( "Account" ), out accountId ) && ddlAccount.Visible )
                 {
                     qry = qry.Where( t => t.ScheduledTransactionDetails.Any( d => d.AccountId == accountId ) );
                 }
@@ -379,10 +411,22 @@ namespace RockWeb.Blocks.Finance
             var txn = dataItem as FinancialScheduledTransaction;
             if ( txn != null )
             {
-                var summary  = txn.ScheduledTransactionDetails
-                    .OrderBy( d => d.Account.Order )
-                    .Select( d => string.Format( "{0}: {1}", d.Account.Name, d.Amount.FormatAsCurrency() ) )
+                var accountGuids = GetAttributeValue( "Accounts" ).SplitDelimitedValues().AsGuidList();
+                var summary = txn.ScheduledTransactionDetails
+                    .Select( d => new
+                    {
+                        IsOther = accountGuids.Any() && !accountGuids.Contains( d.Account.Guid ),
+                        Order = d.Account.Order,
+                        Name = d.Account.Name,
+                        Amount = d.Amount
+                    } )
+                    .OrderBy( d => d.IsOther )
+                    .ThenBy( d => d.Order )
+                    .Select( d => string.Format( "{0}: {1}",
+                        !d.IsOther ? d.Name : "Other",
+                        d.Amount.FormatAsCurrency() ) )
                     .ToList();
+
                 if ( summary.Any() )
                 {
                     if ( _isExporting )
@@ -408,6 +452,15 @@ namespace RockWeb.Blocks.Finance
             parms.Add( "ScheduledTransactionId", id.ToString() );
             parms.Add( "Person", TargetPerson.UrlEncodedKey );
             NavigateToLinkedPage( "DetailPage", parms );
+        }
+
+        /// <summary>
+        /// Hook so that other blocks can set the visibility of all ISecondaryBlocks on its page
+        /// </summary>
+        /// <param name="visible">if set to <c>true</c> [visible].</param>
+        public void SetVisible( bool visible )
+        {
+            pnlContent.Visible = visible;
         }
 
         #endregion

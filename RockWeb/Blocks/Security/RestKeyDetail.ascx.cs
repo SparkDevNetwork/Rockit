@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -77,7 +77,6 @@ namespace RockWeb.Blocks.Security
             rockContext.WrapTransaction( () =>
             {
                 var personService = new PersonService( rockContext );
-                var changes = new List<string>();
                 var restUser = new Person();
                 if ( int.Parse( hfRestUserId.Value ) != 0 )
                 {
@@ -90,7 +89,6 @@ namespace RockWeb.Blocks.Security
                 }
 
                 // the rest user name gets saved as the last name on a person
-                History.EvaluateChange( changes, "Last Name", restUser.LastName, tbName.Text );
                 restUser.LastName = tbName.Text;
                 restUser.RecordTypeValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_RESTUSER.AsGuid() ).Id;
                 if ( cbActive.Checked )
@@ -104,18 +102,7 @@ namespace RockWeb.Blocks.Security
 
                 if ( restUser.IsValid )
                 {
-                    if ( rockContext.SaveChanges() > 0 )
-                    {
-                        if ( changes.Any() )
-                        {
-                            HistoryService.SaveChanges(
-                                rockContext,
-                                typeof( Person ),
-                                Rock.SystemGuid.Category.HISTORY_PERSON_DEMOGRAPHIC_CHANGES.AsGuid(),
-                                restUser.Id,
-                                changes );
-                        }
-                    }
+                    rockContext.SaveChanges();
                 }
 
                 // the description gets saved as a system note for the person

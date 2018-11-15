@@ -40,12 +40,31 @@
 
 
         <script type="text/javascript">
+            var locationIScroll = null;
+
             $(function () {
                 var $selectedId = $('#hfSelectedLocationId'),
                     $expandedIds = $('#hfInitialLocationParentIds');
 
                 var scrollbCategory = $('.treeview-scroll');
-                scrollbCategory.tinyscrollbar({ axis: 'x', sizethumb: 60, size: 200 });
+                var scrollContainer = scrollbCategory.find('.viewport');
+                var scrollIndicator = scrollbCategory.find('.track');
+                locationIScroll = new IScroll(scrollContainer[0], {
+                    mouseWheel: false,
+                    eventPassthrough: true,
+                    preventDefault: false,
+                    scrollX: true,
+                    scrollY: false,
+                    indicators: {
+                        el: scrollIndicator[0],
+                        interactive: true,
+                        resize: false,
+                        listenX: true,
+                        listenY: false,
+                    },
+                    click: false,
+                    preventDefaultException: { tagName: /.*/ }
+                });
 
                 // resize scrollbar when the window resizes
                 $(document).ready(function () {
@@ -100,7 +119,9 @@
 
                 $(scrollControl).find('.viewport').height(overviewHeight);
 
-                scrollControl.tinyscrollbar_update('relative');
+                if (locationIScroll) {
+                    locationIScroll.refresh();
+                }
             }
         </script>
 

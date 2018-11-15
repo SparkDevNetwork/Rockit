@@ -15,14 +15,14 @@
                 <Rock:NotificationBox ID="nbError" runat="server" Visible="false" NotificationBoxType="Danger"></Rock:NotificationBox>
 
                 <div id="divActions" runat="server" class="actions">
-                    <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" />
+                    <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" ToolTip="Alt+s" Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" />
                 </div>
 
         </asp:Panel>
 
         <asp:Panel ID="pnlSuccess" runat="server"  Visible="false">
 
-                <Rock:NotificationBox ID="nbSuccess" runat="server" Title="Thank-you" NotificationBoxType="Success"></Rock:NotificationBox>
+                <Rock:NotificationBox ID="nbSuccess" runat="server" Title="Thank You" NotificationBoxType="Success"></Rock:NotificationBox>
 
         </asp:Panel>
 

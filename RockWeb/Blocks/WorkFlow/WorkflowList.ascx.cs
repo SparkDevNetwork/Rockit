@@ -42,7 +42,7 @@ namespace RockWeb.Blocks.WorkFlow
     [LinkedPage( "Entry Page", "Page used to launch a new workflow of the selected type." )]
     [LinkedPage( "Detail Page", "Page used to display details about a workflow." )]
     [WorkflowTypeField("Default WorkflowType", "The default workflow type to use. If provided the query string will be ignored.")]
-    public partial class WorkflowList : RockBlock
+    public partial class WorkflowList : RockBlock, ICustomGridColumns
     {
         #region Fields
 
@@ -90,7 +90,7 @@ namespace RockWeb.Blocks.WorkFlow
             if ( _workflowType != null )
             {
                 _canEdit = UserCanEdit || _workflowType.IsAuthorized( Authorization.EDIT, CurrentPerson );
-                _canView = _canEdit || _workflowType.IsAuthorized( Authorization.VIEW, CurrentPerson );
+                _canView = _canEdit || ( _workflowType.IsAuthorized( Authorization.VIEW, CurrentPerson ) && _workflowType.IsAuthorized( "ViewList", CurrentPerson ) );
 
                 gfWorkflows.ApplyFilterClick += gfWorkflows_ApplyFilterClick;
                 gfWorkflows.DisplayFilterValue += gfWorkflows_DisplayFilterValue;
@@ -666,20 +666,29 @@ namespace RockWeb.Blocks.WorkFlow
                     foreach ( var attribute in AvailableAttributes )
                     {
                         var filterControl = phAttributeFilters.FindControl( "filter_" + attribute.Id.ToString() );
-                        if ( filterControl != null )
-                        {
-                            var filterValues = attribute.FieldType.Field.GetFilterValues( filterControl, attribute.QualifierValues, Rock.Reporting.FilterMode.SimpleFilter );
-                            var expression = attribute.FieldType.Field.AttributeFilterExpression( attribute.QualifierValues, filterValues, parameterExpression );
-                            if ( expression != null )
-                            {
-                                var attributeValues = attributeValueService
+                        if ( filterControl == null ) continue;
+
+                        var filterValues = attribute.FieldType.Field.GetFilterValues( filterControl, attribute.QualifierValues, Rock.Reporting.FilterMode.SimpleFilter );
+                        var filterIsDefault = attribute.FieldType.Field.IsEqualToValue( filterValues, attribute.DefaultValue );
+                        var expression = attribute.FieldType.Field.AttributeFilterExpression( attribute.QualifierValues, filterValues, parameterExpression );
+                        if ( expression == null ) continue;
+
+                        var attributeValues = attributeValueService
                                     .Queryable()
                                     .Where( v => v.Attribute.Id == attribute.Id );
 
-                                attributeValues = attributeValues.Where( parameterExpression, expression, null );
+                        var filteredAttributeValues = attributeValues.Where( parameterExpression, expression, null );
 
-                                qry = qry.Where( w => attributeValues.Select( v => v.EntityId ).Contains( w.Id ) );
-                            }
+                        if ( filterIsDefault )
+                        {
+                            qry = qry.Where( w =>
+                                 !attributeValues.Any( v => v.EntityId == w.Id ) ||
+                                 filteredAttributeValues.Select( v => v.EntityId ).Contains( w.Id ) );
+                        }
+                        else
+                        {
+                            qry = qry.Where( w =>
+                                filteredAttributeValues.Select( v => v.EntityId ).Contains( w.Id ) );
                         }
                     }
                 }

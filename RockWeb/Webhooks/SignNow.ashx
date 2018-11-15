@@ -97,7 +97,9 @@ public class SignNow : IHttpHandler
                             binaryFile.IsTemporary = false;
                             binaryFile.BinaryFileTypeId = document.SignatureDocumentTemplate.BinaryFileTypeId;
                             binaryFile.MimeType = "application/pdf";
-                            binaryFile.FileName = new FileInfo( documentPath ).Name;
+                            var fi = new FileInfo( documentPath );
+                            binaryFile.FileName = fi.Name;
+                            binaryFile.FileSize = fi.Length;
                             binaryFile.ContentStream = new FileStream( documentPath, FileMode.Open );
                             binaryFileService.Add( binaryFile );
                             rockContext.SaveChanges();
@@ -123,7 +125,7 @@ public class SignNow : IHttpHandler
         string accessToken = component.GetAccessToken( false, out errorMessage );
         if ( !string.IsNullOrWhiteSpace( accessToken ) )
         {
-            JObject getDocumentRes = CudaSign.Document.Get( accessToken, documentId );
+            JObject getDocumentRes = SignNowSDK.Document.Get( accessToken, documentId );
             return getDocumentRes.Value<string>( "origin_document_id" );
         }
 

@@ -1,5 +1,11 @@
 ﻿<%@ Control Language="C#" AutoEventWireup="true" CodeFile="CommunicationDetail.ascx.cs" Inherits="RockWeb.Blocks.Communication.CommunicationDetail" %>
 
+<script type="text/javascript">
+    function clearActiveDialog() {
+        $('#<%=hfActiveDialog.ClientID %>').val('');
+    }
+</script>
+
 <asp:UpdatePanel ID="upPanel" runat="server">
     <ContentTemplate>
 
@@ -143,13 +149,13 @@
 
                     <Rock:PanelWidget ID="wpEvents" runat="server" Title="Activity" Expanded="false">
                         <div class="grid grid-panel">
-                            <Rock:Grid ID="gActivity" runat="server" AllowSorting="true" RowItemText="Activity">
+                            <Rock:Grid ID="gInteractions" runat="server" AllowSorting="true" RowItemText="Activity" OnRowDataBound="gInteractions_RowDataBound">
                                 <Columns>
-                                    <Rock:DateTimeField HeaderText="Date" DataField="ActivityDateTime" SortExpression="ActivityDateTime" />
-                                    <Rock:PersonField HeaderText="Person" DataField="CommunicationRecipient.PersonAlias.Person" 
-                                        SortExpression="CommunicationRecipient.PersonAlias.Person.LastName,CommunicationRecipient.PersonAlias.Person.NickName" />
-                                    <Rock:RockBoundField HeaderText="Activity" DataField="ActivityType" SortExpression="ActivityType" />
-                                    <Rock:EnumField HeaderText="Details" ItemStyle-CssClass="wrap-contents" DataField="ActivityDetail" SortExpression="ActivityDetail" />
+                                    <Rock:DateTimeField HeaderText="Date" DataField="InteractionDateTime" SortExpression="InteractionDateTime" />
+                                    <Rock:PersonField HeaderText="Person" DataField="PersonAlias.Person" 
+                                        SortExpression="PersonAlias.Person.LastName,PersonAlias.Person.NickName" />
+                                    <Rock:RockBoundField HeaderText="Activity" DataField="Operation" SortExpression="Operation" />
+                                    <Rock:RockLiteralField HeaderText="Details" ItemStyle-CssClass="wrap-contents" ID="lActivityDetails" />
                                 </Columns>
                             </Rock:Grid>
                         </div>
@@ -161,6 +167,10 @@
                         <asp:LinkButton ID="btnEdit" runat="server" Text="Edit" CssClass="btn btn-default" OnClick="btnEdit_Click" />
                         <asp:LinkButton ID="btnCancel" runat="server" Text="Cancel Send" CssClass="btn btn-link" OnClick="btnCancel_Click" />
                         <asp:LinkButton ID="btnCopy" runat="server" Text="Copy Communication" CssClass="btn btn-link" OnClick="btnCopy_Click" />
+                        <asp:LinkButton ID="btnTemplate" runat="server" Text="Create Personal Template" CssClass="btn btn-link" OnClick="btnTemplate_Click" Visible="False" />
+                        
+                        <Rock:NotificationBox id="nbTemplateCreated" runat="server" NotificationBoxType="Success" Visible="False" Text="A new personal communication template was created." Dismissable="True"></Rock:NotificationBox>
+
                     </div>
 
                 </asp:Panel>
@@ -174,7 +184,23 @@
             </div>
         </div>
 
-       
+        <asp:HiddenField ID="hfActiveDialog" runat="server" />
+
+        <Rock:ModalDialog ID="mdCreateTemplate" runat="server" Title="New Personal Template" OnCancelScript="clearActiveDialog();">
+            <Content>
+                <asp:ValidationSummary ID="valCreateTemplate" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                <Rock:NotificationBox id="nbTemplate" runat="server" NotificationBoxType="Info" Text="This will create a new personal communication template based of the current communication." Dismissable="True"></Rock:NotificationBox>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <Rock:RockTextBox ID="tbTemplateName" runat="server" Label="Template Name" />
+                    </div>
+                    <div class="col-sm-6">
+                        <Rock:CategoryPicker ID="cpTemplateCategory" runat="server" AllowMultiSelect="false" Label="Category" EntityTypeName="Rock.Model.CommunicationTemplate" />
+                    </div>
+                </div>
+                <Rock:RockTextBox ID="tbTemplateDescription" runat="server" Label="Description" TextMode="MultiLine" Rows="3" />
+            </Content>
+        </Rock:ModalDialog>       
 
         <script>
             $('.js-date-rollover').tooltip();

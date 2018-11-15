@@ -90,7 +90,7 @@ namespace RockWeb.Blocks.CheckIn.Config
                         if ( groupType != null )
                         {
                             groupType.LoadAttributes();
-                            BuildAttributeEdits( groupType, true );
+                            BuildAttributeEdits( groupType, false );
                         }
                     }
 
@@ -247,8 +247,13 @@ namespace RockWeb.Blocks.CheckIn.Config
                     groupType.SetAttributeValue( "core_checkin_SearchType", Rock.SystemGuid.DefinedValue.CHECKIN_SEARCH_TYPE_PHONE_NUMBER );
                 }
 
-                groupType.SetAttributeValue( "core_checkin_SecurityCodeLength", nbSecurityCodeLength.Text );
+                groupType.SetAttributeValue( "core_checkin_SecurityCodeLength", nbCodeAlphaNumericLength.Text );
+                groupType.SetAttributeValue( "core_checkin_SecurityCodeAlphaLength", nbCodeAlphaLength.Text );
+                groupType.SetAttributeValue( "core_checkin_SecurityCodeNumericLength", nbCodeNumericLength.Text );
+                groupType.SetAttributeValue( "core_checkin_SecurityCodeNumericRandom", cbCodeRandom.Checked.ToString());
+                groupType.SetAttributeValue( "core_checkin_AllowCheckout", cbAllowCheckout.Checked.ToString() );
                 groupType.SetAttributeValue( "core_checkin_AutoSelectDaysBack", nbAutoSelectDaysBack.Text );
+                groupType.SetAttributeValue( "core_checkin_AutoSelectOptions", ddlAutoSelectOptions.SelectedValueAsInt() );
 
                 rockContext.WrapTransaction( () =>
                 {
@@ -420,8 +425,13 @@ namespace RockWeb.Blocks.CheckIn.Config
                     ddlSearchType.SetValue( searchType.Id.ToString() );
                 }
 
-                nbSecurityCodeLength.Text = groupType.GetAttributeValue( "core_checkin_SecurityCodeLength" );
+                nbCodeAlphaNumericLength.Text = groupType.GetAttributeValue( "core_checkin_SecurityCodeLength" );
+                nbCodeAlphaLength.Text = groupType.GetAttributeValue( "core_checkin_SecurityCodeAlphaLength" );
+                nbCodeNumericLength.Text = groupType.GetAttributeValue( "core_checkin_SecurityCodeNumericLength" );
+                cbCodeRandom.Checked = groupType.GetAttributeValue( "core_checkin_SecurityCodeNumericRandom" ).AsBoolean(true);
+                cbAllowCheckout.Checked = groupType.GetAttributeValue( "core_checkin_AllowCheckout" ).AsBoolean( true );
                 nbAutoSelectDaysBack.Text = groupType.GetAttributeValue( "core_checkin_AutoSelectDaysBack" );
+                ddlAutoSelectOptions.SetValue( groupType.GetAttributeValue( "core_checkin_AutoSelectOptions" ) );
 
                 BuildAttributeEdits( groupType, true );
 
@@ -451,7 +461,12 @@ namespace RockWeb.Blocks.CheckIn.Config
             excludeList.Add( "core_checkin_ReuseSameCode" );
             excludeList.Add( "core_checkin_SearchType" );
             excludeList.Add( "core_checkin_SecurityCodeLength" );
+            excludeList.Add( "core_checkin_SecurityCodeAlphaLength" );
+            excludeList.Add( "core_checkin_SecurityCodeNumericLength" );
+            excludeList.Add( "core_checkin_SecurityCodeNumericRandom" );
+            excludeList.Add( "core_checkin_AllowCheckout" );
             excludeList.Add( "core_checkin_AutoSelectDaysBack" );
+            excludeList.Add( "core_checkin_AutoSelectOptions" );
 
             if ( groupType.Attributes.Any( t => !excludeList.Contains( t.Value.Key ) ) )
             {
@@ -468,6 +483,7 @@ namespace RockWeb.Blocks.CheckIn.Config
         {
             bool familyType = ddlType.SelectedValue == "1";
             nbAutoSelectDaysBack.Visible = familyType;
+            ddlAutoSelectOptions.Visible = familyType;
             cbReuseCode.Visible = familyType;
             cbHidePhotos.Visible = familyType;
             cbUseSameOptions.Visible = familyType;
@@ -538,17 +554,18 @@ namespace RockWeb.Blocks.CheckIn.Config
                 {
                     leftDetailsDescList.Add( "Check-in Type", groupType.AttributeValues["core_checkin_CheckInType"].ValueFormatted );
                 }
-                if ( groupType.AttributeValues.ContainsKey( "core_checkin_SecurityCodeLength" ) )
-                {
-                    leftDetailsDescList.Add( "Security Code Length", groupType.AttributeValues["core_checkin_SecurityCodeLength"].ValueFormatted );
-                }
+
                 if ( groupType.AttributeValues.ContainsKey( "core_checkin_SearchType" ) )
                 {
-                    rightDetailsDescList.Add( "Search Type", groupType.AttributeValues["core_checkin_SearchType"].ValueFormatted );
-                }
-                if ( groupType.AttributeValues.ContainsKey( "core_checkin_PhoneSearchType" ) )
-                {
-                    rightDetailsDescList.Add( "Phone Number Compare", groupType.AttributeValues["core_checkin_PhoneSearchType"].ValueFormatted );
+                    var searchType = groupType.AttributeValues["core_checkin_SearchType"];
+                    rightDetailsDescList.Add( "Search Type", searchType.ValueFormatted );
+
+                    var searchTypeGuid = searchType.Value.AsGuid();
+                    if ( searchTypeGuid.Equals( Rock.SystemGuid.DefinedValue.CHECKIN_SEARCH_TYPE_NAME_AND_PHONE.AsGuid() ) ||
+                        searchTypeGuid.Equals( Rock.SystemGuid.DefinedValue.CHECKIN_SEARCH_TYPE_PHONE_NUMBER.AsGuid() ) )
+                    {
+                        rightDetailsDescList.Add( "Phone Number Compare", groupType.AttributeValues["core_checkin_PhoneSearchType"].ValueFormatted );
+                    }
                 }
 
                 lblMainDetails.Text = mainDetailsDescList.Html;
