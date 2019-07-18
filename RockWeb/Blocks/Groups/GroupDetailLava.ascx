@@ -13,7 +13,7 @@
             
             <asp:Literal ID="lGroupEditPreHtml" runat="server" />
 
-            <asp:ValidationSummary ID="vsGroupEdit" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+            <asp:ValidationSummary ID="vsGroupEdit" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
             
             <div class="row">
                 <div class="col-md-6">
@@ -21,6 +21,7 @@
                 </div>
                 <div class="col-md-6">
                     <Rock:RockCheckBox ID="cbIsActive" runat="server" Text="Active" />
+                    <Rock:RockCheckBox ID="cbIsPublic" runat="server" Text="Public" />
                 </div>
             </div>
 
@@ -40,8 +41,14 @@
             </asp:Panel>
 
             <div class="row">
+                <div class="col-md-6">
+                    <Rock:NumberBox ID="nbGroupCapacity" runat="server" Label="Group Capacity" NumberType="Integer" Visible="false" />
+                </div>
+            </div>
+
+            <div class="row">
                 <div class="col-md-12">
-                    <asp:PlaceHolder ID="phAttributes" runat="server" EnableViewState="true" />
+                    <Rock:DynamicPlaceHolder ID="phAttributes" runat="server" />
                 </div>
             </div>
 
@@ -73,8 +80,8 @@
             </asp:Panel>
 
             <div class="actions">
-                <asp:Button ID="btnSaveGroup" runat="server" AccessKey="s" CssClass="btn btn-primary" Text="Save" OnClick="btnSaveGroup_Click" />
-                <asp:LinkButton id="lbCancelGroup" runat="server" AccessKey="c" CssClass="btn btn-link" OnClick="lbCancelGroup_Click" CausesValidation="false">Cancel</asp:LinkButton>
+                <asp:Button ID="btnSaveGroup" runat="server" AccessKey="s" ToolTip="Alt+s" CssClass="btn btn-primary" Text="Save" OnClick="btnSaveGroup_Click" />
+                <asp:LinkButton id="lbCancelGroup" runat="server" AccessKey="c" ToolTip="Alt+c" CssClass="btn btn-link" OnClick="lbCancelGroup_Click" CausesValidation="false">Cancel</asp:LinkButton>
             </div>
 
             <asp:Literal ID="lGroupEditPostHtml" runat="server" />
@@ -84,7 +91,7 @@
             
             <asp:Literal ID="lGroupMemberEditPreHtml" runat="server" />
             
-            <asp:ValidationSummary ID="vsEditGroupMember" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+            <asp:ValidationSummary ID="vsEditGroupMember" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
             <asp:CustomValidator ID="cvEditGroupMember" runat="server" Display="None" />
             <Rock:NotificationBox ID="nbGroupMemberErrorMessage" runat="server" NotificationBoxType="Danger" />
 
@@ -98,22 +105,28 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6">
+                <asp:Panel ID="pnlGroupMemberRole" runat="server" CssClass="col-md-6">
                     <Rock:RockDropDownList runat="server" ID="ddlGroupRole" DataTextField="Name" DataValueField="Id" Label="Role" Required="true" />
-                </div>
-                <div class="col-md-6">
-                    <asp:PlaceHolder ID="phGroupMemberAttributes" runat="server" EnableViewState="false"></asp:PlaceHolder>
-                </div>
+                </asp:Panel>
+                <asp:Panel ID="pnlGroupMemberAttributes" runat="server" CssClass="col-md-6">
+                    <Rock:DynamicPlaceHolder ID="phGroupMemberAttributes" runat="server" />
+                </asp:Panel>
             </div>
 
             <div class="actions">
-                <asp:Button ID="btnSaveGroupMember" runat="server" AccessKey="s" CssClass="btn btn-primary" Text="Save" OnClick="btnSaveGroupMember_Click" />
-                <asp:LinkButton id="btnCancelGroupMember" runat="server" AccessKey="c" CssClass="btn btn-link" OnClick="btnCancelGroupMember_Click" CausesValidation="false">Cancel</asp:LinkButton>
+                <asp:Button ID="btnSaveGroupMember" runat="server" AccessKey="s" ToolTip="Alt+s" CssClass="btn btn-primary" Text="Save" OnClick="btnSaveGroupMember_Click" />
+                <asp:LinkButton id="btnCancelGroupMember" runat="server" AccessKey="c" ToolTip="Alt+c" CssClass="btn btn-link" OnClick="btnCancelGroupMember_Click" CausesValidation="false">Cancel</asp:LinkButton>
             </div>
 
             <asp:Literal ID="lGroupMemberEditPostHtml" runat="server" />
 
         </asp:Panel>
+
+        <Rock:ModalDialog ID="mdConfirmDelete" runat="server" Title="Please Confirm" SaveButtonText="Yes" OnSaveClick="mdConfirmDelete_Click">
+            <Content>
+                <asp:Literal ID="lConfirmDeleteMsg" runat="server" />
+            </Content>
+        </Rock:ModalDialog>
 
     </ContentTemplate>
 </asp:UpdatePanel>

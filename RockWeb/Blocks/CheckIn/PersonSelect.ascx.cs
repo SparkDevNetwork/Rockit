@@ -15,7 +15,6 @@
 // </copyright>
 //
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
@@ -23,6 +22,7 @@ using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
 
 using Rock;
+using Rock.Attribute;
 using Rock.CheckIn;
 using Rock.Model;
 
@@ -30,16 +30,18 @@ namespace RockWeb.Blocks.CheckIn
 {
     [DisplayName("Person Select")]
     [Category("Check-in")]
-    [Description("Lists people who match the selected family to pick to checkin.")]
+    [Description("Lists people who match the selected family to pick to check-in or check-out.")]
+
+    [TextField( "Title", "Title to display. Use {0} for family name.", false, "{0}", "Text", 8 )]
+    [TextField( "Caption", "", false, "Select Person", "Text", 9 )]
+    [TextField( "No Option Message", "The option to display when there are not any people that match. Use {0} for the current action ('into' or 'out of').", false, "Sorry, there are currently not any available areas that the selected person can check {0}.", "Text", 10 )]
     public partial class PersonSelect : CheckInBlock
     {
         protected override void OnLoad( EventArgs e )
         {
             base.OnLoad( e );
 
-            RockPage.AddScriptLink( "~/Scripts/iscroll.js" );
             RockPage.AddScriptLink( "~/Scripts/CheckinClient/checkin-core.js" );
-
 
             var bodyTag = this.Page.Master.FindControl( "bodyTag" ) as HtmlGenericControl;
             if ( bodyTag != null )
@@ -63,9 +65,11 @@ namespace RockWeb.Blocks.CheckIn
                         GoBack();
                     }
 
-                    lFamilyName.Text = family.ToString();
+                    lbEditFamily.Visible = CurrentCheckInState.Kiosk.RegistrationModeEnabled;
+                    lTitle.Text = string.Format( GetAttributeValue( "Title" ), family.ToString() );
+                    lCaption.Text = GetAttributeValue( "Caption" );
 
-                    if ( family.People.Count == 1 )
+                    if ( family.People.Count == 1 && !CurrentCheckInState.Kiosk.RegistrationModeEnabled )
                     {
                         if ( UserBackedUp )
                         {
@@ -88,7 +92,6 @@ namespace RockWeb.Blocks.CheckIn
 
                         rSelection.DataBind();
                     }
-
                 }
             }
         }
@@ -148,13 +151,32 @@ namespace RockWeb.Blocks.CheckIn
 
         protected void ProcessSelection()
         {
+            string noOption = string.Format( GetAttributeValue( "NoOptionMessage" ), CurrentCheckInState.CheckIn.CurrentFamily.Action == CheckinAction.CheckIn ? "into" : "out of" );
+            string msg = string.Format( "<p>{0}</p>", noOption );
             ProcessSelection( 
                 maWarning, 
                 () => CurrentCheckInState.CheckIn.CurrentFamily.GetPeople( true )
                     .SelectMany( p => p.GroupTypes.Where( t => !t.ExcludedByFilter ) )
-                    .Count() <= 0,
-                "<p>Sorry, there are currently not any available areas that the selected person can check into.</p>" );
+                    .Count() <= 0, msg );
         }
 
+        /// <summary>
+        /// Handles the Click event of the lbEditFamily control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void lbEditFamily_Click( object sender, EventArgs e )
+        {
+            if ( CurrentCheckInState == null )
+            {
+                return;
+            }
+
+            var editFamilyBlock = this.RockPage.ControlsOfTypeRecursive<CheckInEditFamilyBlock>().FirstOrDefault();
+            if ( editFamilyBlock != null && CurrentCheckInState.CheckIn.CurrentFamily != null )
+            {
+                editFamilyBlock.ShowEditFamily( CurrentCheckInState.CheckIn.CurrentFamily );
+            }
+        }
     }
 }

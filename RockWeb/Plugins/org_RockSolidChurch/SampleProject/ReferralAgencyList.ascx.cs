@@ -66,7 +66,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             if ( !Page.IsPostBack )
             {
                 cpCampus.SetValue( gfSettings.GetUserPreference( "Campus" ) );
-                ddlAgencyType.SelectedValue = gfSettings.GetUserPreference( "Agency Type" );
+                dvpAgencyType.SelectedValue = gfSettings.GetUserPreference( "Agency Type" );
 
                 BindGrid();
             }
@@ -94,7 +94,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
         protected void gfSettings_ApplyFilterClick( object sender, EventArgs e )
         {
             gfSettings.SaveUserPreference( "Campus", ( cpCampus.SelectedCampusId != null ? cpCampus.SelectedCampusId.Value.ToString() : string.Empty ) );
-            gfSettings.SaveUserPreference( "Agency Type", ddlAgencyType.SelectedValue );
+            gfSettings.SaveUserPreference( "Agency Type", dvpAgencyType.SelectedValue );
 
             BindGrid();
         }
@@ -112,7 +112,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
                     {
                         if ( !string.IsNullOrWhiteSpace( e.Value ) )
                         {
-                            e.Value = CampusCache.Read( int.Parse( e.Value ) ).Name;
+                            e.Value = CampusCache.Get( int.Parse( e.Value ) ).Name;
                         }
                         break;
                     }
@@ -122,7 +122,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
                         int? valueId = gfSettings.GetUserPreference( "Agency Type" ).AsIntegerOrNull();
                         if ( valueId.HasValue )
                         {
-                            var definedValue = DefinedValueCache.Read( valueId.Value );
+                            var definedValue = DefinedValueCache.Get( valueId.Value );
                             if ( definedValue != null )
                             {
                                 e.Value = definedValue.Value;
@@ -209,11 +209,8 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             cpCampus.Campuses = campuses;
             cpCampus.Visible = campuses.Any();
 
-            var definedType = DefinedTypeCache.Read( org.rocksolidchurch.SampleProject.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
-            if ( definedType != null )
-            {
-                ddlAgencyType.BindToDefinedType( definedType, true );
-            }
+            dvpAgencyType.DefinedTypeId = DefinedTypeCache.Get( org.rocksolidchurch.SampleProject.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() ).Id;
+            dvpAgencyType.DisplayDescriptions = true;
         }
 
         /// <summary>

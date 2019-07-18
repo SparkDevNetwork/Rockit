@@ -5,22 +5,16 @@
     <Rock:ModalAlert ID="maWarning" runat="server" />
 
     <div class="checkin-header">
-        <h1>Checked-in</h1>
+        <h1><asp:Literal ID="lTitle" runat="server" /></h1>
     </div>
 
     <div class="checkin-body">
-        
         <div class="checkin-scroll-panel">
-            <div class="scroller">           
-                <ol class="checkin-summary checkin-body-container">
-                    <asp:PlaceHolder ID="phResults" runat="server"></asp:PlaceHolder>
-                </ol>
-
+            <div class="scroller">
+                <asp:Literal ID="lCheckinResultsHtml" runat="server" />
             </div>
         </div>
-
     </div>
-
 
     <div class="checkin-footer">   
         <div class="checkin-actions">

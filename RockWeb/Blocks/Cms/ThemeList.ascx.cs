@@ -41,7 +41,7 @@ namespace RockWeb.Blocks.Cms
     [Description( "Lists themes in the Theme folder." )]
 
     [LinkedPage("Theme Styler Page", "Page to use for the theme styler page.")]
-    public partial class ThemeList : Rock.Web.UI.RockBlock
+    public partial class ThemeList : Rock.Web.UI.RockBlock, ICustomGridColumns
     {
         #region Fields
 
@@ -183,11 +183,12 @@ namespace RockWeb.Blocks.Cms
             if ( compileSuccess )
             {
                 mdThemeCompile.Show( "Theme was successfully compiled.", ModalAlertType.Information );
+                nbMessages.Text = string.Empty;
             }
             else
             {
                 nbMessages.NotificationBoxType = NotificationBoxType.Danger;
-                nbMessages.Text = string.Format( "An error occurred while compiling the {0} them. Message: {1}", theme.Name, messages );
+                nbMessages.Text = string.Format( "An error occurred while compiling the {0} theme.\nMessage: <pre>{1}</pre>", theme.Name, messages );
             }
         }
 
@@ -249,8 +250,22 @@ namespace RockWeb.Blocks.Cms
                 }
             }
 
-            gThemes.DataSource = themes.ToList();
+            if ( themes.Any( f => f.Name == "RockOriginal" ) )
+            {
+                DeleteRockOriginalTheme( themes );
+            }
+
+            gThemes.DataSource = themes.Where( f => f.Name != "RockOriginal" ).ToList();
             gThemes.DataBind();
+        }
+
+        private void DeleteRockOriginalTheme( List<RockTheme> themes )
+        {
+            var theme = themes.Where( f => f.Name == "RockOriginal" ).FirstOrDefault();
+            if ( theme != null )
+            {
+                Directory.Delete( theme.AbsolutePath, true );
+            }
         }
 
         #endregion

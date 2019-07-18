@@ -132,11 +132,11 @@ The SQL can include Lava merge fields:";
 
             ceWarningSqlExpression.Text = groupRequirementType.WarningSqlExpression;
 
-            dpDataView.EntityTypeId = EntityTypeCache.Read<Person>().Id;
-            dpDataView.SelectedValue = groupRequirementType.DataViewId.ToString();
+            dpDataView.EntityTypeId = EntityTypeCache.Get<Person>().Id;
+            dpDataView.SetValue( groupRequirementType.DataViewId );
 
-            dpWarningDataView.EntityTypeId = EntityTypeCache.Read<Person>().Id;
-            dpWarningDataView.SelectedValue = groupRequirementType.WarningDataViewId.ToString();
+            dpWarningDataView.EntityTypeId = EntityTypeCache.Get<Person>().Id;
+            dpWarningDataView.SetValue( groupRequirementType.WarningDataViewId );
 
             hfRequirementCheckType.Value = groupRequirementType.RequirementCheckType.ConvertToInt().ToString();
         }
@@ -193,8 +193,8 @@ The SQL can include Lava merge fields:";
 
             if (groupRequirementType.RequirementCheckType == RequirementCheckType.Dataview)
             {
-                groupRequirementType.DataViewId = dpDataView.SelectedValue.AsIntegerOrNull();
-                groupRequirementType.WarningDataViewId = dpWarningDataView.SelectedValue.AsIntegerOrNull();
+                groupRequirementType.DataViewId = dpDataView.SelectedValue.AsIntegerOrNull() == 0 ? null : dpDataView.SelectedValue.AsIntegerOrNull();
+                groupRequirementType.WarningDataViewId = dpWarningDataView.SelectedValue.AsIntegerOrNull() == 0 ? null : dpWarningDataView.SelectedValue.AsIntegerOrNull();
             }
             else
             {

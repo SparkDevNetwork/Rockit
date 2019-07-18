@@ -36,7 +36,7 @@ namespace RockWeb.Blocks.Crm
     [Description( "Shows a list of all person badges." )]
 
     [LinkedPage("Detail Page")]
-    public partial class PersonBadgeList : RockBlock
+    public partial class PersonBadgeList : RockBlock, ICustomGridColumns
     {
         #region Base Control Methods
 
@@ -60,8 +60,11 @@ namespace RockWeb.Blocks.Crm
             gPersonBadge.Actions.ShowAdd = canAddEditDelete;
             gPersonBadge.IsDeleteEnabled = canAddEditDelete;
 
-            SecurityField securityField = gPersonBadge.Columns[4] as SecurityField;
-            securityField.EntityTypeId = EntityTypeCache.Read( typeof( Rock.Model.PersonBadge ) ).Id;
+            var securityField = gPersonBadge.ColumnsOfType<SecurityField>().FirstOrDefault();
+            if ( securityField != null )
+            {
+                securityField.EntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.PersonBadge ) ).Id;
+            }
         }
 
 
@@ -123,8 +126,6 @@ namespace RockWeb.Blocks.Crm
                     return;
                 }
 
-                PersonBadgeCache.Flush( personBadge.Id );
-
                 personBadgeService.Delete( personBadge );
                 rockContext.SaveChanges();
             }
@@ -140,13 +141,7 @@ namespace RockWeb.Blocks.Crm
             service.Reorder( personBadges.ToList(), e.OldIndex, e.NewIndex );
             rockContext.SaveChanges();
 
-            foreach ( var personBadge in personBadges )
-            {
-                PersonBadgeCache.Flush( personBadge.Id );
-            }
-
             BindGrid();
-
         }
         
         /// <summary>
@@ -175,27 +170,4 @@ namespace RockWeb.Blocks.Crm
 
         #endregion
     }
-
-    class PersonBadgeInfo
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public bool IsActive { get; set; }
-        public int Order { get; set; }
-
-        public PersonBadgeInfo(PersonBadgeCache badge)
-        {
-            Id = badge.Id;
-            Name = badge.Name;
-            Description = badge.Description;
-            
-            badge.LoadAttributes();
-
-            IsActive = badge.BadgeComponent != null ? badge.BadgeComponent.IsActive : false;
-            Order = badge.BadgeComponent != null ? badge.BadgeComponent.Order : 0;
-        }
-    }
-
-
 }

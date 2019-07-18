@@ -34,7 +34,7 @@ using Rock.Security;
 namespace RockWeb.Blocks.Core
 {
     /// <summary>
-    /// Takes a defined type and returns all defined values and merges them with a liquid template
+    /// Takes a defined type and returns all defined values and merges them with a lava template
     /// </summary>
     [DisplayName( "Defined Value List Lava" )]
     [Category( "Core" )]
@@ -43,7 +43,6 @@ namespace RockWeb.Blocks.Core
     [CodeEditorField("Lava Template", "Lava template to use to display content", CodeEditorMode.Lava, CodeEditorTheme.Rock, 400, true, @"{% for definedValue in DefinedValues %}
     {{ definedValue.Value }}
 {% endfor %}", "", 4, "LiquidTemplate" )]
-    [BooleanField("Enable Debug", "Show merge data to help you see what's available to you.")]
     public partial class DefinedValueListLiquid : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -105,7 +104,7 @@ namespace RockWeb.Blocks.Core
             LoadContent();
         }
 
-        
+
 
         #endregion
 
@@ -115,15 +114,15 @@ namespace RockWeb.Blocks.Core
         {
             List<DefinedValueCache> definedValues = new List<DefinedValueCache>();
             var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
-            
+
             // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
             mergeFields.AddOrIgnore( "Person", CurrentPerson );
-            
-            
+
+
             string selectedDefinedType = GetAttributeValue("DefinedType");
-            
+
             if (! string.IsNullOrWhiteSpace(selectedDefinedType)) {
-                var dtItem = DefinedTypeCache.Read( Guid.Parse(selectedDefinedType) );
+                var dtItem = DefinedTypeCache.Get( Guid.Parse(selectedDefinedType) );
 
                 foreach ( var item in dtItem.DefinedValues )
                 {
@@ -136,14 +135,6 @@ namespace RockWeb.Blocks.Core
                 lContent.Text = template.ResolveMergeFields( mergeFields );
             }
 
-            // show debug info
-            if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
-            {
-                lDebug.Visible = true;
-                // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
-                mergeFields.Remove( "Person" );
-                lDebug.Text = mergeFields.lavaDebugInfo();
-            }
         }
 
         #endregion

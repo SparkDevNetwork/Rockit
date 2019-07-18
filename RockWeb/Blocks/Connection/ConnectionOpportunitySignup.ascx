@@ -16,7 +16,7 @@
 
             <div class="panel-body">
 
-                <asp:ValidationSummary ID="vsSummary" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                <asp:ValidationSummary ID="vsSummary" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
 
                 <div class="row">
                     <div class="col-md-6">
@@ -48,7 +48,7 @@
                 <Rock:RockTextBox ID="tbComments" runat="server" Label="Comments" TextMode="MultiLine" Rows="4" />
 
                 <div class="actions">
-                    <asp:LinkButton ID="btnConnect" runat="server" AccessKey="m" Text="Connect" CssClass="btn btn-primary" OnClick="btnConnect_Click" />
+                    <asp:LinkButton ID="btnConnect" runat="server" AccessKey="m" ToolTip="Alt+m" Text="Connect" CssClass="btn btn-primary" OnClick="btnConnect_Click" />
                 </div>
             </div>
 

@@ -86,7 +86,7 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         private void LoadDropdowns()
         {
-            var scheduleEntityType = EntityTypeCache.Read( typeof( Schedule ) );
+            var scheduleEntityType = EntityTypeCache.Get( typeof( Schedule ) );
             var currentSchedule = RockPage.GetCurrentContext( scheduleEntityType ) as Schedule;
 
             var scheduleIdString = Request.QueryString["scheduleId"];
@@ -94,10 +94,9 @@ namespace RockWeb.Blocks.Core
             {
                 var scheduleId = scheduleIdString.AsInteger();
 
-                if ( currentSchedule == null || currentSchedule.Id != scheduleId )
-                {
-                    currentSchedule = SetScheduleContext( scheduleId, false );
-                }
+                // if there is a query parameter, ensure that the Schedule Context cookie is set (and has an updated expiration)
+                // note, the Schedule Context might already match due to the query parameter, but has a different cookie context, so we still need to ensure the cookie context is updated
+                currentSchedule = SetScheduleContext( scheduleId, false );
             }
 
             if ( currentSchedule != null )

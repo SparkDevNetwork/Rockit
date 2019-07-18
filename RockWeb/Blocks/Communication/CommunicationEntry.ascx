@@ -1,5 +1,4 @@
 ﻿<%@ Control Language="C#" AutoEventWireup="true" CodeFile="CommunicationEntry.ascx.cs" Inherits="RockWeb.Blocks.Communication.CommunicationEntry" %>
-<%@ Register src="CommunicationDetail.ascx" TagName="communicationDetail" TagPrefix="cd" %>
 
 <script>
     //Sys.WebForms.PageRequestManager.getInstance().add_endRequest(scrollToGrid);
@@ -30,7 +29,8 @@
                     <asp:HiddenField ID="hfCommunicationId" runat="server" />
                     <asp:HiddenField ID="hfMediumId" runat="server" />
 
-                    <asp:ValidationSummary ID="ValidationSummary" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                    <asp:ValidationSummary ID="ValidationSummary" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
+                    <asp:CustomValidator ID="cvDelayDateTime" runat="server" />
 
                     <div class="well well-pillwrap">
                         <div id="divMediums" runat="server">
@@ -90,7 +90,7 @@
                         </div>
                     </div>
 
-                    <Rock:RockDropDownList ID="ddlTemplate" runat="server" Label="Template" AutoPostBack="true" OnSelectedIndexChanged="ddlTemplate_SelectedIndexChanged" />
+                    <Rock:RockDropDownList ID="ddlTemplate" runat="server" Label="Template" AutoPostBack="true" OnSelectedIndexChanged="ddlTemplate_SelectedIndexChanged" EnhanceForLongLists="true" />
 
                     <asp:PlaceHolder ID="phContent" runat="server" />
 
@@ -103,7 +103,7 @@
                         <asp:LinkButton ID="btnCancel" runat="server" Text="Cancel" CssClass="btn btn-link" OnClick="btnCancel_Click" />
                     </div>
 
-                    <Rock:NotificationBox ID="nbTestResult" CssClass="margin-t-md" runat="server" NotificationBoxType="Success" Text="Test communication has been sent." Visible="false" />
+                    <Rock:NotificationBox ID="nbTestResult" CssClass="margin-t-md" runat="server" Visible="false" />
 
                 </asp:Panel>
 

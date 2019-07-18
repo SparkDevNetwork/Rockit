@@ -42,9 +42,10 @@
                 this.innerHTML = '';
 
                 if (isValid) {
-                    controlToValidate.parents('div.form-group').removeClass("has-error");
-                } else {
-                    controlToValidate.parents('div.form-group').addClass("has-error");
+                    controlToValidate.parentsUntil('.js-validation-group', 'div.form-group').removeClass("has-error");
+                } else
+                {
+                    controlToValidate.parentsUntil('.js-validation-group', 'div.form-group').addClass("has-error");
                     controlToValidate.trigger("validation-error");
                 }
             });
@@ -56,22 +57,31 @@
 
                 var controlToValidate = $("#" + mutation.target.controltovalidate);
 
+                var targetIsValid = mutation.target.isvalid;
                 var isValid = true;
 
                 $(controlToValidate).each(function () {
-                    $(this.Validators).each(function () {
-                        if (this.isvalid !== true) {
-                            isValid = false;
-                        }
-                    });
+                    var $validators = $(this.Validators);
+                    if ($validators.length) {
+                        // one or more validators, so set isValid to false if any of them fail
+                        $validators.each(function () {
+                            if (this.isvalid !== true) {
+                                isValid = false;
+                            }
+                        });
+                    } else {
+                        // no validators, so use what was from mutation.target.isvalid
+                        isValid = targetIsValid;
+                    }
                 });
 
                 mutation.target.innerHTML = '';
 
                 if (isValid) {
-                    controlToValidate.parents('div.form-group').removeClass("has-error");
-                } else {
-                    controlToValidate.parents('div.form-group').addClass("has-error");
+                    controlToValidate.parentsUntil('.js-validation-group', 'div.form-group').removeClass("has-error");
+                } else
+                {
+                    controlToValidate.parentsUntil('.js-validation-group', 'div.form-group').addClass("has-error");
                     controlToValidate.trigger("validation-error");
                 }
             })

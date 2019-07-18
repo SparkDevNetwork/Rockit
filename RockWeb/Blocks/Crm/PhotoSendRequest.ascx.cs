@@ -28,6 +28,7 @@ using Rock.Model;
 using Rock.Web.Cache;
 using Rock.Web.UI.Controls;
 using Rock.Attribute;
+using Rock.Communication;
 
 namespace RockWeb.Blocks.Crm
 {
@@ -49,7 +50,27 @@ namespace RockWeb.Blocks.Crm
 
         #region Properties
 
-        Dictionary<string, string> MediumData = new Dictionary<string, string>();
+        /// <summary>
+        /// Gets or sets the communication data.
+        /// </summary>
+        /// <value>
+        /// The communication data.
+        /// </value>
+        protected CommunicationDetails CommunicationData
+        {
+            get
+            {
+                var communicationData = ViewState["CommunicationData"] as CommunicationDetails;
+                if ( communicationData == null )
+                {
+                    communicationData = new CommunicationDetails();
+                    ViewState["CommunicationData"] = communicationData;
+                }
+                return communicationData;
+            }
+
+            set { ViewState["CommunicationData"] = value; }
+        }
 
         #endregion
 
@@ -128,43 +149,43 @@ namespace RockWeb.Blocks.Crm
 
                 if ( communication != null && CurrentPersonAliasId.HasValue )
                 {
-                    // Using a new context (so that changes in the UpdateCommunication() are not persisted )
-                    var testCommunication = new Rock.Model.Communication();
-                    testCommunication.SenderPersonAliasId = communication.SenderPersonAliasId;
-                    testCommunication.Subject = communication.Subject;
-                    testCommunication.IsBulkCommunication = communication.IsBulkCommunication;
-                    testCommunication.MediumEntityTypeId = communication.MediumEntityTypeId;
-                    testCommunication.MediumDataJson = communication.MediumDataJson;
-                    testCommunication.AdditionalMergeFieldsJson = communication.AdditionalMergeFieldsJson;
-
-                    testCommunication.FutureSendDateTime = null;
-                    testCommunication.Status = CommunicationStatus.Approved;
-                    testCommunication.ReviewedDateTime = RockDateTime.Now;
-                    testCommunication.ReviewerPersonAliasId = CurrentPersonAliasId.Value;
-
-                    var testRecipient = new CommunicationRecipient();
-                    if ( communication.Recipients.Any() )
+                    using ( var rockContext = new RockContext() )
                     {
-                        var recipient = communication.Recipients.FirstOrDefault();
-                        testRecipient.AdditionalMergeValuesJson = recipient.AdditionalMergeValuesJson;
+
+                        // Using a new context (so that changes in the UpdateCommunication() are not persisted )
+                        var testCommunication = communication.Clone( false );
+                        testCommunication.Id = 0;
+                        testCommunication.Guid = Guid.Empty;
+                        testCommunication.EnabledLavaCommands = GetAttributeValue( "EnabledLavaCommands" );
+                        testCommunication.ForeignGuid = null;
+                        testCommunication.ForeignId = null;
+                        testCommunication.ForeignKey = null;
+
+                        testCommunication.FutureSendDateTime = null;
+                        testCommunication.Status = CommunicationStatus.Approved;
+                        testCommunication.ReviewedDateTime = RockDateTime.Now;
+                        testCommunication.ReviewerPersonAliasId = CurrentPersonAliasId.Value;
+
+                        var testRecipient = new CommunicationRecipient();
+                        if ( communication.Recipients.Any() )
+                        {
+                            var recipient = communication.Recipients.FirstOrDefault();
+                            testRecipient.AdditionalMergeValuesJson = recipient.AdditionalMergeValuesJson;
+                        }
+                        testRecipient.Status = CommunicationRecipientStatus.Pending;
+                        testRecipient.PersonAliasId = CurrentPersonAliasId.Value;
+                        testRecipient.MediumEntityTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.COMMUNICATION_MEDIUM_EMAIL.AsGuid() ).Id;
+                        testCommunication.Recipients.Add( testRecipient );
+
+                        var communicationService = new CommunicationService( rockContext );
+                        communicationService.Add( testCommunication );
+                        rockContext.SaveChanges();
+
+                        Communication.Send( testCommunication );
+
+                        communicationService.Delete( testCommunication );
+                        rockContext.SaveChanges();
                     }
-                    testRecipient.Status = CommunicationRecipientStatus.Pending;
-                    testRecipient.PersonAliasId = CurrentPersonAliasId.Value;
-                    testCommunication.Recipients.Add( testRecipient );
-
-                    var rockContext = new RockContext();
-                    var communicationService = new CommunicationService( rockContext );
-                    communicationService.Add( testCommunication );
-                    rockContext.SaveChanges();
-
-                    var medium = testCommunication.Medium;
-                    if ( medium != null )
-                    {
-                        medium.Send( testCommunication );
-                    }
-
-                    communicationService.Delete( testCommunication );
-                    rockContext.SaveChanges();
 
                     nbTestResult.Visible = true;
                 }
@@ -315,7 +336,7 @@ namespace RockWeb.Blocks.Crm
             var familyGroupType = GroupTypeCache.GetFamilyGroupType();
             List<int> selectedRoleIds = cblRoles.SelectedValuesAsInt;
 
-            var selectedConnectionStatuses = cblConnectionStatus.SelectedValuesAsInt;
+            var selectedConnectionStatuses = dvpConnectionStatus.SelectedValuesAsInt;
             var ageBirthDate = RockDateTime.Now.AddYears( -nbAge.Text.AsInteger() );
             var photoUpdatedDate = RockDateTime.Now.AddYears( - nbUpdatedLessThan.Text.AsInteger() );
             var people = personService.Queryable("Members", false, false);
@@ -331,8 +352,8 @@ namespace RockWeb.Blocks.Crm
             // people who have emails addresses
             people = people.Where( p => ! ( p.Email == null || p.Email.Trim() == string.Empty ) );
 
-            // people who match the Connection Status critera
-            people = people.Where( p => cblConnectionStatus.SelectedValuesAsInt.Contains( p.ConnectionStatusValueId ?? -1 ) );
+            // people who match the Connection Status criteria
+            people = people.Where( p => dvpConnectionStatus.SelectedValuesAsInt.Contains( p.ConnectionStatusValueId ?? -1 ) );
 
             // people who are old enough
             people = people.Where( p => p.BirthDate <= ageBirthDate );
@@ -368,38 +389,27 @@ namespace RockWeb.Blocks.Crm
                 communication.SenderPersonAliasId = CurrentPersonAliasId;
                 communicationService.Add( communication );
                 communication.IsBulkCommunication = true;
-                communication.MediumEntityTypeId = EntityTypeCache.Read( "Rock.Communication.Medium.Email" ).Id;
+                communication.CommunicationType = CommunicationType.Email;
                 communication.FutureSendDateTime = null;
 
                 // add each person as a recipient to the communication
                 if ( peopleIds != null )
                 {
+                    var emailMediumTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.COMMUNICATION_MEDIUM_EMAIL.AsGuid() ).Id;
+
                     foreach ( var personId in peopleIds )
                     {
                         if ( !communication.Recipients.Any( r => r.PersonAlias.PersonId == personId ) )
                         {
                             var communicationRecipient = new CommunicationRecipient();
                             communicationRecipient.PersonAlias = new PersonAliasService( rockContext ).GetPrimaryAlias( personId );
+                            communicationRecipient.MediumEntityTypeId = emailMediumTypeId;
                             communication.Recipients.Add( communicationRecipient );
                         }
                     }
                 }
 
-                // add the MediumData to the communication
-                communication.MediumData.Clear();
-                foreach ( var keyVal in MediumData )
-                {
-                    if ( !string.IsNullOrEmpty( keyVal.Value ) )
-                    {
-                        communication.MediumData.Add( keyVal.Key, keyVal.Value );
-                    }
-                }
-
-                if ( communication.MediumData.ContainsKey( "Subject" ) )
-                {
-                    communication.Subject = communication.MediumData["Subject"];
-                    communication.MediumData.Remove( "Subject" );
-                }
+                CommunicationDetails.Copy( CommunicationData, communication );
 
                 return communication;
             }
@@ -430,26 +440,7 @@ namespace RockWeb.Blocks.Crm
                 return false;
             }
 
-            var mediumData = template.MediumData;
-            if ( !mediumData.ContainsKey( "Subject" ) )
-            {
-                mediumData.Add( "Subject", template.Subject );
-            }
-
-            foreach ( var dataItem in mediumData )
-            {
-                if ( !string.IsNullOrWhiteSpace( dataItem.Value ) )
-                {
-                    if ( MediumData.ContainsKey( dataItem.Key ) )
-                    {
-                        MediumData[dataItem.Key] = dataItem.Value;
-                    }
-                    else
-                    {
-                        MediumData.Add( dataItem.Key, dataItem.Value );
-                    }
-                }
-            }
+            CommunicationDetails.Copy( template, CommunicationData );
 
             return true;
         }
@@ -460,13 +451,13 @@ namespace RockWeb.Blocks.Crm
         private void BindCheckBoxLists()
         {
             // roles...
-            var familyGroupType = GroupTypeCache.Read( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY.AsGuid() );
+            var familyGroupType = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY.AsGuid() );
             cblRoles.DataSource = familyGroupType.Roles;
             cblRoles.DataBind();
 
             // connection status...
             // NOTE: if we want to bind and preselect one or more items based on an attribute, we can do it like this
-            //var statuses = DefinedTypeCache.Read( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS.AsGuid() ).DefinedValues
+            //var statuses = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS.AsGuid() ).DefinedValues
             //    .OrderBy( v => v.Order )
             //    .ThenBy( v => v.Value )
             //    .Select( v => new ListItem
@@ -483,7 +474,7 @@ namespace RockWeb.Blocks.Crm
             //}
 
             // otherwise we can just bind like this for now
-            cblConnectionStatus.BindToDefinedType( DefinedTypeCache.Read( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS.AsGuid() ) );
+            dvpConnectionStatus.DefinedTypeId = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS.AsGuid() ).Id;
         }
 
         #endregion

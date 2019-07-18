@@ -32,7 +32,8 @@
                 <div class="row">
                     <div class="col-md-6">
                         <Rock:CampusPicker ID="cpCampus" runat="server" Label="Campus" />
-                        <Rock:DataDropDownList ID="ddlAgencyType" runat="server" SourceTypeName="org.rocksolidchurch.SampleProject.Model.ReferralAgency, org.rocksolidchurch.SampleProject" PropertyName="AgencyTypeValue" Label="Agency Type" />
+                        <Rock:DefinedValuePicker ID="dvpAgencyType" runat="server" Label="Agency Type"></Rock:DefinedValuePicker>
+                        <%--<Rock:DataDropDownList ID="ddlAgencyType" runat="server" SourceTypeName="org.rocksolidchurch.SampleProject.Model.ReferralAgency, org.rocksolidchurch.SampleProject" PropertyName="AgencyTypeValue" Label="Agency Type" />--%>
                     </div>
                     <div class="col-md-6">
                         <Rock:DataTextBox ID="tbContactName" runat="server" SourceTypeName="org.rocksolidchurch.SampleProject.Model.ReferralAgency, org.rocksolidchurch.SampleProject" PropertyName="ContactName" />

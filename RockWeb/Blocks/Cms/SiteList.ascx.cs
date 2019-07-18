@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,28 +15,38 @@
 // </copyright>
 //
 using System;
+using System.ComponentModel;
 using System.Linq;
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
+using Rock.Security;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
-using System.ComponentModel;
-using Rock.Security;
 
 namespace RockWeb.Blocks.Cms
 {
     /// <summary>
     /// 
     /// </summary>
-    [DisplayName("Site List")]
-    [Category("CMS")]
-    [Description("Lists sites defined in the system.")]
-    [LinkedPage("Detail Page")]
-    public partial class SiteList : RockBlock
+    [DisplayName( "Site List" )]
+    [Category( "CMS" )]
+    [Description( "Lists sites defined in the system." )]
+    [LinkedPage( "Detail Page" )]
+
+    [EnumsField( "Site Type", "Includes Items with the following Type.", typeof( SiteType ), false, "", order: 1, key: AttributeKey.SiteType )]
+    public partial class SiteList : RockBlock, ICustomGridColumns
     {
+        #region Attribute Keys
+        protected static class AttributeKey
+        {
+            public const string SiteType = "SiteType";
+        }
+        #endregion
+        private const string INCLUE_INACTIVE = "Include Inactive";
+
         #region Control Methods
 
         /// <summary>
@@ -55,8 +65,11 @@ namespace RockWeb.Blocks.Cms
             bool canAddEdit = IsUserAuthorized( Authorization.EDIT );
             gSites.Actions.ShowAdd = canAddEdit;
 
-            SecurityField securityField = gSites.Columns[5] as SecurityField;
-            securityField.EntityTypeId = EntityTypeCache.Read( typeof( Rock.Model.Site ) ).Id;
+            var securityField = gSites.ColumnsOfType<SecurityField>().FirstOrDefault();
+            if ( securityField != null )
+            {
+                securityField.EntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.Site ) ).Id;
+            }
         }
 
         /// <summary>
@@ -120,16 +133,31 @@ namespace RockWeb.Blocks.Cms
             SortProperty sortProperty = gSites.SortProperty;
             var qry = siteService.Queryable();
 
+            var siteType = GetAttributeValue( AttributeKey.SiteType ).SplitDelimitedValues().Select( a => a.ConvertToEnumOrNull<SiteType>() ).ToList();
+            //Default show inactive to false if no filter (user preference) applied. 
+            bool showInactiveSites = rFilterSite.GetUserPreference( INCLUE_INACTIVE ).AsBoolean();
+
+            if ( siteType.Count() > 0 )
+            {
+                // filter by block setting Site type
+                qry = qry.Where( s => siteType.Contains( s.SiteType ) );
+            }
+            // filter by selected filter
+            if ( !showInactiveSites )
+            {
+                qry = qry.Where( s => s.IsActive == true );
+            }
+
             if ( sortProperty != null )
             {
-                gSites.DataSource = qry.Sort(sortProperty).ToList();
+                gSites.DataSource = qry.Sort( sortProperty ).ToList();
             }
             else
             {
                 gSites.DataSource = qry.OrderBy( s => s.Name ).ToList();
             }
 
-            gSites.EntityTypeId = EntityTypeCache.Read<Site>().Id;
+            gSites.EntityTypeId = EntityTypeCache.Get<Site>().Id;
             gSites.DataBind();
         }
 
@@ -144,5 +172,16 @@ namespace RockWeb.Blocks.Cms
         }
 
         #endregion
+
+        /// <summary>
+        /// Handles the ApplyFilterClick event of the rFilterSite control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void rFilterSite_ApplyFilterClick( object sender, EventArgs e )
+        {
+            rFilterSite.SaveUserPreference( INCLUE_INACTIVE, cbShowInactive.Checked.ToString() );
+            BindGrid();
+        }
     }
 }

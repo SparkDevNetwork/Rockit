@@ -8,7 +8,7 @@
             <asp:HiddenField ID="hfDefinedTypeId" runat="server" />
 
             <div class="panel-heading">
-                <h1 class="panel-title"><i class="fa fa-file-o"></i> Values</h1>
+                <h1 class="panel-title"><i class="fa fa-file-o"></i> <asp:Literal ID="lTitle" runat="server" /></h1>
             </div>
             <div class="panel-body">
 
@@ -39,7 +39,7 @@
                 <Content>
 
                 <asp:HiddenField ID="hfDefinedValueId" runat="server" />
-                <asp:ValidationSummary ID="valSummaryValue" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" ValidationGroup="Value" />
+                <asp:ValidationSummary ID="valSummaryValue" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" ValidationGroup="Value" />
                 <legend>
                     <asp:Literal ID="lActionTitleDefinedValue" runat="server" />
                 </legend>
@@ -51,7 +51,7 @@
                         </div>
                     </div>
                     <div class="attributes">
-                        <asp:PlaceHolder ID="phDefinedValueAttributes" runat="server" EnableViewState="false"></asp:PlaceHolder>
+                        <Rock:AttributeValuesContainer ID="avcDefinedValueAttributes" runat="server" />
                     </div>
                 </fieldset>
 

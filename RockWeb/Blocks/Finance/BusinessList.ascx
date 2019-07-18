@@ -30,14 +30,13 @@
                             <Rock:RockTemplateField>
                                 <HeaderTemplate>Contact Information</HeaderTemplate>
                                 <ItemTemplate>
-                                    <%# Eval("PhoneNumber") %><br />
-                                    <%# Eval("Email") %>
+                                    <%# FormatContactInfo( (string)Eval( "PhoneNumber" ), (string)Eval( "Email" ) ) %>
                                 </ItemTemplate>
                             </Rock:RockTemplateField>
                             <Rock:RockTemplateField>
                                 <HeaderTemplate>Address</HeaderTemplate>
                                 <ItemTemplate>
-                                    <%# Eval("Address") %>
+                                    <%# Eval( "Address.FormattedHtmlAddress" ) %>
                                 </ItemTemplate>
                             </Rock:RockTemplateField>
                             <Rock:RockTemplateField>

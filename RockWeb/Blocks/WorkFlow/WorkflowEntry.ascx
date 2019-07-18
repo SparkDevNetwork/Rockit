@@ -20,9 +20,11 @@
                     </div>
                     <div class="panel-body">
 
+                        <asp:Literal ID="lSummary" runat="server" Visible="false" />
+
                         <asp:Panel ID="pnlForm" CssClass="workflow-entry-panel" runat="server">
 
-                            <asp:ValidationSummary ID="vsDetails" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                            <asp:ValidationSummary ID="vsDetails" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
 
                             <asp:Literal ID="lheadingText" runat="server" />
 
@@ -46,12 +48,13 @@
 
             <div id="divNotes" runat="server" class="col-md-6">
 
-                <Rock:NoteContainer ID="ncWorkflowNotes" runat="server" Term="Note" 
+                <Rock:NoteContainer ID="ncWorkflowNotes" runat="server" NoteLabel="Note" 
                     ShowHeading="true" Title="Notes" TitleIconCssClass="fa fa-comment"
                     DisplayType="Full" UsePersonIcon="false" ShowAlertCheckBox="true"
                     ShowPrivateCheckBox="false" ShowSecurityButton="false"
                     AllowAnonymousEntry="false" AddAlwaysVisible="false"
-                    SortDirection="Descending" />
+                    SortDirection="Descending"/>
+               
 
             </div>
 

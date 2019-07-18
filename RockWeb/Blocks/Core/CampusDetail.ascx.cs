@@ -18,13 +18,13 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
-
+using System.Web.UI.WebControls;
 using Rock;
-using Rock.Attribute;
 using Rock.Constants;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
+using Rock.Web;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 
@@ -47,27 +47,8 @@ namespace RockWeb.Blocks.Core
 
             if ( !Page.IsPostBack )
             {
+                LoadDropDowns();
                 ShowDetail( PageParameter( "campusId" ).AsInteger() );
-            }
-            else
-            {
-                if ( pnlDetails.Visible )
-                {
-                    var rockContext = new RockContext();
-                    Campus campus;
-                    string itemId = PageParameter( "campusId" );
-                    if ( !string.IsNullOrWhiteSpace( itemId ) && int.Parse( itemId ) > 0 )
-                    {
-                        campus = new CampusService( rockContext ).Get( int.Parse( PageParameter( "campusId" ) ) );
-                    }
-                    else
-                    {
-                        campus = new Campus { Id = 0 };
-                    }
-                    campus.LoadAttributes();
-                    phAttributes.Controls.Clear();
-                    Rock.Attribute.Helper.AddEditControls( campus, phAttributes, false, BlockValidationGroup );
-                }
             }
         }
 
@@ -92,18 +73,31 @@ namespace RockWeb.Blocks.Core
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
         protected void btnSave_Click( object sender, EventArgs e )
         {
+            var campusLocationType = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.LOCATION_TYPE_CAMPUS.AsGuid() );
+
+            if ( campusLocationType.Id != lpLocation.Location.LocationTypeValueId )
+            {
+                nbEditModeMessage.NotificationBoxType = Rock.Web.UI.Controls.NotificationBoxType.Danger;
+                nbEditModeMessage.Text = "The selected named location is not a 'Campus' location type. Please update this before continuing.";
+                return;
+            }
+
             Campus campus;
             var rockContext = new RockContext();
             var campusService = new CampusService( rockContext );
             var locationService = new LocationService( rockContext );
-            var locationCampusValue = DefinedValueCache.Read(Rock.SystemGuid.DefinedValue.LOCATION_TYPE_CAMPUS.AsGuid());
 
             int campusId = int.Parse( hfCampusId.Value );
 
             if ( campusId == 0 )
             {
                 campus = new Campus();
-                campusService.Add( campus);
+                campusService.Add( campus );
+                var orders = campusService.Queryable()
+                    .Select( t => t.Order )
+                    .ToList();
+
+                campus.Order = orders.Any() ? orders.Max( t => t ) + 1 : 0;
             }
             else
             {
@@ -116,30 +110,11 @@ namespace RockWeb.Blocks.Core
             campus.Url = tbUrl.Text;
 
             campus.PhoneNumber = tbPhoneNumber.Text;
-            if ( campus.Location == null )
-            {
-                var location = locationService.Queryable()
-                    .Where( l =>
-                        l.Name.Equals( campus.Name, StringComparison.OrdinalIgnoreCase ) &&
-                        l.LocationTypeValueId == locationCampusValue.Id )
-                    .FirstOrDefault();
-                if (location == null)
-                {
-                    location = new Location();
-                    locationService.Add( location );
-                }
 
-                campus.Location = location;
-            }
-
-            campus.Location.Name = campus.Name;
-            campus.Location.LocationTypeValueId = locationCampusValue.Id;
-
-            string preValue = campus.Location.GetFullStreetAddress();
-            acAddress.GetValues( campus.Location );
-            string postValue = campus.Location.GetFullStreetAddress();
+            campus.LocationId = lpLocation.Location.Id;
 
             campus.ShortCode = tbCampusCode.Text;
+            campus.TimeZoneId = ddlTimeZone.SelectedValue;
 
             var personService = new PersonService( rockContext );
             var leaderPerson = personService.Get( ppCampusLeader.SelectedValue ?? 0 );
@@ -147,10 +122,9 @@ namespace RockWeb.Blocks.Core
 
             campus.ServiceTimes = kvlServiceTimes.Value;
 
-            campus.LoadAttributes( rockContext );
-            Rock.Attribute.Helper.GetEditValues( phAttributes, campus );
+            avcAttributes.GetEditValues( campus );
 
-            if ( !campus.IsValid && campus.Location.IsValid)
+            if ( !campus.IsValid && campus.Location.IsValid )
             {
                 // Controls will render the error messages
                 return;
@@ -160,17 +134,25 @@ namespace RockWeb.Blocks.Core
             {
                 rockContext.SaveChanges();
                 campus.SaveAttributeValues( rockContext );
-
-                if (preValue != postValue && !string.IsNullOrWhiteSpace(campus.Location.Street1))
-                {
-                    locationService.Verify(campus.Location, true);
-                }
-
             } );
 
-            Rock.Web.Cache.CampusCache.Flush( campus.Id );
-
             NavigateToParentPage();
+        }
+
+        /// <summary>
+        /// Loads the drop downs.
+        /// </summary>
+        public void LoadDropDowns()
+        {
+            ddlTimeZone.Items.Clear();
+            ddlTimeZone.Items.Add( new ListItem() );
+
+            foreach ( TimeZoneInfo timeZone in TimeZoneInfo.GetSystemTimeZones() )
+            {
+                ddlTimeZone.Items.Add( new ListItem( timeZone.DisplayName, timeZone.Id ) );
+            }
+
+            ddlTimeZone.Visible = SystemSettings.GetValue( Rock.SystemKey.SystemSetting.ENABLE_MULTI_TIME_ZONE_SUPPORT ).AsBoolean();
         }
 
         /// <summary>
@@ -187,7 +169,7 @@ namespace RockWeb.Blocks.Core
             if ( !campusId.Equals( 0 ) )
             {
                 campus = new CampusService( new RockContext() ).Get( campusId );
-                lActionTitle.Text = ActionTitle.Edit(Campus.FriendlyTypeName).FormatAsHtmlTitle();
+                lActionTitle.Text = ActionTitle.Edit( Campus.FriendlyTypeName ).FormatAsHtmlTitle();
                 pdAuditDetails.SetEntity( campus, ResolveRockUrl( "~" ) );
             }
 
@@ -205,15 +187,16 @@ namespace RockWeb.Blocks.Core
             tbDescription.Text = campus.Description;
             tbUrl.Text = campus.Url;
             tbPhoneNumber.Text = campus.PhoneNumber;
-            acAddress.SetValues( campus.Location );
+            lpLocation.Location = campus.Location;
 
             tbCampusCode.Text = campus.ShortCode;
+            ddlTimeZone.SetValue( campus.TimeZoneId );
             ppCampusLeader.SetValue( campus.LeaderPersonAlias != null ? campus.LeaderPersonAlias.Person : null );
             kvlServiceTimes.Value = campus.ServiceTimes;
 
             campus.LoadAttributes();
-            phAttributes.Controls.Clear();
-            Rock.Attribute.Helper.AddEditControls( campus, phAttributes, true, BlockValidationGroup );
+            avcAttributes.ExcludedAttributes = campus.Attributes.Where( a => !a.Value.IsAuthorized( Rock.Security.Authorization.EDIT, this.CurrentPerson ) ).Select( a => a.Value ).ToArray();
+            avcAttributes.AddEditControls( campus );
 
             // render UI based on Authorized and IsSystem
             bool readOnly = false;

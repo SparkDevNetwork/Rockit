@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -249,8 +249,8 @@ namespace RockWeb.Blocks.Cms
         {
             var rockContext = new RockContext();
 
-            int entityTypeIdBlock = EntityTypeCache.Read( typeof( Rock.Model.Block ), true, rockContext ).Id;
-            string entityTypeQualifier = BlockTypeCache.Read( Rock.SystemGuid.BlockType.HTML_CONTENT.AsGuid(), rockContext ).Id.ToString();
+            int entityTypeIdBlock = EntityTypeCache.Get( typeof( Rock.Model.Block ), true, rockContext ).Id;
+            string entityTypeQualifier = BlockTypeCache.Get( Rock.SystemGuid.BlockType.HTML_CONTENT.AsGuid(), rockContext ).Id.ToString();
             var htmlContentService = new HtmlContentService( rockContext );
             var attributeValueQry = new AttributeValueService( rockContext ).Queryable()
                 .Where( a => a.Attribute.Key == "RequireApproval" && a.Attribute.EntityTypeId == entityTypeIdBlock )
@@ -304,9 +304,10 @@ namespace RockWeb.Blocks.Cms
                 ApprovedByPerson = a.IsApproved ? a.ApprovedByPersonAlias.Person : null,
                 BlockPageId = a.Block.PageId,
                 BlockLayoutId = a.Block.LayoutId,
+                BlockSiteId = a.Block.SiteId,
             } );
 
-            gContentList.EntityTypeId = EntityTypeCache.Read<HtmlContent>().Id;
+            gContentList.EntityTypeId = EntityTypeCache.Get<HtmlContent>().Id;
 
             // Filter by Site
             if ( ddlSiteFilter.SelectedIndex > 0 )

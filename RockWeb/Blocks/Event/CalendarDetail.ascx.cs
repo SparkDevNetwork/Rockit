@@ -47,7 +47,7 @@ namespace RockWeb.Blocks.Event
     {
         #region Properties
 
-        private List<Attribute> AttributesState { get; set; }
+        private List<Attribute> EventAttributesState { get; set; }
         private Dictionary<Guid, string> ContentChannelsState { get; set; }
 
         #endregion
@@ -62,14 +62,14 @@ namespace RockWeb.Blocks.Event
         {
             base.LoadViewState( savedState );
 
-            string json = ViewState["AttributesState"] as string;
+            string json = ViewState["EventAttributesState"] as string;
             if ( string.IsNullOrWhiteSpace( json ) )
             {
-                AttributesState = new List<Attribute>();
+                EventAttributesState = new List<Attribute>();
             }
             else
             {
-                AttributesState = JsonConvert.DeserializeObject<List<Attribute>>( json );
+                EventAttributesState = JsonConvert.DeserializeObject<List<Attribute>>( json );
             }
 
             ContentChannelsState = ViewState["ContentChannelsState"] as Dictionary<Guid, string>;
@@ -83,12 +83,12 @@ namespace RockWeb.Blocks.Event
         {
             base.OnInit( e );
 
-            gAttributes.DataKeyNames = new string[] { "Guid" };
-            gAttributes.Actions.ShowAdd = UserCanAdministrate;
-            gAttributes.Actions.AddClick += gAttributes_Add;
-            gAttributes.EmptyDataText = Server.HtmlEncode( None.Text );
-            gAttributes.GridRebind += gAttributes_GridRebind;
-            gAttributes.GridReorder += gAttributes_GridReorder;
+            gEventAttributes.DataKeyNames = new string[] { "Guid" };
+            gEventAttributes.Actions.ShowAdd = UserCanAdministrate;
+            gEventAttributes.Actions.AddClick += gEventAttributes_Add;
+            gEventAttributes.EmptyDataText = Server.HtmlEncode( None.Text );
+            gEventAttributes.GridRebind += gEventAttributes_GridRebind;
+            gEventAttributes.GridReorder += gEventAttributes_GridReorder;
 
             gContentChannels.DataKeyNames = new string[] { "Guid" };
             gContentChannels.Actions.ShowAdd = UserCanAdministrate;
@@ -97,10 +97,18 @@ namespace RockWeb.Blocks.Event
             gContentChannels.GridRebind += gContentChannels_GridRebind;
 
             btnDelete.Attributes["onclick"] = string.Format( "javascript: return Rock.dialogs.confirmDelete(event, '{0}', 'This will also delete all the calendar items! Are you sure you wish to continue with the delete?');", EventCalendar.FriendlyTypeName );
-            btnSecurity.EntityTypeId = EntityTypeCache.Read( typeof( Rock.Model.EventCalendar ) ).Id;
+            btnSecurity.EntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.EventCalendar ) ).Id;
 
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upEventCalendar );
+
+            // Setup for being able to copy text to clipboard
+            RockPage.AddScriptLink( this.Page, "~/Scripts/clipboard.js/clipboard.min.js" );
+            string script = string.Format( @"
+    new ClipboardJS('#{0}');
+    $('#{0}').tooltip();
+", btnCopyToClipboard.ClientID );
+            ScriptManager.RegisterStartupScript( btnCopyToClipboard, btnCopyToClipboard.GetType(), "share-copy", script, true );
         }
 
         /// <summary>
@@ -113,10 +121,37 @@ namespace RockWeb.Blocks.Event
 
             if ( !Page.IsPostBack )
             {
-                ShowDetail( PageParameter( "EventCalendarId" ).AsInteger() );
+                var calendarEventId = PageParameter( "EventCalendarId" ).AsInteger();
+
+                // Set URL in feed button
+                var globalAttributes = GlobalAttributesCache.Get();
+                btnCopyToClipboard.Attributes["data-clipboard-text"] = string.Format( "{0}GetEventCalendarFeed.ashx?CalendarId={1}", globalAttributes.GetValue( "PublicApplicationRoot" ).EnsureTrailingForwardslash(), calendarEventId );
+                btnCopyToClipboard.Disabled = false;
+
+
+                ShowDetail( calendarEventId );
             }
             else
             {
+                if ( pnlDetails.Visible )
+                {
+                    var rockContext = new RockContext();
+                    EventCalendar eventCalendar;
+                    int? itemId = PageParameter( "EventCalendarId" ).AsIntegerOrNull();
+                    if ( itemId.HasValue && itemId > 0 )
+                    {
+                        eventCalendar = new EventCalendarService( rockContext ).Get( itemId.Value );
+                    }
+                    else
+                    {
+                        eventCalendar = new EventCalendar { Id = 0 };
+                    }
+
+                    eventCalendar.LoadAttributes();
+                    phAttributes.Controls.Clear();
+                    Rock.Attribute.Helper.AddEditControls( eventCalendar, phAttributes, false, BlockValidationGroup );
+                }
+
                 ShowDialog();
             }
         }
@@ -135,7 +170,7 @@ namespace RockWeb.Blocks.Event
                 ContractResolver = new Rock.Utility.IgnoreUrlEncodedKeyContractResolver()
             };
 
-            ViewState["AttributesState"] = JsonConvert.SerializeObject( AttributesState, Formatting.None, jsonSetting );
+            ViewState["EventAttributesState"] = JsonConvert.SerializeObject( EventAttributesState, Formatting.None, jsonSetting );
 
             ViewState["ContentChannelsState"] = ContentChannelsState;
 
@@ -265,6 +300,9 @@ namespace RockWeb.Blocks.Event
                 eventCalendar.Description = tbDescription.Text;
                 eventCalendar.IconCssClass = tbIconCssClass.Text;
 
+                eventCalendar.LoadAttributes();
+                Rock.Attribute.Helper.GetEditValues( phAttributes, eventCalendar );
+
                 if ( !eventCalendar.IsValid )
                 {
                     // Controls will render the error messages
@@ -275,6 +313,7 @@ namespace RockWeb.Blocks.Event
                 rockContext.WrapTransaction( () =>
                 {
                     rockContext.SaveChanges();
+                    eventCalendar.SaveAttributeValues( rockContext );
 
                     var dbChannelGuids = eventCalendarContentChannelService.Queryable()
                         .Where( c => c.EventCalendarId == eventCalendar.Id )
@@ -285,9 +324,9 @@ namespace RockWeb.Blocks.Event
 
                     var toDelete = eventCalendarContentChannelService
                         .Queryable()
-                        .Where( c => 
+                        .Where( c =>
                             dbChannelGuids.Contains( c.Guid ) &&
-                            !uiChannelGuids.Contains( c.Guid ));
+                            !uiChannelGuids.Contains( c.Guid ) );
 
                     eventCalendarContentChannelService.DeleteRange( toDelete );
                     contentChannelService.Queryable()
@@ -305,9 +344,9 @@ namespace RockWeb.Blocks.Event
 
                     rockContext.SaveChanges();
 
-                    /* Save Attributes */
+                    /* Save Event Attributes */
                     string qualifierValue = eventCalendar.Id.ToString();
-                    SaveAttributes( new EventCalendarItem().TypeId, "EventCalendarId", qualifierValue, AttributesState, rockContext );
+                    SaveAttributes( new EventCalendarItem().TypeId, "EventCalendarId", qualifierValue, EventAttributesState, rockContext );
 
                     // Reload calendar and make sure that the person who may have just added a calendar has security to view/edit/administrate the calendar
                     eventCalendar = eventCalendarService.Get( eventCalendar.Id );
@@ -387,7 +426,7 @@ namespace RockWeb.Blocks.Event
         protected void lbCalendarsDetail_Click( object sender, EventArgs e )
         {
             var qryParams = new Dictionary<string, string>();
-            var pageCache = PageCache.Read( RockPage.PageId );
+            var pageCache = PageCache.Get( RockPage.PageId );
             if ( pageCache != null && pageCache.ParentPage != null )
             {
                 NavigateToPage( pageCache.ParentPage.Guid, qryParams );
@@ -398,60 +437,60 @@ namespace RockWeb.Blocks.Event
         #region Attribute Events
 
         /// <summary>
-        /// Handles the Add event of the gAttributes control.
+        /// Handles the Add event of the gEventAttributes control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
-        protected void gAttributes_Add( object sender, EventArgs e )
+        protected void gEventAttributes_Add( object sender, EventArgs e )
         {
-            ShowAttributeEdit( Guid.Empty );
+            ShowEventAttributeEdit( Guid.Empty );
         }
 
         /// <summary>
-        /// Handles the Edit event of the gAttributes control.
+        /// Handles the Edit event of the gEventAttributes control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="RowEventArgs" /> instance containing the event data.</param>
-        protected void gAttributes_Edit( object sender, RowEventArgs e )
+        protected void gEventAttributes_Edit( object sender, RowEventArgs e )
         {
-            Guid attributeGuid = (Guid)e.RowKeyValue;
-            ShowAttributeEdit( attributeGuid );
+            Guid attributeGuid = ( Guid ) e.RowKeyValue;
+            ShowEventAttributeEdit( attributeGuid );
         }
 
         /// <summary>
-        /// Handles the GridReorder event of the gAttributes control.
+        /// Handles the GridReorder event of the gEventAttributes control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="GridReorderEventArgs"/> instance containing the event data.</param>
-        protected void gAttributes_GridReorder( object sender, GridReorderEventArgs e )
+        protected void gEventAttributes_GridReorder( object sender, GridReorderEventArgs e )
         {
-            SortAttributes( AttributesState, e.OldIndex, e.NewIndex );
-            ReOrderAttributes( AttributesState );
-            BindAttributesGrid();
+            SortAttributes( EventAttributesState, e.OldIndex, e.NewIndex );
+            ReOrderEventAttributes( EventAttributesState );
+            BindEventAttributesGrid();
         }
 
         /// <summary>
-        /// Handles the Delete event of the gAttributes control.
+        /// Handles the Delete event of the gEventAttributes control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="RowEventArgs" /> instance containing the event data.</param>
         /// <exception cref="System.NotImplementedException"></exception>
-        protected void gAttributes_Delete( object sender, RowEventArgs e )
+        protected void gEventAttributes_Delete( object sender, RowEventArgs e )
         {
-            Guid attributeGuid = (Guid)e.RowKeyValue;
-            AttributesState.RemoveEntity( attributeGuid );
+            Guid attributeGuid = ( Guid ) e.RowKeyValue;
+            EventAttributesState.RemoveEntity( attributeGuid );
 
-            BindAttributesGrid();
+            BindEventAttributesGrid();
         }
 
         /// <summary>
-        /// Handles the GridRebind event of the gAttributes control.
+        /// Handles the GridRebind event of the gEventAttributes control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
-        protected void gAttributes_GridRebind( object sender, EventArgs e )
+        protected void gEventAttributes_GridRebind( object sender, EventArgs e )
         {
-            BindAttributesGrid();
+            BindEventAttributesGrid();
         }
 
         /// <summary>
@@ -459,10 +498,10 @@ namespace RockWeb.Blocks.Event
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void dlgAttribute_SaveClick( object sender, EventArgs e )
+        protected void dlgEventAttribute_SaveClick( object sender, EventArgs e )
         {
             Rock.Model.Attribute attribute = new Rock.Model.Attribute();
-            edtAttributes.GetAttributeProperties( attribute );
+            edtEventAttributes.GetAttributeProperties( attribute );
 
             // Controls will show warnings
             if ( !attribute.IsValid )
@@ -470,21 +509,21 @@ namespace RockWeb.Blocks.Event
                 return;
             }
 
-            if ( AttributesState.Any( a => a.Guid.Equals( attribute.Guid ) ) )
+            if ( EventAttributesState.Any( a => a.Guid.Equals( attribute.Guid ) ) )
             {
-                attribute.Order = AttributesState.Where( a => a.Guid.Equals( attribute.Guid ) ).FirstOrDefault().Order;
-                AttributesState.RemoveEntity( attribute.Guid );
+                attribute.Order = EventAttributesState.Where( a => a.Guid.Equals( attribute.Guid ) ).FirstOrDefault().Order;
+                EventAttributesState.RemoveEntity( attribute.Guid );
             }
             else
             {
-                attribute.Order = AttributesState.Any() ? AttributesState.Max( a => a.Order ) + 1 : 0;
+                attribute.Order = EventAttributesState.Any() ? EventAttributesState.Max( a => a.Order ) + 1 : 0;
             }
 
-            AttributesState.Add( attribute );
+            EventAttributesState.Add( attribute );
 
-            ReOrderAttributes( AttributesState );
+            ReOrderEventAttributes( EventAttributesState );
 
-            BindAttributesGrid();
+            BindEventAttributesGrid();
 
             HideDialog();
         }
@@ -512,17 +551,17 @@ namespace RockWeb.Blocks.Event
         /// <exception cref="System.NotImplementedException"></exception>
         protected void gContentChannels_Delete( object sender, RowEventArgs e )
         {
-            Guid contentChannelGuid = (Guid)e.RowKeyValue;
+            Guid contentChannelGuid = ( Guid ) e.RowKeyValue;
             ContentChannelsState.Remove( contentChannelGuid );
 
             BindContentChannelsGrid();
         }
 
         /// <summary>
-        /// Handles the GridRebind event of the gAttributes control.
+        /// Handles the GridRebind event of the gContentChannels control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void gContentChannels_GridRebind( object sender, EventArgs e )
         {
             BindContentChannelsGrid();
@@ -580,6 +619,10 @@ namespace RockWeb.Blocks.Event
 
             pnlDetails.Visible = true;
             hfEventCalendarId.Value = eventCalendar.Id.ToString();
+
+            eventCalendar.LoadAttributes();
+            phAttributes.Controls.Clear();
+            Rock.Attribute.Helper.AddEditControls( eventCalendar, phAttributes, true, BlockValidationGroup );
 
             bool readOnly = false;
 
@@ -648,7 +691,7 @@ namespace RockWeb.Blocks.Event
             tbDescription.Text = eventCalendar.Description;
             tbIconCssClass.Text = eventCalendar.IconCssClass;
 
-            BindAttributesGrid();
+            BindEventAttributesGrid();
 
             BindContentChannelsGrid();
 
@@ -674,7 +717,7 @@ namespace RockWeb.Blocks.Event
             SetEditMode( false );
 
             hfEventCalendarId.SetValue( eventCalendar.Id );
-            AttributesState = null;
+            EventAttributesState = null;
             ContentChannelsState = null;
 
             lReadOnlyTitle.Text = eventCalendar.Name.FormatAsHtmlTitle();
@@ -735,8 +778,8 @@ namespace RockWeb.Blocks.Event
         {
             switch ( hfActiveDialog.Value )
             {
-                case "ATTRIBUTES":
-                    dlgAttribute.Show();
+                case "EVENTATTRIBUTES":
+                    dlgEventAttribute.Show();
                     break;
                 case "CONTENTCHANNEL":
                     dlgContentChannel.Show();
@@ -751,8 +794,8 @@ namespace RockWeb.Blocks.Event
         {
             switch ( hfActiveDialog.Value )
             {
-                case "ATTRIBUTES":
-                    dlgAttribute.Hide();
+                case "EVENTATTRIBUTES":
+                    dlgEventAttribute.Hide();
                     break;
                 case "CONTENTCHANNEL":
                     dlgContentChannel.Hide();
@@ -774,8 +817,8 @@ namespace RockWeb.Blocks.Event
         private void LoadStateDetails( EventCalendar eventCalendar, RockContext rockContext )
         {
             var attributeService = new AttributeService( rockContext );
-            AttributesState = attributeService
-                .GetByEntityTypeId( new EventCalendarItem().TypeId ).AsQueryable()
+            EventAttributesState = attributeService
+                .GetByEntityTypeId( new EventCalendarItem().TypeId, true ).AsQueryable()
                 .Where( a =>
                     a.EntityTypeQualifierColumn.Equals( "EventCalendarId", StringComparison.OrdinalIgnoreCase ) &&
                     a.EntityTypeQualifierValue.Equals( eventCalendar.Id.ToString() ) )
@@ -783,7 +826,7 @@ namespace RockWeb.Blocks.Event
                 .ThenBy( a => a.Name )
                 .ToList();
 
-            ContentChannelsState = new Dictionary<Guid,string>();
+            ContentChannelsState = new Dictionary<Guid, string>();
             new EventCalendarContentChannelService( rockContext )
                 .Queryable()
                 .Where( c => c.EventCalendarId == eventCalendar.Id )
@@ -824,9 +867,9 @@ namespace RockWeb.Blocks.Event
         }
 
         /// <summary>
-        /// Reorder attributes.
+        /// Reorder event attributes.
         /// </summary>
-        private void ReOrderAttributes( List<Attribute> attributeList )
+        private void ReOrderEventAttributes( List<Attribute> attributeList )
         {
             attributeList = attributeList.OrderBy( a => a.Order ).ToList();
             int order = 0;
@@ -834,11 +877,11 @@ namespace RockWeb.Blocks.Event
         }
 
         /// <summary>
-        /// Binds the group type attributes grid.
+        /// Binds the event attributes grid.
         /// </summary>
-        private void BindAttributesGrid()
+        private void BindEventAttributesGrid()
         {
-            gAttributes.DataSource = AttributesState
+            gEventAttributes.DataSource = EventAttributesState
                 .OrderBy( a => a.Order )
                 .ThenBy( a => a.Name )
                 .Select( a => new
@@ -853,31 +896,31 @@ namespace RockWeb.Blocks.Event
                     a.AllowSearch
                 } )
                 .ToList();
-            gAttributes.DataBind();
+            gEventAttributes.DataBind();
         }
 
         /// <summary>
         /// Shows the attribute edit.
         /// </summary>
         /// <param name="attributeGuid">The attribute unique identifier.</param>
-        private void ShowAttributeEdit( Guid attributeGuid )
+        private void ShowEventAttributeEdit( Guid attributeGuid )
         {
             Attribute attribute;
             if ( attributeGuid.Equals( Guid.Empty ) )
             {
                 attribute = new Attribute();
-                attribute.FieldTypeId = FieldTypeCache.Read( Rock.SystemGuid.FieldType.TEXT ).Id;
+                attribute.FieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.TEXT ).Id;
             }
             else
             {
-                attribute = AttributesState.First( a => a.Guid.Equals( attributeGuid ) );
+                attribute = EventAttributesState.First( a => a.Guid.Equals( attributeGuid ) );
             }
 
-            edtAttributes.ReservedKeyNames = AttributesState.Where( a => !a.Guid.Equals( attributeGuid ) ).Select( a => a.Key ).ToList();
-            edtAttributes.AllowSearchVisible = true;
-            edtAttributes.SetAttributeProperties( attribute, typeof( EventCalendar ) );
+            edtEventAttributes.ReservedKeyNames = EventAttributesState.Where( a => !a.Guid.Equals( attributeGuid ) ).Select( a => a.Key ).ToList();
+            edtEventAttributes.AllowSearchVisible = true;
+            edtEventAttributes.SetAttributeProperties( attribute, typeof( EventCalendar ) );
 
-            ShowDialog( "Attributes" );
+            ShowDialog( "EventAttributes" );
         }
 
         /// <summary>
@@ -892,7 +935,7 @@ namespace RockWeb.Blocks.Event
         {
             // Get the existing attributes for this entity type and qualifier value
             var attributeService = new AttributeService( rockContext );
-            var existingAttributes = attributeService.Get( entityTypeId, qualifierColumn, qualifierValue );
+            var existingAttributes = attributeService.GetByEntityTypeQualifier( entityTypeId, qualifierColumn, qualifierValue, true );
 
             // Delete any of those attributes that were removed in the UI
             var selectedAttributeGuids = attributes.Select( a => a.Guid );
@@ -900,7 +943,6 @@ namespace RockWeb.Blocks.Event
             {
                 attributeService.Delete( attr );
                 rockContext.SaveChanges();
-                AttributeCache.Flush( attr.Id );
             }
 
             // Update the Attributes that were assigned in the UI
@@ -908,8 +950,6 @@ namespace RockWeb.Blocks.Event
             {
                 Helper.SaveAttributeEdits( attribute, entityTypeId, qualifierColumn, qualifierValue, rockContext );
             }
-
-            AttributeCache.FlushEntityAttributes();
         }
 
         #endregion
@@ -935,6 +975,5 @@ namespace RockWeb.Blocks.Event
         #endregion
 
         #endregion
-
     }
 }

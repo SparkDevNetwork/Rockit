@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,9 +37,10 @@ namespace Rockweb.Blocks.Crm
     /// View a person's DISC assessment.
     /// This is used with permission from Greg Wiens: http://www.gregwiens.com/scid/
     /// </summary>
-    [DisplayName( "Disc Result" )]
+    [DisplayName( "DISC Result" )]
     [Category( "CRM" )]
-    [Description( "View the results of a DISC assessment." )]
+    [Description( "View the results of a DISC assessment. (Obsolete)" )]
+    [RockObsolete("1.9")]
     public partial class DiscResult : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -122,7 +123,7 @@ namespace Rockweb.Blocks.Crm
         {
             // Plot the Natural graph
             DiscService.PlotOneGraph( discNaturalScore_D, discNaturalScore_I, discNaturalScore_S, discNaturalScore_C,
-                savedScores.NaturalBehaviorD, savedScores.NaturalBehaviorI, savedScores.NaturalBehaviorS, savedScores.NaturalBehaviorC, 35 );
+                savedScores.NaturalBehaviorD, savedScores.NaturalBehaviorI, savedScores.NaturalBehaviorS, savedScores.NaturalBehaviorC, 100 );
             ShowExplaination( savedScores.PersonalityType );
 
             hlAssessmentDate.Text = String.Format( "Assessment Date: {0}", savedScores.LastSaveDate.ToShortDateString() );
@@ -138,7 +139,7 @@ namespace Rockweb.Blocks.Crm
         /// <param name="personalityType">The one or two letter personality type.</param>
         private void ShowExplaination( string personalityType )
         {
-            var personalityValue = DefinedTypeCache.Read( Rock.SystemGuid.DefinedType.DISC_RESULTS_TYPE.AsGuid() ).DefinedValues.Where( v => v.Value == personalityType ).FirstOrDefault();
+            var personalityValue = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.DISC_RESULTS_TYPE.AsGuid() ).DefinedValues.Where( v => v.Value == personalityType ).FirstOrDefault();
             if ( personalityValue != null )
             {
                 lDescription.Text = personalityValue.Description;

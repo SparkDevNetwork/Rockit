@@ -1,46 +1,20 @@
 ﻿<%@ Control Language="C#" AutoEventWireup="true" CodeFile="CheckinAreas.ascx.cs" Inherits="RockWeb.Blocks.CheckIn.Config.CheckinAreas" %>
 
-<style>
-    .checkin-item {
-        padding: 12px;
-        border: 1px solid #d8d1c8;
-        cursor: pointer;
-        margin-bottom: 6px;
-        border-top-width: 3px;
-    }
-
-    .checkin-item-selected {
-        background-color: #d8d1c8;
-    }
-
-    .checkin-list {
-        list-style-type: none;
-        padding-left: 40px;
-    }
-    .checkin-list-first {
-        padding-left: 0;
-    }
-    .checkin-item .fa-bars {
-        opacity: .5;
-        margin-right: 6px;
-    }
-    
-    .checkin-group {
-        border-top-color: #afd074;
-    }
-    
-    .checkin-area {
-        border-top-color: #5593a4;
-    }
-</style>
-
 <asp:UpdatePanel ID="upDetail" runat="server">
     <ContentTemplate>
         <asp:HiddenField runat="server" ID="hfAreaGroupClicked" />
         <asp:Panel ID="pnlDetails" runat="server" CssClass="panel panel-block js-panel-details">
-            <div class="panel-heading"><h3 class="panel-title"><i class="fa fa-list"></i> Areas and Groups</h3></div>
+            <div class="panel-heading">
+                <h1 class="panel-title">
+                    <i class="fa fa-list"></i>
+                    Areas and Groups
+                </h1>
+                <div class="pull-right">
+                    <asp:CheckBox Text="Show Inactive Groups" ID="cbShowInactive" AutoPostBack="true" OnCheckedChanged="cbShowInactive_CheckedChanged" runat="server" />
+                </div>
+            </div>
             <div class="panel-body">
-    
+
                 <Rock:NotificationBox ID="nbDeleteWarning" runat="server" NotificationBoxType="Warning" />
 
                 <div class="row">
@@ -48,13 +22,15 @@
                         <ul class="checkin-list checkin-list-first js-checkin-area-list">
                             <asp:PlaceHolder ID="phRows" runat="server" />
                         </ul>
-                        <div class="pull-right checkin-item-actions"><asp:LinkButton ID="lbAddArea" runat="server" CssClass="btn btn-xs btn-default" OnClick="lbAddArea_Click"><i class="fa fa-plus"></i> <i class="fa fa-folder-open"></i></asp:LinkButton></div>
+                        <div class="pull-right checkin-item-actions">
+                            <asp:LinkButton ID="lbAddArea" runat="server" ToolTip="Add New Area" CssClass="btn btn-xs btn-default" OnClick="lbAddArea_Click"><i class="fa fa-plus"></i> <i class="fa fa-folder-open"></i></asp:LinkButton>
+                        </div>
                     </div>
                     <div class="col-md-6 js-area-group-details">
 
                         <asp:HiddenField ID="hfIsDirty" runat="server" Value="false" />
 
-                        <asp:ValidationSummary ID="vsDetails" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                        <asp:ValidationSummary ID="vsDetails" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
                         <Rock:NotificationBox ID="nbInvalid" runat="server" NotificationBoxType="Danger" Visible="false" />
                         <Rock:NotificationBox ID="nbSaveSuccess" runat="server" NotificationBoxType="Success" Text="Changes have been saved." Visible="false" />
 
@@ -62,16 +38,18 @@
                         <Rock:CheckinGroup ID="checkinGroup" runat="server" Visible="false" OnAddLocationClick="checkinGroup_AddLocationClick" OnDeleteLocationClick="checkinGroup_DeleteLocationClick" OnReorderLocationClick="checkinGroup_ReorderLocationClick" />
 
                         <div class="actions margin-t-md">
-                            <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" Visible="false" />
+                            <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" ToolTip="Alt+s" Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" Visible="false" />
+                            <asp:LinkButton ID="btnDelete" runat="server" Text="Delete" CssClass="btn btn-link" OnClick="btnDelete_Click" Visible="false" />
+
                         </div>
 
                     </div>
                 </div>
-    
+
             </div>
         </asp:Panel>
 
-        <Rock:ModalDialog ID="mdAddCheckinLabel" runat="server" ScrollbarEnabled="false" ValidationGroup="vgAddCheckinLabel" SaveButtonText="Add" OnSaveClick="mdAddCheckinLabel_SaveClick"  Title="Select Check-in Label">
+        <Rock:ModalDialog ID="mdAddCheckinLabel" runat="server" ScrollbarEnabled="false" ValidationGroup="vgAddCheckinLabel" SaveButtonText="Add" OnSaveClick="mdAddCheckinLabel_SaveClick" Title="Select Check-in Label">
             <Content>
                 <Rock:RockDropDownList ID="ddlCheckinLabel" runat="server" Label="Select Check-in Label" ValidationGroup="vgAddCheckinLabel" />
             </Content>
@@ -84,7 +62,7 @@
         </Rock:ModalDialog>
 
         <script>
-            /* This function is called after post back to animate scroll to the proper element 
+            /* This function is called after post back to animate scroll to the proper element
              * if the user just clicked an area/group.
             */
             var AfterPostBack = function () {
@@ -100,7 +78,7 @@
 
                     $('html, body').animate({
                         scrollTop: $(scrollToPanel).offset().top + 'px'
-                        }, 400
+                    }, 400
                     );
                 }
             }
@@ -118,12 +96,16 @@
 
                 $('section.checkin-item').click(function () {
                     if (!isDirty()) {
-                        var $li = $(this).closest('li');
-                        if ($(this).hasClass('checkin-area')) {
-                            __doPostBack('<%=upDetail.ClientID %>', 'select-area:' + $li.attr('data-key'));
+                        var dataKeyValue = $(this).closest('li').attr('data-key');
+                        var isCheckinArea = $(this).hasClass('checkin-area');
+                        var postbackArg;
+                        if (isCheckinArea) {
+                            var postbackArg = 'select-area:' + dataKeyValue;
                         } else {
-                            __doPostBack('<%=upDetail.ClientID %>', 'select-group:' + $li.attr('data-key'));
+                            var postbackArg = 'select-group:' + dataKeyValue;
                         }
+
+                        window.location = "javascript:__doPostBack('<%=upDetail.ClientID %>', '" + postbackArg + "')";
                     }
                 });
 
@@ -143,7 +125,9 @@
                         {
                             if (!isDirty()) {
                                 var newGroupTypeIndex = $(ui.item).prevAll('li').length;
-                                __doPostBack('<%=upDetail.ClientID %>', 're-order-area:' + ui.item.attr('data-key') + ';' + newGroupTypeIndex);
+                                var dataKeyValue = ui.item.attr('data-key');
+                                var postbackArg = 're-order-area:' + dataKeyValue + ';' + newGroupTypeIndex;
+                                window.location = "javascript:__doPostBack('<%=upDetail.ClientID %>', '" + postbackArg + "')";
                             }
                         }
                     }
@@ -165,7 +149,9 @@
                         {
                             if (!isDirty()) {
                                 var newGroupIndex = $(ui.item).prevAll('li').length;
-                                __doPostBack('<%=upDetail.ClientID %>', 're-order-group:' + ui.item.attr('data-key') + ';' + newGroupIndex);
+                                var dataKeyValue = ui.item.attr('data-key');
+                                var postbackArg = 're-order-group:' + dataKeyValue + ';' + newGroupIndex;
+                                window.location = "javascript:__doPostBack('<%=upDetail.ClientID %>', '" + postbackArg + "')";
                             }
                         }
                     }

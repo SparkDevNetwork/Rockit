@@ -54,7 +54,6 @@ namespace RockWeb.Blocks.Core
     </div>
 {% endif %}" )]
     [DefinedValueField( Rock.SystemGuid.DefinedType.DEVICE_TYPE, "Device Type", "Optional filter to limit to specific device types.", false )]
-    [BooleanField( "Enable Debug", "Shows the fields available to merge in lava.")]
     [CustomRadioListField("Context Scope", "The scope of context to set", "Site,Page", true, "Site")]
     public partial class CampusContextSetter : RockBlock
     {
@@ -133,7 +132,7 @@ namespace RockWeb.Blocks.Core
                     // set the context
                     if ( campus != null )
                     {
-                        var campusEntityType = EntityTypeCache.Read( "Rock.Model.Campus" );
+                        var campusEntityType = EntityTypeCache.Get( "Rock.Model.Campus" );
                         var currentCampus = RockPage.GetCurrentContext( campusEntityType ) as Campus;
 
                         if ( currentCampus == null || currentCampus.Id != campus.Id )
@@ -153,12 +152,6 @@ namespace RockWeb.Blocks.Core
 
             lOutput.Text = GetAttributeValue( "DisplayLava" ).ResolveMergeFields( mergeFields );
 
-            // show debug info
-            if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
-            {
-                lDebug.Visible = true;
-                lDebug.Text = mergeFields.lavaDebugInfo();
-            }
         }
 
 

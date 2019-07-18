@@ -65,7 +65,7 @@ namespace RockWeb.Blocks.Finance
 <h4>
 {{ Salutation }} <br />
 {{ StreetAddress1 }} <br />
-{% if StreetAddress2 != '' %}
+{% if StreetAddress2 and StreetAddress2 != '' %}
     {{ StreetAddress2 }} <br />
 {% endif %}
 {{ City }}, {{ State }} {{ PostalCode }}
@@ -84,20 +84,21 @@ namespace RockWeb.Blocks.Finance
 
 
     <table class=""table table-bordered table-striped table-condensed"">
-        <tr>
-            <th>Date</th>
-            <th>Giving Area</th>
-            <th>Check/Trans #</th>
-            <th align=""right"">Amount</th>
-        </tr>
-    
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Giving Area</th>
+                <th>Check/Trans #</th>
+                <th align=""right"">Amount</th>
+            </tr>
+        </thead>    
 
         {% for transaction in TransactionDetails %}
             <tr>
                 <td>{{ transaction.Transaction.TransactionDateTime | Date:'M/d/yyyy' }}</td>
                 <td>{{ transaction.Account.Name }}</td>
                 <td>{{ transaction.Transaction.TransactionCode }}</td>
-                <td align=""right"">{{ 'Global' | Attribute:'CurrencySymbol' }}{{ transaction.Amount }}</td>
+                <td align=""right"">{{ transaction.Amount | FormatAsCurrency }}</td>
             </tr>
         {% endfor %}
     
@@ -121,7 +122,7 @@ namespace RockWeb.Blocks.Finance
         {% for accountsummary in AccountSummary %}
             <div class=""row"">
                 <div class=""col-xs-6"">{{ accountsummary.AccountName }}</div>
-                <div class=""col-xs-6 text-right"">{{ 'Global' | Attribute:'CurrencySymbol' }}{{ accountsummary.Total }}</div>
+                <div class=""col-xs-6 text-right"">{{ accountsummary.Total | FormatAsCurrency }}</div>
             </div>
          {% endfor %}
     </div>
@@ -131,7 +132,7 @@ namespace RockWeb.Blocks.Finance
 
 {% if pledgeCount > 0 %}
     <hr style=""opacity: .5;"" />
-    <h4 class=""margin-t-md margin-b-md"">Pledges</h4>
+    <h4 class=""margin-t-md margin-b-md"">Pledges <small>(as of {{ StatementEndDate | Date:'M/dd/yyyy' }})</small></h4>
  
     {% for pledge in Pledges %}
         <div class=""row"">
@@ -139,9 +140,9 @@ namespace RockWeb.Blocks.Finance
                 <strong>{{ pledge.AccountName }}</strong>
                 
                 <p>
-                    Amt Pledged: {{ 'Global' | Attribute:'CurrencySymbol' }}{{ pledge.AmountPledged }} <br />
-                    Amt Given: {{ 'Global' | Attribute:'CurrencySymbol' }}{{ pledge.AmountGiven }} <br />
-                    Amt Remaining: {{ 'Global' | Attribute:'CurrencySymbol' }}{{ pledge.AmountRemaining }}
+                    Amt Pledged: {{ pledge.AmountPledged | FormatAsCurrency }} <br />
+                    Amt Given: {{ pledge.AmountGiven | FormatAsCurrency }} <br />
+                    Amt Remaining: {{ pledge.AmountRemaining | FormatAsCurrency }}
                 </p>
             </div>
             <div class=""col-xs-6 padding-t-md"">
@@ -171,9 +172,8 @@ namespace RockWeb.Blocks.Finance
 <p class=""text-center"">
     <em>Unless otherwise noted, the only goods and services provided are intangible religious benefits.</em>
 </p>", order: 2 )]
-    [BooleanField( "Enable Debug", "Shows the merge fields available for the Lava", order: 3 )]
-    [DefinedValueField( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE, "Excluded Currency Types", "Select the currency types you would like to excluded.", false, true, order: 4)]
-    [BooleanField( "Allow Person Querystring", "Determines if a person is allowed to be passed through the querystring. For security reasons this is not allowed by default.", false, order: 5 )]
+    [DefinedValueField( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE, "Excluded Currency Types", "Select the currency types you would like to excluded.", false, true, order: 4 )]
+    [BooleanField( "Allow Person Querystring", "Determines if any person other than the currently logged in person is allowed to be passed through the querystring. For security reasons this is not allowed by default.", false, order: 5 )]
     public partial class ContributionStatementLava : Rock.Web.UI.RockBlock
     {
         #region Base Control Methods
@@ -233,40 +233,44 @@ namespace RockWeb.Blocks.Finance
 
             var statementYear = RockDateTime.Now.Year;
 
-            if ( Request["StatementYear"] != null )
+            if ( PageParameter( "StatementYear" ).IsNotNullOrWhiteSpace() )
             {
-                Int32.TryParse( Request["StatementYear"].ToString(), out statementYear );
+                Int32.TryParse( PageParameter( "StatementYear" ), out statementYear );
             }
 
             FinancialTransactionDetailService financialTransactionDetailService = new FinancialTransactionDetailService( rockContext );
 
             Person targetPerson = CurrentPerson;
 
+            // get excluded currency types setting
             List<Guid> excludedCurrencyTypes = new List<Guid>();
-            if ( !string.IsNullOrWhiteSpace( GetAttributeValue( "ExcludedCurrencyTypes" ) ) )
+            if ( GetAttributeValue( "ExcludedCurrencyTypes" ).IsNotNullOrWhiteSpace() )
             {
                 excludedCurrencyTypes = GetAttributeValue( "ExcludedCurrencyTypes" ).Split( ',' ).Select( Guid.Parse ).ToList();
             }
 
-            if ( GetAttributeValue( "AllowPersonQuerystring" ).AsBoolean() )
-            {
-                if ( !string.IsNullOrWhiteSpace( Request["PersonGuid"] ) )
-                {
-                    Guid? personGuid = Request["PersonGuid"].AsGuidOrNull();
+            var personGuid = PageParameter( "PersonGuid" ).AsGuidOrNull();
 
-                    if ( personGuid.HasValue )
+            if ( personGuid.HasValue )
+            {
+                // if "AllowPersonQueryString is False", only use the PersonGuid if it is a Guid of one of the current person's businesses
+                var isCurrentPersonsBusiness = targetPerson != null && targetPerson.GetBusinesses().Any( b => b.Guid == personGuid.Value );
+                if ( GetAttributeValue( "AllowPersonQuerystring" ).AsBoolean() || isCurrentPersonsBusiness )
+                {
+                    var person = new PersonService( rockContext ).Get( personGuid.Value );
+                    if ( person != null )
                     {
-                        var person = new PersonService( rockContext ).Get( personGuid.Value );
-                        if ( person != null )
-                        {
-                            targetPerson = person;
-                        }
+                        targetPerson = person;
                     }
                 }
             }
 
+            // fetch all the possible PersonAliasIds that have this GivingID to help optimize the SQL
+            var personAliasIds = new PersonAliasService( rockContext ).Queryable().Where( a => a.Person.GivingId == targetPerson.GivingId ).Select( a => a.Id ).ToList();
+
+            // get the transactions for the person or all the members in the person's giving group (Family)
             var qry = financialTransactionDetailService.Queryable().AsNoTracking()
-                        .Where( t => t.Transaction.AuthorizedPersonAlias.Person.GivingId == targetPerson.GivingId );
+                        .Where( t => t.Transaction.AuthorizedPersonAliasId.HasValue && personAliasIds.Contains( t.Transaction.AuthorizedPersonAliasId.Value ) );
 
             qry = qry.Where( t => t.Transaction.TransactionDateTime.Value.Year == statementYear );
 
@@ -298,7 +302,7 @@ namespace RockWeb.Blocks.Finance
                 mergeFields.Add( "StatementEndDate", "12/31/" + statementYear.ToString() );
             }
 
-            var familyGroupTypeId = GroupTypeCache.Read( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY ).Id;
+            var familyGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY ).Id;
             var groupMemberQry = new GroupMemberService( rockContext ).Queryable().Where( m => m.Group.GroupTypeId == familyGroupTypeId );
 
             // get giving group members in order by family role (adult -> child) and then gender (male -> female)
@@ -335,15 +339,15 @@ namespace RockWeb.Blocks.Finance
             }
             mergeFields.Add( "Salutation", salutation );
 
-            var homeAddress = targetPerson.GetHomeLocation();
-            if ( homeAddress != null )
+            var mailingAddress = targetPerson.GetMailingLocation();
+            if ( mailingAddress != null )
             {
-                mergeFields.Add( "StreetAddress1", homeAddress.Street1 );
-                mergeFields.Add( "StreetAddress2", homeAddress.Street2 );
-                mergeFields.Add( "City", homeAddress.City );
-                mergeFields.Add( "State", homeAddress.State );
-                mergeFields.Add( "PostalCode", homeAddress.PostalCode );
-                mergeFields.Add( "Country", homeAddress.Country );
+                mergeFields.Add( "StreetAddress1", mailingAddress.Street1 );
+                mergeFields.Add( "StreetAddress2", mailingAddress.Street2 );
+                mergeFields.Add( "City", mailingAddress.City );
+                mergeFields.Add( "State", mailingAddress.State );
+                mergeFields.Add( "PostalCode", mailingAddress.PostalCode );
+                mergeFields.Add( "Country", mailingAddress.Country );
             }
             else
             {
@@ -357,18 +361,26 @@ namespace RockWeb.Blocks.Finance
 
             mergeFields.Add( "TransactionDetails", qry.ToList() );
 
-            mergeFields.Add( "AccountSummary", qry.GroupBy( t => t.Account.Name ).Select( s => new AccountSummary { AccountName = s.Key, Total = s.Sum( a => a.Amount ), Order = s.Max( a => a.Account.Order ) } ).OrderBy( s => s.Order ) );
-
+            mergeFields.Add( "AccountSummary", qry.GroupBy( t => new { t.Account.Name, t.Account.PublicName, t.Account.Description } )
+                                                .Select( s => new AccountSummary
+                                                {
+                                                    AccountName = s.Key.Name,
+                                                    PublicName = s.Key.PublicName,
+                                                    Description = s.Key.Description,
+                                                    Total = s.Sum( a => a.Amount ),
+                                                    Order = s.Max( a => a.Account.Order )
+                                                } )
+                                                .OrderBy( s => s.Order ) );
             // pledge information
             var pledges = new FinancialPledgeService( rockContext ).Queryable().AsNoTracking()
-                                .Where( p =>
-                                     p.PersonAlias.Person.GivingId == targetPerson.GivingId
-                                    && (p.StartDate.Year == statementYear || p.EndDate.Year == statementYear) )
+                                .Where( p => p.PersonAliasId.HasValue && personAliasIds.Contains(p.PersonAliasId.Value)
+                                    && p.StartDate.Year <= statementYear && p.EndDate.Year >= statementYear )
                                 .GroupBy( p => p.Account )
                                 .Select( g => new PledgeSummary
                                 {
                                     AccountId = g.Key.Id,
                                     AccountName = g.Key.Name,
+                                    PublicName = g.Key.PublicName,
                                     AmountPledged = g.Sum( p => p.TotalAmount ),
                                     PledgeStartDate = g.Min( p => p.StartDate ),
                                     PledgeEndDate = g.Max( p => p.EndDate )
@@ -378,20 +390,38 @@ namespace RockWeb.Blocks.Finance
             // add detailed pledge information
             foreach ( var pledge in pledges )
             {
-                var adjustedPedgeEndDate = pledge.PledgeEndDate.Value.Date.AddHours( 23 ).AddMinutes( 59 ).AddSeconds( 59 );
+                var adjustedPledgeEndDate = pledge.PledgeEndDate.Value.Date;
+                var statementYearEnd = new DateTime( statementYear + 1, 1, 1 );
+                
+                if ( adjustedPledgeEndDate != DateTime.MaxValue.Date )
+                {
+                    adjustedPledgeEndDate = adjustedPledgeEndDate.AddDays( 1 );
+                }
+
+                if ( adjustedPledgeEndDate > statementYearEnd )
+                {
+                    adjustedPledgeEndDate = statementYearEnd;
+                }
+
+                if ( adjustedPledgeEndDate > RockDateTime.Now )
+                {
+                    adjustedPledgeEndDate = RockDateTime.Now;
+                }
+
                 pledge.AmountGiven = new FinancialTransactionDetailService( rockContext ).Queryable()
                                             .Where( t =>
                                                  t.AccountId == pledge.AccountId
+                                                 && t.Transaction.AuthorizedPersonAliasId.HasValue && personAliasIds.Contains( t.Transaction.AuthorizedPersonAliasId.Value )
                                                  && t.Transaction.TransactionDateTime >= pledge.PledgeStartDate
-                                                 && t.Transaction.TransactionDateTime <= adjustedPedgeEndDate )
-                                            .Sum( t => t.Amount );
+                                                 && t.Transaction.TransactionDateTime < adjustedPledgeEndDate )
+                                            .Sum( t => ( decimal? ) t.Amount ) ?? 0;
 
-                pledge.AmountRemaining = (pledge.AmountGiven > pledge.AmountPledged) ? 0 : (pledge.AmountPledged - pledge.AmountGiven);
+                pledge.AmountRemaining = ( pledge.AmountGiven > pledge.AmountPledged ) ? 0 : ( pledge.AmountPledged - pledge.AmountGiven );
 
                 if ( pledge.AmountPledged > 0 )
                 {
-                    var test = (double)pledge.AmountGiven / (double)pledge.AmountPledged;
-                    pledge.PercentComplete = (int)((pledge.AmountGiven * 100) / pledge.AmountPledged);
+                    var test = ( double ) pledge.AmountGiven / ( double ) pledge.AmountPledged;
+                    pledge.PercentComplete = ( int ) ( ( pledge.AmountGiven * 100 ) / pledge.AmountPledged );
                 }
             }
 
@@ -401,12 +431,6 @@ namespace RockWeb.Blocks.Finance
 
             lResults.Text = template.ResolveMergeFields( mergeFields );
 
-            // show debug info
-            if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
-            {
-                lDebug.Visible = true;
-                lDebug.Text = mergeFields.lavaDebugInfo();
-            }
         }
 
         #endregion
@@ -433,6 +457,14 @@ namespace RockWeb.Blocks.Finance
             /// The pledge account.
             /// </value>
             public string AccountName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the Public Name of the pledge account.
+            /// </summary>
+            /// <value>
+            /// The Public Name of the pledge account.
+            /// </value>
+            public string PublicName { get; set; }
 
             /// <summary>
             /// Gets or sets the pledge start date.
@@ -495,6 +527,22 @@ namespace RockWeb.Blocks.Finance
             /// The name of the account.
             /// </value>
             public string AccountName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the public name of the account.
+            /// </summary>
+            /// <value>
+            /// The public name of the account.
+            /// </value>
+            public string PublicName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the description of the account.
+            /// </summary>
+            /// <value>
+            /// The description of the account.
+            /// </value>
+            public string Description { get; set; }
 
             /// <summary>
             /// Gets or sets the total.

@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data.Entity;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.Caching;
@@ -31,7 +32,9 @@ using Rock.Attribute;
 using Rock.Data;
 using Rock.Field.Types;
 using Rock.Model;
+using Rock.Reporting;
 using Rock.Security;
+using Rock.Utility;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
@@ -39,7 +42,7 @@ using Rock.Web.UI.Controls;
 namespace RockWeb.Blocks.Cms
 {
     /// <summary>
-    /// Block to display content items, html, xml, or transformed xml based on a SQL query or stored procedure.
+    /// Block to display dynamic content channel items
     /// </summary>
     [DisplayName( "Content Channel View" )]
     [Category( "CMS" )]
@@ -48,18 +51,20 @@ namespace RockWeb.Blocks.Cms
     // Block Properties
     [LavaCommandsField( "Enabled Lava Commands", "The Lava commands that should be enabled for this content channel block.", false, order: 0 )]
     [LinkedPage( "Detail Page", "The page to navigate to for details.", false, "", "", 1 )]
+    [BooleanField( "Enable Legacy Global Attribute Lava", "This should only be enabled if your lava is using legacy Global Attributes. Enabling this option, will negatively affect the performance of this block.", false, "", 2, "SupportLegacy" )]
 
     // Custom Settings
     [ContentChannelField( "Channel", "The channel to display items from.", false, "", "CustomSetting" )]
     [EnumsField( "Status", "Include items with the following status.", typeof( ContentChannelItemStatus ), false, "2", "CustomSetting" )]
     [CodeEditorField( "Template", "The template to use when formatting the list of items.", CodeEditorMode.Lava, CodeEditorTheme.Rock, 600, false, @"", "CustomSetting" )]
     [IntegerField( "Count", "The maximum number of items to display.", false, 5, "CustomSetting" )]
-    [IntegerField( "Cache Duration", "Number of seconds to cache the content.", false, 3600, "CustomSetting" )]
-    [BooleanField( "Enable Debug", "Enabling debug will display the fields of the first 5 items to help show you wants available for your liquid.", false, "CustomSetting" )]
+    [IntegerField( "Item Cache Duration", "Number of seconds to cache the content items returned by the selected filter.", false, 3600, "CustomSetting", 0, "CacheDuration" )]
+    [IntegerField( "Output Cache Duration", "Number of seconds to cache the resolved output. Only cache the output if you are not personalizing the output based on current user, current page, or any other merge field value.", false, 0, "CustomSetting", 0, "OutputCacheDuration" )]
+    [CustomCheckboxListField( "Cache Tags", "Cached tags are used to link cached content so that it can be expired as a group", listSource: "", required: false, key: "CacheTags", category: "CustomSetting" )]
     [IntegerField( "Filter Id", "The data filter that is used to filter items", false, 0, "CustomSetting" )]
     [BooleanField( "Query Parameter Filtering", "Determines if block should evaluate the query string parameters for additional filter criteria.", false, "CustomSetting" )]
     [TextField( "Order", "The specifics of how items should be ordered. This value is set through configuration and should not be modified here.", false, "", "CustomSetting" )]
-    [BooleanField("Merge Content", "Should the content data and attribute values be merged using the Lava's template engine.", false, "CustomSetting" )]
+    [BooleanField( "Merge Content", "Should the content data and attribute values be merged using the Lava template engine.", false, "CustomSetting" )]
     [BooleanField( "Set Page Title", "Determines if the block should set the page title with the channel name or content item.", false, "CustomSetting" )]
     [BooleanField( "Rss Autodiscover", "Determines if a RSS autodiscover link should be added to the page head.", false, "CustomSetting" )]
     [TextField( "Meta Description Attribute", "Attribute to use for storing the description attribute.", false, "", "CustomSetting" )]
@@ -72,10 +77,27 @@ namespace RockWeb.Blocks.Cms
         private readonly string ITEM_TYPE_NAME = "Rock.Model.ContentChannelItem";
         private readonly string CONTENT_CACHE_KEY = "Content";
         private readonly string TEMPLATE_CACHE_KEY = "Template";
+        private readonly string OUTPUT_CACHE_KEY = "Output";
 
-        #endregion
+        #endregion Fields
 
         #region Properties
+
+        /// <summary>
+        /// Gets or sets the duration of the item cache.
+        /// </summary>
+        /// <value>
+        /// The duration of the item cache.
+        /// </value>
+        public int? ItemCacheDuration { get; set; }
+
+        /// <summary>
+        /// Gets or sets the duration of the output cache.
+        /// </summary>
+        /// <value>
+        /// The duration of the output cache.
+        /// </value>
+        public int? OutputCacheDuration { get; set; }
 
         /// <summary>
         /// Gets or sets the channel unique identifier.
@@ -99,9 +121,50 @@ namespace RockWeb.Blocks.Cms
             }
         }
 
-        #endregion
+        #endregion Properties
 
         #region Base Control Methods
+
+        /// <summary>
+        /// Raises the <see cref="E:System.Web.UI.Control.Init" /> event.
+        /// </summary>
+        /// <param name="e">An <see cref="T:System.EventArgs" /> object that contains the event data.</param>
+        protected override void OnInit( EventArgs e )
+        {
+            base.OnInit( e );
+
+            ItemCacheDuration = GetAttributeValue( "CacheDuration" ).AsIntegerOrNull();
+            OutputCacheDuration = GetAttributeValue( "OutputCacheDuration" ).AsIntegerOrNull();
+
+            this.BlockUpdated += ContentDynamic_BlockUpdated;
+            this.AddConfigurationUpdateTrigger( upnlContent );
+
+            Button btnTrigger = new Button();
+            btnTrigger.ClientIDMode = System.Web.UI.ClientIDMode.Static;
+            btnTrigger.ID = "rock-config-cancel-trigger";
+            btnTrigger.Style[HtmlTextWriterStyle.Display] = "none";
+            btnTrigger.Click += btnTrigger_Click;
+            pnlEditModal.Controls.Add( btnTrigger );
+
+            AsyncPostBackTrigger trigger = new AsyncPostBackTrigger();
+            trigger.ControlID = "rock-config-cancel-trigger";
+            trigger.EventName = "Click";
+            upnlContent.Triggers.Add( trigger );
+        }
+
+        /// <summary>
+        /// Raises the <see cref="E:System.Web.UI.Control.Load" /> event.
+        /// </summary>
+        /// <param name="e">The <see cref="T:System.EventArgs" /> object that contains the event data.</param>
+        protected override void OnLoad( EventArgs e )
+        {
+            base.OnLoad( e );
+
+            if ( !Page.IsPostBack )
+            {
+                ShowView();
+            }
+        }
 
         /// <summary>
         /// Restores the view-state information from a previous user control request that was saved by the <see cref="M:System.Web.UI.UserControl.SaveViewState" /> method.
@@ -124,56 +187,6 @@ namespace RockWeb.Blocks.Cms
         }
 
         /// <summary>
-        /// Raises the <see cref="E:System.Web.UI.Control.Init" /> event.
-        /// </summary>
-        /// <param name="e">An <see cref="T:System.EventArgs" /> object that contains the event data.</param>
-        protected override void OnInit( EventArgs e )
-        {
-            base.OnInit( e );
-
-            // Switch does not automatically initialize again after a partial-postback.  This script 
-            // looks for any switch elements that have not been initialized and re-intializes them.
-            string script = @"
-$(document).ready(function() {
-    $('.switch > input').each( function () {
-        $(this).parent().switch('init');
-    });
-});
-";
-            ScriptManager.RegisterStartupScript( this.Page, this.Page.GetType(), "toggle-switch-init", script, true );
-
-            cblStatus.BindToEnum<ContentChannelItemStatus>();
-
-            this.BlockUpdated += ContentDynamic_BlockUpdated;
-            this.AddConfigurationUpdateTrigger( upnlContent );
-
-            Button btnTrigger = new Button();
-            btnTrigger.ClientIDMode = System.Web.UI.ClientIDMode.Static;
-            btnTrigger.ID = "rock-config-cancel-trigger";
-            btnTrigger.Click += btnTrigger_Click;
-            pnlEditModal.Controls.Add( btnTrigger );
-
-            AsyncPostBackTrigger trigger = new AsyncPostBackTrigger();
-            trigger.ControlID ="rock-config-cancel-trigger";
-            trigger.EventName = "Click";
-            upnlContent.Triggers.Add( trigger );
-        }
-
-        /// <summary>
-        /// Raises the <see cref="E:System.Web.UI.Control.Load" /> event.
-        /// </summary>
-        /// <param name="e">The <see cref="T:System.EventArgs" /> object that contains the event data.</param>
-        protected override void OnLoad( EventArgs e )
-        {
-            base.OnLoad( e );
-
-            if ( !Page.IsPostBack )
-            {
-                ShowView();
-            }
-        }
-
-        /// <summary>
         /// Saves any user control view-state changes that have occurred since the last page postback.
         /// </summary>
         /// <returns>
@@ -182,20 +195,35 @@ $(document).ready(function() {
         protected override object SaveViewState()
         {
             ViewState["ChannelGuid"] = ChannelGuid;
-            ViewState["DataViewFilter"] = GetFilterControl().ToJson();
+            ViewState["DataViewFilter"] = ReportingHelper.GetFilterFromControls(phFilters).ToJson();
 
             return base.SaveViewState();
         }
 
-        #endregion
+        #endregion Base Control Methods
 
         #region Events
 
+        /// <summary>
+        /// Handles the BlockUpdated event of the block for when settings are changed.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         void ContentDynamic_BlockUpdated( object sender, EventArgs e )
         {
+            RemoveCacheItem( CONTENT_CACHE_KEY );
+            RemoveCacheItem( TEMPLATE_CACHE_KEY );
+            // When our cache supports regions, we can call ClearRegion to clear all the output pages.
+            RemoveCacheItem( OUTPUT_CACHE_KEY );
+            
             ShowView();
         }
 
+        /// <summary>
+        /// Handles the Click event of the btnTrigger control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         void btnTrigger_Click( object sender, EventArgs e )
         {
             mdEdit.Hide();
@@ -204,16 +232,25 @@ $(document).ready(function() {
             ShowView();
         }
 
+        /// <summary>
+        /// Handles the SelectedIndexChanged event of the ddlChannel control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void ddlChannel_SelectedIndexChanged( object sender, EventArgs e )
         {
             ChannelGuid = ddlChannel.SelectedValue.AsGuidOrNull();
             ShowEdit();
         }
 
+        /// <summary>
+        /// Handles the Click event of the lbSave control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void lbSave_Click( object sender, EventArgs e )
         {
-
-            var dataViewFilter = GetFilterControl();
+            var dataViewFilter = ReportingHelper.GetFilterFromControls( phFilters );
 
             // update Guids since we are creating a new dataFilter and children and deleting the old one
             SetNewDataFilterGuids( dataViewFilter );
@@ -243,13 +280,14 @@ $(document).ready(function() {
 
             rockContext.SaveChanges();
 
-            SetAttributeValue( "Status", cblStatus.SelectedValuesAsInt.AsDelimited(",") );
+            SetAttributeValue( "Status", cblStatus.SelectedValuesAsInt.AsDelimited( "," ) );
             SetAttributeValue( "Channel", ddlChannel.SelectedValue );
-            SetAttributeValue( "EnableDebug", cbDebug.Checked.ToString() );
             SetAttributeValue( "MergeContent", cbMergeContent.Checked.ToString() );
             SetAttributeValue( "Template", ceTemplate.Text );
             SetAttributeValue( "Count", ( nbCount.Text.AsIntegerOrNull() ?? 5 ).ToString() );
-            SetAttributeValue( "CacheDuration", ( nbCacheDuration.Text.AsIntegerOrNull() ?? 5 ).ToString() );
+            SetAttributeValue( "CacheDuration", ( nbItemCacheDuration.Text.AsIntegerOrNull() ?? 0 ).ToString() );
+            SetAttributeValue( "OutputCacheDuration", ( nbOutputCacheDuration.Text.AsIntegerOrNull() ?? 0 ).ToString() );
+            SetAttributeValue( "CacheTags", cblCacheTags.SelectedValues.AsDelimited( "," ) );
             SetAttributeValue( "FilterId", dataViewFilter.Id.ToString() );
             SetAttributeValue( "QueryParameterFiltering", cbQueryParamFiltering.Checked.ToString() );
             SetAttributeValue( "Order", kvlOrder.Value );
@@ -263,8 +301,10 @@ $(document).ready(function() {
 
             SaveAttributeValues();
 
-            FlushCacheItem( CONTENT_CACHE_KEY );
-            FlushCacheItem( TEMPLATE_CACHE_KEY );
+            RemoveCacheItem( CONTENT_CACHE_KEY );
+            RemoveCacheItem( TEMPLATE_CACHE_KEY );
+            // When our cache supports regions, we can call ClearRegion to clear all the output pages.
+            RemoveCacheItem( OUTPUT_CACHE_KEY );
 
             mdEdit.Hide();
             pnlEditModal.Visible = false;
@@ -282,14 +322,30 @@ $(document).ready(function() {
         {
             FilterGroup groupControl = sender as FilterGroup;
             FilterField filterField = new FilterField();
+            Guid? channelGuid = GetAttributeValue( "Channel" ).AsGuidOrNull();
+            if ( channelGuid.HasValue )
+            {
+                var contentChannel = ContentChannelCache.Get( channelGuid.Value );
+                if ( contentChannel != null )
+                {
+                    filterField.Entity = new ContentChannelItem
+                    {
+                        ContentChannelId = contentChannel.Id,
+                        ContentChannelTypeId = contentChannel.ContentChannelTypeId
+                    };
+                }
+            }
+
             filterField.DataViewFilterGuid = Guid.NewGuid();
             groupControl.Controls.Add( filterField );
             filterField.ID = string.Format( "ff_{0}", filterField.DataViewFilterGuid.ToString( "N" ) );
-            
+
             // Remove the 'Other Data View' Filter as it doesn't really make sense to have it available in this scenario
             filterField.ExcludedFilterTypes = new string[] { typeof( Rock.Reporting.DataFilter.OtherDataViewFilter ).FullName };
             filterField.FilteredEntityTypeName = groupControl.FilteredEntityTypeName;
             filterField.Expanded = true;
+
+            filterField.DeleteClick += filterControl_DeleteClick;
         }
 
         /// <summary>
@@ -306,6 +362,10 @@ $(document).ready(function() {
             childGroupControl.ID = string.Format( "fg_{0}", childGroupControl.DataViewFilterGuid.ToString( "N" ) );
             childGroupControl.FilteredEntityTypeName = groupControl.FilteredEntityTypeName;
             childGroupControl.FilterType = FilterExpressionType.GroupAll;
+
+            childGroupControl.AddFilterClick += groupControl_AddFilterClick;
+            childGroupControl.AddGroupClick += groupControl_AddGroupClick;
+            childGroupControl.DeleteGroupClick += groupControl_DeleteGroupClick;
         }
 
         /// <summary>
@@ -330,7 +390,7 @@ $(document).ready(function() {
             groupControl.Parent.Controls.Remove( groupControl );
         }
 
-        #endregion
+        #endregion Events
 
         #region Internal Methods
 
@@ -339,6 +399,17 @@ $(document).ready(function() {
         /// </summary>
         protected override void ShowSettings()
         {
+            // Switch does not automatically initialize again after a partial-postback.  This script 
+            // looks for any switch elements that have not been initialized and re-initializes them.
+            string script = @"
+$(document).ready(function() {
+    $('.switch > input').each( function () {
+        $(this).parent().switch('init');
+    });
+});
+";
+            ScriptManager.RegisterStartupScript( this.Page, this.Page.GetType(), "toggle-switch-init", script, true );
+
             pnlEditModal.Visible = true;
             upnlContent.Update();
             mdEdit.Show();
@@ -346,6 +417,7 @@ $(document).ready(function() {
             var rockContext = new RockContext();
             ddlChannel.DataSource = new ContentChannelService( rockContext ).Queryable()
                 .OrderBy( c => c.Name )
+                .Where(a => a.ContentChannelType.ShowInChannelList == true)
                 .Select( c => new { c.Guid, c.Name } )
                 .ToList();
             ddlChannel.DataBind();
@@ -353,6 +425,7 @@ $(document).ready(function() {
             ddlChannel.SetValue( GetAttributeValue( "Channel" ) );
             ChannelGuid = ddlChannel.SelectedValue.AsGuidOrNull();
 
+            cblStatus.BindToEnum<ContentChannelItemStatus>();
             foreach ( string status in GetAttributeValue( "Status" ).SplitDelimitedValues() )
             {
                 var li = cblStatus.Items.FindByValue( status );
@@ -362,13 +435,23 @@ $(document).ready(function() {
                 }
             }
 
-            cbDebug.Checked = GetAttributeValue( "EnableDebug" ).AsBoolean();
             cbMergeContent.Checked = GetAttributeValue( "MergeContent" ).AsBoolean();
             cbSetRssAutodiscover.Checked = GetAttributeValue( "RssAutodiscover" ).AsBoolean();
             cbSetPageTitle.Checked = GetAttributeValue( "SetPageTitle" ).AsBoolean();
             ceTemplate.Text = GetAttributeValue( "Template" );
             nbCount.Text = GetAttributeValue( "Count" );
-            nbCacheDuration.Text = GetAttributeValue( "CacheDuration" );
+            nbItemCacheDuration.Text = GetAttributeValue( "CacheDuration" );
+            nbOutputCacheDuration.Text = GetAttributeValue( "OutputCacheDuration" );
+
+            DefinedValueService definedValueService = new DefinedValueService( new RockContext() );
+            cblCacheTags.DataSource = definedValueService.GetByDefinedTypeGuid( Rock.SystemGuid.DefinedType.CACHE_TAGS.AsGuid() ).Select( v => v.Value ).ToList();
+            cblCacheTags.DataBind();
+            string[] selectedCacheTags = this.GetAttributeValue( "CacheTags" ).SplitDelimitedValues();
+            foreach ( ListItem cacheTag in cblCacheTags.Items )
+            {
+                cacheTag.Selected = selectedCacheTags.Contains( cacheTag.Value );
+            }
+
             hfDataFilterId.Value = GetAttributeValue( "FilterId" );
             cbQueryParamFiltering.Checked = GetAttributeValue( "QueryParameterFiltering" ).AsBoolean();
 
@@ -383,209 +466,235 @@ $(document).ready(function() {
             kvlOrder.Value = GetAttributeValue( "Order" );
             kvlOrder.Required = true;
 
-
             ShowEdit();
 
             upnlContent.Update();
         }
 
         /// <summary>
-        /// Binds the grid.
+        /// Shows the content channel item or items. If an output cache duration is set,
+        /// the content will attempt to be fetched from cache unless any of the following 
+        /// settings are enabled or set:
+        ///    * MergeContent (bool)
+        ///    * SetPageTitle (bool)
+        ///    * RssAutodiscover (bool)
+        ///    * MetaDescriptionAttribute (string)
+        ///    * MetaImageAttribute (string)
+        ///    * QueryParameterFiltering (bool)
         /// </summary>
         private void ShowView()
         {
             nbContentError.Visible = false;
             upnlContent.Update();
 
-            var pageRef = CurrentPageReference;
-            pageRef.Parameters.AddOrReplace( "Page", "PageNum" );
+            string outputContents = null;
 
-            Dictionary<string, object> linkedPages = new Dictionary<string, object>();
-            linkedPages.Add( "DetailPage", LinkedPageRoute( "DetailPage" ) );
+            bool isMergeContentEnabled = GetAttributeValue( "MergeContent" ).AsBoolean();
+            bool isSetPageTitleEnabled = GetAttributeValue( "SetPageTitle" ).AsBoolean();
+            bool isRssAutodiscoverEnabled = GetAttributeValue( "RssAutodiscover" ).AsBoolean();
+            bool isQueryParameterFilteringEnabled = GetAttributeValue( "QueryParameterFiltering" ).AsBoolean( false );
+            string metaDescriptionAttributeValue = GetAttributeValue( "MetaDescriptionAttribute" );
+            string metaImageAttributeValue = GetAttributeValue( "MetaImageAttribute" );
+            int pageNumber = PageParameter( "Page" ).AsIntegerOrNull() ?? 1;
 
-            var errorMessages = new List<string>();
-            List<ContentChannelItem> content;
-            try
+            // Try fetching from cache if it's OK to do so. 
+            // For now, we'll only cache if pagination is page 1. When our cache supports caching as a region (set)
+            // we can then cache all pages and call ClearRegion if the block settings change.
+            if ( OutputCacheDuration.HasValue && OutputCacheDuration.Value > 0 && pageNumber == 1 &&
+                !( isSetPageTitleEnabled || isSetPageTitleEnabled || isRssAutodiscoverEnabled 
+                || isQueryParameterFilteringEnabled || ! string.IsNullOrWhiteSpace( metaDescriptionAttributeValue )
+                || ! string.IsNullOrWhiteSpace( metaImageAttributeValue ) ) )
             {
-                content = GetContent( errorMessages ) ?? new List<ContentChannelItem>();
+                outputContents = GetCacheItem( OUTPUT_CACHE_KEY ) as string;
             }
-            catch (Exception ex)
+
+            if ( outputContents == null )
             {
-                this.LogException( ex );
-                Exception exception = ex;
-                while ( exception != null )
+                var pageRef = new Rock.Web.PageReference( CurrentPageReference );
+                pageRef.Parameters.AddOrReplace( "Page", "PageNum" );
+
+                Dictionary<string, object> linkedPages = new Dictionary<string, object>();
+                linkedPages.Add( "DetailPage", LinkedPageRoute( "DetailPage" ) );
+
+                var errorMessages = new List<string>();
+                List<ContentChannelItem> contentItemList;
+                try
                 {
-                    errorMessages.Add( exception.Message );
-                    exception = exception.InnerException;
+                    contentItemList = GetContent( errorMessages, isQueryParameterFilteringEnabled ) ?? new List<ContentChannelItem>();
                 }
-                
-                content = new List<ContentChannelItem>();
-            }
-
-            if (errorMessages.Any())
-            {
-                nbContentError.Text = "ERROR: There was a problem getting content...<br/> ";
-                nbContentError.NotificationBoxType = NotificationBoxType.Danger;
-                nbContentError.Details = errorMessages.AsDelimited( "<br/>" );
-                nbContentError.Visible = true;
-            }
-
-            var pagination = new Pagination();
-            pagination.ItemCount = content.Count();
-            pagination.PageSize = GetAttributeValue( "Count" ).AsInteger();
-            pagination.CurrentPage = PageParameter( "Page" ).AsIntegerOrNull() ?? 1;
-            pagination.UrlTemplate = pageRef.BuildUrl();
-            var currentPageContent = pagination.GetCurrentPageItems( content );
-
-            var commonMergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
-
-            // Merge content and attribute fields if block is configured to do so.
-            if ( GetAttributeValue( "MergeContent" ).AsBoolean() )
-            {
-                var itemMergeFields = new Dictionary<string, object>();
-                if ( CurrentPerson != null )
+                catch ( Exception ex )
                 {
-                    // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
-                    itemMergeFields.Add( "Person", CurrentPerson );
-                }
-
-                commonMergeFields.ToList().ForEach( d => itemMergeFields.Add( d.Key, d.Value ) );
-
-                foreach ( var item in currentPageContent )
-                {
-                    itemMergeFields.AddOrReplace( "Item", item );
-                    var enabledCommands = GetAttributeValue( "EnabledLavaCommands" );
-                    item.Content = item.Content.ResolveMergeFields( itemMergeFields, enabledCommands );
-
-                    foreach ( var attributeValue in item.AttributeValues )
+                    this.LogException( ex );
+                    Exception exception = ex;
+                    while ( exception != null )
                     {
-                        attributeValue.Value.Value = attributeValue.Value.Value.ResolveMergeFields( itemMergeFields, enabledCommands );
+                        errorMessages.Add( exception.Message );
+                        exception = exception.InnerException;
+                    }
+
+                    contentItemList = new List<ContentChannelItem>();
+                }
+
+                if ( errorMessages.Any() )
+                {
+                    nbContentError.Text = "ERROR: There was a problem getting content...<br/> ";
+                    nbContentError.NotificationBoxType = NotificationBoxType.Danger;
+                    nbContentError.Details = errorMessages.AsDelimited( "<br/>" );
+                    nbContentError.Visible = true;
+                }
+
+                var pagination = new Pagination();
+                pagination.ItemCount = contentItemList.Count();
+                pagination.PageSize = GetAttributeValue( "Count" ).AsInteger();
+                pagination.CurrentPage = pageNumber;
+                pagination.UrlTemplate = pageRef.BuildUrl();
+                var currentPageContent = pagination.GetCurrentPageItems( contentItemList );
+
+                var mergeFieldOptions = new Rock.Lava.CommonMergeFieldsOptions();
+                mergeFieldOptions.GetLegacyGlobalMergeFields = GetAttributeValue( "SupportLegacy" ).AsBoolean();
+                var commonMergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson, mergeFieldOptions );
+
+                // Merge content and attribute fields if block is configured to do so.
+                if ( isMergeContentEnabled )
+                {
+                    var itemMergeFields = new Dictionary<string, object>( commonMergeFields );
+                    if ( CurrentPerson != null )
+                    {
+                        // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
+                        itemMergeFields.Add( "Person", CurrentPerson );
+                    }
+
+                    var enabledCommands = GetAttributeValue( "EnabledLavaCommands" );
+                    foreach ( var item in currentPageContent )
+                    {
+                        itemMergeFields.AddOrReplace( "Item", item );
+                        item.Content = item.Content.ResolveMergeFields( itemMergeFields, enabledCommands );
+                        foreach ( var attributeValue in item.AttributeValues )
+                        {
+                            attributeValue.Value.Value = attributeValue.Value.Value.ResolveMergeFields( itemMergeFields, enabledCommands );
+                        }
                     }
                 }
-            }
 
-            var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
-            mergeFields.Add( "Pagination", pagination );
-            mergeFields.Add( "LinkedPages", linkedPages );
-            mergeFields.Add( "Items", currentPageContent );
-            mergeFields.Add( "RockVersion", Rock.VersionInfo.VersionInfo.GetRockProductVersionNumber() );
+                var mergeFields = new Dictionary<string, object>( commonMergeFields );
+                mergeFields.Add( "Pagination", pagination );
+                mergeFields.Add( "LinkedPages", linkedPages );
+                mergeFields.Add( "Items", currentPageContent );
+                mergeFields.Add( "RockVersion", Rock.VersionInfo.VersionInfo.GetRockProductVersionNumber() );
 
-            // enable showing debug info
-            if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
-            {
-                mergeFields["Items"] = currentPageContent.Take( 5 ).ToList();
+                // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
+                mergeFields.AddOrIgnore( "Person", CurrentPerson );
 
-                lDebug.Visible = true;
-                
-                lDebug.Text = mergeFields.lavaDebugInfo();
-
-                mergeFields["Items"] = currentPageContent;
-            }
-            else
-            {
-                lDebug.Visible = false;
-                lDebug.Text = string.Empty;
-            }
-
-            // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
-            mergeFields.AddOrIgnore( "Person", CurrentPerson );
-
-            // set page title
-            if ( GetAttributeValue( "SetPageTitle" ).AsBoolean() && content.Count > 0 )
-            {
-                if ( string.IsNullOrWhiteSpace( PageParameter( "Item" ) ) )
+                // set page title
+                if ( isSetPageTitleEnabled && contentItemList.Count > 0 )
                 {
-                    // set title to channel name
-                    string channelName = content.Select( c => c.ContentChannel.Name ).FirstOrDefault();
-                    RockPage.BrowserTitle = String.Format( "{0} | {1}", channelName, RockPage.Site.Name );
-                    RockPage.PageTitle = channelName;
-                    RockPage.Header.Title = String.Format( "{0} | {1}", channelName, RockPage.Site.Name );
-                }
-                else
-                {
-                    string itemTitle = content.Select( c => c.Title ).FirstOrDefault();
-                    RockPage.PageTitle = itemTitle;
-                    RockPage.BrowserTitle = String.Format( "{0} | {1}", itemTitle, RockPage.Site.Name );
-                    RockPage.Header.Title = String.Format( "{0} | {1}", itemTitle, RockPage.Site.Name );
+                    if ( string.IsNullOrWhiteSpace( PageParameter( "Item" ) ) )
+                    {
+                        // set title to channel name
+                        string channelName = contentItemList.Select( c => c.ContentChannel.Name ).FirstOrDefault();
+                        RockPage.BrowserTitle = String.Format( "{0} | {1}", channelName, RockPage.Site.Name );
+                        RockPage.PageTitle = channelName;
+                        RockPage.Header.Title = String.Format( "{0} | {1}", channelName, RockPage.Site.Name );
+                    }
+                    else
+                    {
+                        string itemTitle = contentItemList.Select( c => c.Title ).FirstOrDefault();
+                        RockPage.PageTitle = itemTitle;
+                        RockPage.BrowserTitle = String.Format( "{0} | {1}", itemTitle, RockPage.Site.Name );
+                        RockPage.Header.Title = String.Format( "{0} | {1}", itemTitle, RockPage.Site.Name );
+                    }
+
+                    var pageBreadCrumb = RockPage.PageReference.BreadCrumbs.FirstOrDefault();
+                    if ( pageBreadCrumb != null )
+                    {
+                        pageBreadCrumb.Name = RockPage.PageTitle;
+                    }
                 }
 
-                var pageBreadCrumb = RockPage.PageReference.BreadCrumbs.FirstOrDefault();
-                if ( pageBreadCrumb != null )
+                // set rss auto discover link
+                if ( isRssAutodiscoverEnabled && contentItemList.Count > 0 )
                 {
-                    pageBreadCrumb.Name = RockPage.PageTitle;
+                    //<link rel="alternate" type="application/rss+xml" title="RSS Feed for petefreitag.com" href="/rss/" />
+                    HtmlLink rssLink = new HtmlLink();
+                    rssLink.Attributes.Add( "type", "application/rss+xml" );
+                    rssLink.Attributes.Add( "rel", "alternate" );
+                    rssLink.Attributes.Add( "title", contentItemList.Select( c => c.ContentChannel.Name ).FirstOrDefault() );
+
+                    var context = HttpContext.Current;
+                    string channelRssUrl = string.Format( "{0}://{1}{2}{3}{4}",
+                                        context.Request.Url.Scheme,
+                                        WebRequestHelper.GetHostNameFromRequest( context ),
+                                        context.Request.Url.Port == 80
+                                            ? string.Empty
+                                            : ":" + context.Request.Url.Port,
+                                        RockPage.ResolveRockUrl( "~/GetChannelFeed.ashx?ChannelId=" ),
+                                        contentItemList.Select( c => c.ContentChannelId ).FirstOrDefault() );
+
+                    rssLink.Attributes.Add( "href", channelRssUrl );
+                    RockPage.Header.Controls.Add( rssLink );
+                }
+
+                // set description meta tag
+                if ( !string.IsNullOrWhiteSpace( metaDescriptionAttributeValue ) && contentItemList.Count > 0 )
+                {
+                    string attributeValue = GetMetaValueFromAttribute( metaDescriptionAttributeValue, contentItemList );
+
+                    if ( !string.IsNullOrWhiteSpace( attributeValue ) )
+                    {
+                        // remove default meta description
+                        RockPage.Header.Description = attributeValue.SanitizeHtml( true );
+                    }
+                }
+
+                // add meta images
+                if ( !string.IsNullOrWhiteSpace( metaImageAttributeValue ) && contentItemList.Count > 0 )
+                {
+                    string attributeValue = GetMetaValueFromAttribute( metaImageAttributeValue, contentItemList );
+
+                    if ( !string.IsNullOrWhiteSpace( attributeValue ) )
+                    {
+                        HtmlMeta metaDescription = new HtmlMeta();
+                        metaDescription.Name = "og:image";
+                        metaDescription.Content = string.Format( "{0}://{1}/GetImage.ashx?guid={2}", Request.Url.Scheme, Request.Url.Authority, attributeValue );
+                        RockPage.Header.Controls.Add( metaDescription );
+
+                        HtmlLink imageLink = new HtmlLink();
+                        imageLink.Attributes.Add( "rel", "image_src" );
+                        imageLink.Attributes.Add( "href", string.Format( "{0}://{1}/GetImage.ashx?guid={2}", Request.Url.Scheme, Request.Url.Authority, attributeValue ) );
+                        RockPage.Header.Controls.Add( imageLink );
+                    }
+                }
+
+                var template = GetTemplate();
+
+                if ( template.Registers.ContainsKey( "EnabledCommands" ) )
+                {
+                    template.Registers["EnabledCommands"] = GetAttributeValue( "EnabledLavaCommands" );
+                }
+                else // this should never happen
+                {
+                    template.Registers.Add( "EnabledCommands", GetAttributeValue( "EnabledLavaCommands" ) );
+                }
+
+                outputContents = template.Render( Hash.FromDictionary( mergeFields ) );
+
+                if ( OutputCacheDuration.HasValue && OutputCacheDuration.Value > 0 )
+                {
+                    string cacheTags = GetAttributeValue( "CacheTags" ) ?? string.Empty;
+                    // When our cache supports regions, add the pagination page to the cache key and set them all with the same region.
+                    AddCacheItem( OUTPUT_CACHE_KEY, outputContents, OutputCacheDuration.Value, cacheTags );
                 }
             }
 
-            // set rss auto discover link
-            if ( GetAttributeValue( "RssAutodiscover" ).AsBoolean() && content.Count > 0 )
-            {
-                //<link rel="alternate" type="application/rss+xml" title="RSS Feed for petefreitag.com" href="/rss/" />
-                HtmlLink rssLink = new HtmlLink();
-                rssLink.Attributes.Add("type", "application/rss+xml");
-                rssLink.Attributes.Add("rel", "alternate");
-                rssLink.Attributes.Add("title", content.Select(c => c.ContentChannel.Name).FirstOrDefault());
-
-                var context = HttpContext.Current;
-                string channelRssUrl = string.Format( "{0}://{1}{2}{3}{4}",
-                                    context.Request.Url.Scheme,
-                                    context.Request.Url.Host,
-                                    context.Request.Url.Port == 80
-                                        ? string.Empty
-                                        : ":" + context.Request.Url.Port,
-                                    RockPage.ResolveRockUrl( "~/GetChannelFeed.ashx?ChannelId="),
-                                    content.Select(c => c.ContentChannelId).FirstOrDefault());
-
-                rssLink.Attributes.Add( "href", channelRssUrl );
-                RockPage.Header.Controls.Add( rssLink );
-            }
-
-            // set description meta tag
-            string metaDescriptionAttributeValue = GetAttributeValue("MetaDescriptionAttribute");
-            if ( !string.IsNullOrWhiteSpace( metaDescriptionAttributeValue ) && content.Count > 0 )
-            {
-                string attributeValue = GetMetaValueFromAttribute(metaDescriptionAttributeValue, content);
-
-                if ( !string.IsNullOrWhiteSpace( attributeValue ) )
-                {
-                    // remove default meta description
-                    RockPage.Header.Description = attributeValue.SanitizeHtml( true );
-                }
-            }
-
-            // add meta images
-            string metaImageAttributeValue = GetAttributeValue( "MetaImageAttribute" );
-            if ( !string.IsNullOrWhiteSpace( metaImageAttributeValue ) && content.Count > 0 )
-            {
-                string attributeValue = GetMetaValueFromAttribute( metaImageAttributeValue, content );
-
-                if ( !string.IsNullOrWhiteSpace( attributeValue ) )
-                {
-                    HtmlMeta metaDescription = new HtmlMeta();
-                    metaDescription.Name = "og:image";
-                    metaDescription.Content = string.Format( "{0}://{1}/GetImage.ashx?guid={2}", Request.Url.Scheme, Request.Url.Authority,  attributeValue );
-                    RockPage.Header.Controls.Add( metaDescription );
-
-                    HtmlLink imageLink = new HtmlLink();
-                    imageLink.Attributes.Add( "rel", "image_src" );
-                    imageLink.Attributes.Add( "href", string.Format( "{0}://{1}/GetImage.ashx?guid={2}", Request.Url.Scheme, Request.Url.Authority,  attributeValue )); 
-                    RockPage.Header.Controls.Add( imageLink );
-                }
-            }
-
-            var template = GetTemplate();
-
-            if ( template.InstanceAssigns.ContainsKey( "EnabledCommands" ) )
-            {
-                template.InstanceAssigns["EnabledCommands"] = GetAttributeValue( "EnabledLavaCommands" );
-            }
-            else // this should never happen
-            {
-                template.InstanceAssigns.Add( "EnabledCommands", GetAttributeValue( "EnabledLavaCommands" ) );
-            }
-            
-            phContent.Controls.Add( new LiteralControl( template.Render( Hash.FromDictionary( mergeFields ) ) ) );
+            phContent.Controls.Add( new LiteralControl( outputContents ) );
         }
 
+        /// <summary>
+        /// Gets the meta value from attribute.
+        /// </summary>
+        /// <param name="input">The input.</param>
+        /// <param name="content">The content.</param>
+        /// <returns>a string value</returns>
         private string GetMetaValueFromAttribute( string input, List<ContentChannelItem> content )
         {
             string attributeEntityType = input.Split( '^' )[0].ToString() ?? "C";
@@ -605,38 +714,60 @@ $(document).ready(function() {
             return attributeValue;
         }
 
+        /// <summary>
+        /// Gets the template.
+        /// </summary>
+        /// <returns>a DotLiquid Template</returns>
+        /// <returns>A <see cref="DotLiquid.Template"/></returns>
         private Template GetTemplate()
         {
             Template template = null;
 
-            try {
-                template = GetCacheItem( TEMPLATE_CACHE_KEY ) as Template;
+            try
+            {
+                // only load from the cache if a cacheDuration was specified
+                if ( ItemCacheDuration.HasValue && ItemCacheDuration.Value > 0 )
+                {
+                    template = GetCacheItem( TEMPLATE_CACHE_KEY ) as Template;
+                }
+
                 if ( template == null )
                 {
                     template = Template.Parse( GetAttributeValue( "Template" ) );
 
-                    int? cacheDuration = GetAttributeValue( "CacheDuration" ).AsInteger();
-                    if ( cacheDuration > 0 )
+                    if ( ItemCacheDuration.HasValue && ItemCacheDuration.Value > 0 )
                     {
-                        var cacheItemPolicy = new CacheItemPolicy { AbsoluteExpiration = DateTimeOffset.Now.AddSeconds( cacheDuration.Value ) };
-                        AddCacheItem( TEMPLATE_CACHE_KEY, template, cacheItemPolicy );
+                        string cacheTags = GetAttributeValue( "CacheTags" ) ?? string.Empty;
+                        AddCacheItem( TEMPLATE_CACHE_KEY, template, ItemCacheDuration.Value, cacheTags );
                     }
                 }
             }
-            catch(Exception ex )
+            catch ( Exception ex )
             {
-                template = Template.Parse( string.Format("Lava error: {0}", ex.Message ) );
+                template = Template.Parse( string.Format( "Lava error: {0}", ex.Message ) );
             }
 
             return template;
         }
 
-        private List<ContentChannelItem> GetContent( List<string> errorMessages )
+        /// <summary>
+        /// Gets the content channel items from the item-cache (if there), or from 
+        /// the configured Channel and any given Item id or filter in the query string
+        /// if QueryParameterFiltering is enabled.
+        /// </summary>
+        /// <param name="errorMessages">The error messages.</param>
+        /// <returns> a list of <see cref="Rock.Model.ContentChannelItem">ContentChannelItems</see></returns>
+        private List<ContentChannelItem> GetContent( List<string> errorMessages, bool isQueryParameterFilteringEnabled )
         {
-            var items = GetCacheItem( CONTENT_CACHE_KEY ) as List<ContentChannelItem>;
-            bool queryParameterFiltering = GetAttributeValue( "QueryParameterFiltering" ).AsBoolean( false );
+            List<ContentChannelItem> items = null;
 
-            if ( items == null || ( queryParameterFiltering && Request.QueryString.Count > 0 ) )
+            // only load from the cache if a cacheDuration was specified
+            if ( ItemCacheDuration.HasValue && ItemCacheDuration.Value > 0 )
+            {
+                items = GetCacheItem( CONTENT_CACHE_KEY ) as List<ContentChannelItem>;
+            }
+
+            if ( items == null || ( isQueryParameterFilteringEnabled && Request.QueryString.Count > 0 ) )
             {
                 Guid? channelGuid = GetAttributeValue( "Channel" ).AsGuidOrNull();
                 if ( channelGuid.HasValue )
@@ -644,163 +775,159 @@ $(document).ready(function() {
                     var rockContext = new RockContext();
                     var service = new ContentChannelItemService( rockContext );
                     var itemType = typeof( Rock.Model.ContentChannelItem );
-                    
+
                     ParameterExpression paramExpression = service.ParameterExpression;
 
                     var contentChannel = new ContentChannelService( rockContext ).Get( channelGuid.Value );
                     if ( contentChannel != null )
                     {
-                        var entityFields = HackEntityFields( contentChannel, rockContext );
+                        items = new List<ContentChannelItem>();
 
-                        if ( items == null )
+                        var qry = service
+                            .Queryable()
+                            .Include(a => a.ContentChannel)
+                            .Include(a => a.ContentChannelType)
+                            .Include(a => a.ContentChannelItemSlugs)
+                            .Where( i => i.ContentChannelId == contentChannel.Id );
+
+                        int? itemId = PageParameter( "Item" ).AsIntegerOrNull();
+                        if ( isQueryParameterFilteringEnabled && itemId.HasValue )
                         {
-                            items = new List<ContentChannelItem>();
+                            qry = qry.Where( i => i.Id == itemId.Value );
+                        }
 
-                            var qry = service.Queryable( "ContentChannel,ContentChannelType" );
-
-                            int? itemId = PageParameter( "Item" ).AsIntegerOrNull();
-                            if ( queryParameterFiltering && itemId.HasValue )
+                        if ( contentChannel.RequiresApproval && !contentChannel.ContentChannelType.DisableStatus )
+                        {
+                            // Check for the configured status and limit query to those
+                            var statuses = new List<ContentChannelItemStatus>();
+                            foreach ( string statusVal in ( GetAttributeValue( "Status" ) ?? "2" ).Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ) )
                             {
-                                qry = qry.Where( i => i.Id == itemId.Value );
-                            }
-                            else
-                            {
-                                qry = qry.Where( i => i.ContentChannelId == contentChannel.Id );
-
-                                if ( contentChannel.RequiresApproval )
+                                var status = statusVal.ConvertToEnumOrNull<ContentChannelItemStatus>();
+                                if ( status != null )
                                 {
-                                    // Check for the configured status and limit query to those
-                                    var statuses = new List<ContentChannelItemStatus>();
-
-                                    foreach ( string statusVal in ( GetAttributeValue( "Status" ) ?? "2" ).Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ) )
-                                    {
-                                        var status = statusVal.ConvertToEnumOrNull<ContentChannelItemStatus>();
-                                        if ( status != null )
-                                        {
-                                            statuses.Add( status.Value );
-                                        }
-                                    }
-                                    if ( statuses.Any() )
-                                    {
-                                        qry = qry.Where( i => statuses.Contains( i.Status ) );
-                                    }
-                                }
-
-                                int? dataFilterId = GetAttributeValue( "FilterId" ).AsIntegerOrNull();
-                                if ( dataFilterId.HasValue )
-                                {
-                                    var dataFilterService = new DataViewFilterService( rockContext );
-                                    var dataFilter = dataFilterService.Queryable( "ChildFilters" ).FirstOrDefault( a => a.Id == dataFilterId.Value );
-                                    Expression whereExpression = dataFilter != null ? dataFilter.GetExpression( itemType, service, paramExpression, errorMessages ) : null;
-
-                                    qry = qry.Where( paramExpression, whereExpression, null );
+                                    statuses.Add( status.Value );
                                 }
                             }
+                            if ( statuses.Any() )
+                            {
+                                qry = qry.Where( i => statuses.Contains( i.Status ) );
+                            }
+                        }
 
-                            // All filtering has been added, now run query and load attributes
-                            foreach ( var item in qry.ToList() )
+                        int? dataFilterId = GetAttributeValue( "FilterId" ).AsIntegerOrNull();
+                        if ( dataFilterId.HasValue )
+                        {
+                            var dataFilterService = new DataViewFilterService( rockContext );
+                            var dataFilter = dataFilterService.Queryable( "ChildFilters" ).FirstOrDefault( a => a.Id == dataFilterId.Value );
+                            Expression whereExpression = dataFilter != null ? dataFilter.GetExpression( itemType, service, paramExpression, errorMessages ) : null;
+
+                            qry = qry.Where( paramExpression, whereExpression, null );
+                        }
+
+                        // All filtering has been added, now run query, check security and load attributes
+                        foreach ( var item in qry.ToList() )
+                        {
+                            if ( item.IsAuthorized( Authorization.VIEW, CurrentPerson ) )
                             {
                                 item.LoadAttributes( rockContext );
                                 items.Add( item );
                             }
+                        }
 
-                            // Order the items
-                            SortProperty sortProperty = null;
+                        // Order the items
+                        SortProperty sortProperty = null;
 
-                            string orderBy = GetAttributeValue( "Order" );
-                            if ( !string.IsNullOrWhiteSpace( orderBy ) )
+                        string orderBy = GetAttributeValue( "Order" );
+                        if ( !string.IsNullOrWhiteSpace( orderBy ) )
+                        {
+                            var fieldDirection = new List<string>();
+                            foreach ( var itemPair in orderBy.Split( new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries ).Select( a => a.Split( '^' ) ) )
                             {
-                                var fieldDirection = new List<string>();
-                                foreach ( var itemPair in orderBy.Split( new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries ).Select( a => a.Split( '^' ) ) )
+                                if ( itemPair.Length == 2 && !string.IsNullOrWhiteSpace( itemPair[0] ) )
                                 {
-                                    if ( itemPair.Length == 2 && !string.IsNullOrWhiteSpace( itemPair[0] ) )
+                                    var sortDirection = SortDirection.Ascending;
+                                    if ( !string.IsNullOrWhiteSpace( itemPair[1] ) )
                                     {
-                                        var sortDirection = SortDirection.Ascending;
-                                        if ( !string.IsNullOrWhiteSpace( itemPair[1] ) )
-                                        {
-                                            sortDirection = itemPair[1].ConvertToEnum<SortDirection>( SortDirection.Ascending );
-                                        }
-                                        fieldDirection.Add( itemPair[0] + ( sortDirection == SortDirection.Descending ? " desc" : "" ) );
+                                        sortDirection = itemPair[1].ConvertToEnum<SortDirection>( SortDirection.Ascending );
                                     }
+                                    fieldDirection.Add( itemPair[0] + ( sortDirection == SortDirection.Descending ? " desc" : "" ) );
                                 }
+                            }
 
-                                sortProperty = new SortProperty();
-                                sortProperty.Direction = SortDirection.Ascending;
-                                sortProperty.Property = fieldDirection.AsDelimited( "," );
+                            sortProperty = new SortProperty();
+                            sortProperty.Direction = SortDirection.Ascending;
+                            sortProperty.Property = fieldDirection.AsDelimited( "," );
 
-                                string[] columns = sortProperty.Property.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries );
+                            string[] columns = sortProperty.Property.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries );
 
-                                var itemQry = items.AsQueryable();
-                                IOrderedQueryable<ContentChannelItem> orderedQry = null;
+                            var itemQry = items.AsQueryable();
+                            IOrderedQueryable<ContentChannelItem> orderedQry = null;
 
-                                for ( int columnIndex = 0; columnIndex < columns.Length; columnIndex++ )
+                            for ( int columnIndex = 0; columnIndex < columns.Length; columnIndex++ )
+                            {
+                                string column = columns[columnIndex].Trim();
+
+                                var direction = sortProperty.Direction;
+                                if ( column.ToLower().EndsWith( " desc" ) )
                                 {
-                                    string column = columns[columnIndex].Trim();
-
-                                    var direction = sortProperty.Direction;
-                                    if ( column.ToLower().EndsWith( " desc" ) )
-                                    {
-                                        column = column.Left( column.Length - 5 );
-                                        direction = sortProperty.Direction == SortDirection.Ascending ? SortDirection.Descending : SortDirection.Ascending;
-                                    }
-
-                                    try
-                                    {
-                                        if ( column.StartsWith( "Attribute:" ) )
-                                        {
-                                            string attributeKey = column.Substring( 10 );
-
-                                            if ( direction == SortDirection.Ascending )
-                                            {
-                                                orderedQry = ( columnIndex == 0 ) ?
-                                                    itemQry.OrderBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue ) :
-                                                    orderedQry.ThenBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue );
-                                            }
-                                            else
-                                            {
-                                                orderedQry = ( columnIndex == 0 ) ?
-                                                    itemQry.OrderByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue ) :
-                                                    orderedQry.ThenByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue );
-                                            }
-                                        }
-                                        else
-                                        {
-                                            if ( direction == SortDirection.Ascending )
-                                            {
-                                                orderedQry = ( columnIndex == 0 ) ? itemQry.OrderBy( column ) : orderedQry.ThenBy( column );
-                                            }
-                                            else
-                                            {
-                                                orderedQry = ( columnIndex == 0 ) ? itemQry.OrderByDescending( column ) : orderedQry.ThenByDescending( column );
-                                            }
-                                        }
-                                    }
-                                    catch { }
-
+                                    column = column.Left( column.Length - 5 );
+                                    direction = sortProperty.Direction == SortDirection.Ascending ? SortDirection.Descending : SortDirection.Ascending;
                                 }
 
                                 try
                                 {
-                                    if ( orderedQry != null )
+                                    if ( column.StartsWith( "Attribute:" ) )
                                     {
-                                        items = orderedQry.ToList();
+                                        string attributeKey = column.Substring( 10 );
+
+                                        if ( direction == SortDirection.Ascending )
+                                        {
+                                            orderedQry = ( columnIndex == 0 ) ?
+                                                itemQry.OrderBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue ) :
+                                                orderedQry.ThenBy( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue );
+                                        }
+                                        else
+                                        {
+                                            orderedQry = ( columnIndex == 0 ) ?
+                                                itemQry.OrderByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue ) :
+                                                orderedQry.ThenByDescending( i => i.AttributeValues.Where( v => v.Key == attributeKey ).FirstOrDefault().Value.SortValue );
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if ( direction == SortDirection.Ascending )
+                                        {
+                                            orderedQry = ( columnIndex == 0 ) ? itemQry.OrderBy( column ) : orderedQry.ThenBy( column );
+                                        }
+                                        else
+                                        {
+                                            orderedQry = ( columnIndex == 0 ) ? itemQry.OrderByDescending( column ) : orderedQry.ThenByDescending( column );
+                                        }
                                     }
                                 }
                                 catch { }
 
                             }
 
-                            int? cacheDuration = GetAttributeValue( "CacheDuration" ).AsInteger();
-                            if ( cacheDuration > 0 )
+                            try
                             {
-                                var cacheItemPolicy = new CacheItemPolicy { AbsoluteExpiration = DateTimeOffset.Now.AddSeconds( cacheDuration.Value ) };
-                                AddCacheItem( CONTENT_CACHE_KEY, items, cacheItemPolicy );
+                                if ( orderedQry != null )
+                                {
+                                    items = orderedQry.ToList();
+                                }
                             }
+                            catch { }
+
                         }
 
+                        if ( ItemCacheDuration.HasValue && ItemCacheDuration.Value > 0 && !isQueryParameterFilteringEnabled )
+                        {
+                            string cacheTags = GetAttributeValue( "CacheTags" ) ?? string.Empty;
+                            AddCacheItem( CONTENT_CACHE_KEY, items, ItemCacheDuration.Value, cacheTags );
+                        }
 
                         // If items could be filtered by querystring values, check for filters
-                        if ( queryParameterFiltering )
+                        if ( isQueryParameterFilteringEnabled )
                         {
                             var pageParameters = PageParameters();
                             if ( pageParameters.Count > 0 )
@@ -811,9 +938,27 @@ $(document).ready(function() {
                                 foreach ( string key in PageParameters().Select( p => p.Key ).ToList() )
                                 {
                                     var selection = new List<string>();
-                                    selection.Add( key );
 
-                                    var entityField = entityFields.FirstOrDefault( f => f.Name.Equals( key, StringComparison.OrdinalIgnoreCase ) );
+                                    // Since there could be many matches by the key name for an attribute we have to construct the unique name used by EntityHelper.FindFromFilterSelection and use that
+                                    var attributeService = new AttributeService( rockContext );
+                                    var attributeGuid = attributeService
+                                        .Queryable()
+                                        .Where( a => a.EntityTypeQualifierColumn == "ContentChannelId" )
+                                        .Where( a => a.EntityTypeQualifierValue == contentChannel.Id.ToString() )
+                                        .Where( a => a.Key == key )
+                                        .Select( a => a.Guid )
+                                        .FirstOrDefault();
+
+                                    string uniqueName = key;
+                                    if( attributeGuid != null )
+                                    {
+                                        uniqueName = string.Format( "Attribute_{0}_{1}", key, attributeGuid.ToString().Replace("-", string.Empty ) );
+                                    }
+
+                                    // Keep using uniquename for attributes since common keys (e.g. "category")will return mutliple values
+                                    selection.Add( uniqueName );
+
+                                    var entityField = Rock.Reporting.EntityHelper.FindFromFilterSelection( itemType, uniqueName, false, false );
                                     if ( entityField != null )
                                     {
                                         string value = PageParameter( key );
@@ -844,7 +989,6 @@ $(document).ready(function() {
                                 }
 
                                 items = itemQry.ToList();
-
                             }
                         }
                     }
@@ -852,7 +996,6 @@ $(document).ready(function() {
             }
 
             return items;
-
         }
 
         /// <summary>
@@ -870,7 +1013,7 @@ $(document).ready(function() {
                 if ( channel != null )
                 {
 
-                    cblStatus.Visible = channel.RequiresApproval;
+                    cblStatus.Visible = channel.RequiresApproval && !channel.ContentChannelType.DisableStatus;
 
                     cbSetRssAutodiscover.Visible = channel.EnableRss;
 
@@ -927,28 +1070,34 @@ $(document).ready(function() {
 
                     // add item attributes
                     AttributeService attributeService = new AttributeService( rockContext );
-                    var itemAttributes = attributeService.GetByEntityTypeId( new ContentChannelItem().TypeId ).AsQueryable()
+                    var itemAttributes = attributeService.GetByEntityTypeId( new ContentChannelItem().TypeId, false ).AsQueryable()
                                             .Where( a => (
                                                     a.EntityTypeQualifierColumn.Equals( "ContentChannelTypeId", StringComparison.OrdinalIgnoreCase ) &&
-                                                    a.EntityTypeQualifierValue.Equals( channel.ContentChannelTypeId.ToString() ) 
+                                                    a.EntityTypeQualifierValue.Equals( channel.ContentChannelTypeId.ToString() )
                                                 ) || (
                                                     a.EntityTypeQualifierColumn.Equals( "ContentChannelId", StringComparison.OrdinalIgnoreCase ) &&
-                                                    a.EntityTypeQualifierValue.Equals( channel.Id.ToString() ) 
+                                                    a.EntityTypeQualifierValue.Equals( channel.Id.ToString() )
                                                 ) )
-                                            .ToList();
+                                            .OrderByDescending( a => a.EntityTypeQualifierColumn )
+                                            .ThenBy( a => a.Order )
+                                            .ToAttributeCacheList();
 
                     foreach ( var attribute in itemAttributes )
                     {
-                        kvlOrder.CustomKeys.Add( "Attribute:" + attribute.Key, attribute.Name );
-
-                        string computedKey = "I^" + attribute.Key;
-                        ddlMetaDescriptionAttribute.Items.Add( new ListItem( "Item: " + attribute.Name, computedKey ) );
-
-                        var field = attribute.FieldType.Name;
-
-                        if ( field == "Image" )
+                        string attrKey = "Attribute:" + attribute.Key;
+                        if ( !kvlOrder.CustomKeys.ContainsKey( attrKey ) )
                         {
-                            ddlMetaImageAttribute.Items.Add( new ListItem( "Item: " + attribute.Name, computedKey ) );
+                            kvlOrder.CustomKeys.Add( "Attribute:" + attribute.Key, attribute.Name );
+
+                            string computedKey = "I^" + attribute.Key;
+                            ddlMetaDescriptionAttribute.Items.Add( new ListItem( "Item: " + attribute.Name, computedKey ) );
+
+                            var field = attribute.FieldType.Name;
+
+                            if ( field == "Image" )
+                            {
+                                ddlMetaImageAttribute.Items.Add( new ListItem( "Item: " + attribute.Name, computedKey ) );
+                            }
                         }
                     }
 
@@ -969,90 +1118,8 @@ $(document).ready(function() {
         {
             foreach ( ListItem item in listControl.Items )
             {
-                item.Selected = (item.Value == value);
+                item.Selected = ( item.Value == value );
             }
-        }
-
-        /// <summary>
-        /// The PropertyFilter checks for it's property/attribute list in a cached items object before recreating 
-        /// them using reflection and loading of generic attributes. Because of this, we're going to load them here
-        /// and exclude some properties and add additional attributes specific to the channel type, and then save
-        /// list to same cached object so that property filter lists our collection of properties/attributes
-        /// instead.
-        /// </summary>
-        private List<Rock.Reporting.EntityField> HackEntityFields( ContentChannel channel, RockContext rockContext )
-        {
-            if ( channel != null )
-            {
-                var entityTypeCache = EntityTypeCache.Read( ITEM_TYPE_NAME );
-                if ( entityTypeCache != null )
-                {
-                    var entityType = entityTypeCache.GetEntityType();
-
-                    HttpContext.Current.Items.Remove( string.Format( "EntityHelper:GetEntityFields:{0}", entityType.FullName ) );
-                    var entityFields = Rock.Reporting.EntityHelper.GetEntityFields( entityType );
-                    foreach( var entityField in entityFields
-                        .Where( f => 
-                            f.FieldKind == Rock.Reporting.FieldKind.Attribute &&
-                            f.AttributeGuid.HasValue )
-                        .ToList() )
-                    {
-                        var attribute = AttributeCache.Read( entityField.AttributeGuid.Value );
-                        if ( attribute != null && 
-                            attribute.EntityTypeQualifierColumn == "ContentChannelTypeId" && 
-                            attribute.EntityTypeQualifierValue.AsInteger() != channel.ContentChannelTypeId )
-                        {
-                            entityFields.Remove( entityField );
-                        }
-                    }
-
-                    if ( entityFields != null )
-                    {
-                        // Remove the status field
-                        var ignoreFields = new List<string>();
-                        ignoreFields.Add( "ContentChannelId" );
-                        ignoreFields.Add( "Status" );
-
-                        entityFields = entityFields.Where( f => !ignoreFields.Contains( f.Name ) ).ToList();
-
-                        // Add any additional attributes that are specific to channel/type
-                        var item = new ContentChannelItem();
-                        item.ContentChannel = channel;
-                        item.ContentChannelId = channel.Id;
-                        item.ContentChannelType = channel.ContentChannelType;
-                        item.ContentChannelTypeId = channel.ContentChannelTypeId;
-                        item.LoadAttributes( rockContext );
-                        foreach ( var attribute in item.Attributes
-                            .Where( a =>
-                                a.Value.EntityTypeQualifierColumn != "" &&
-                                a.Value.EntityTypeQualifierValue != "" )
-                            .Select( a => a.Value ) )
-                        {
-                            if ( !entityFields.Any( f => f.AttributeGuid.Equals( attribute.Guid ) ) )
-                            {
-                                Rock.Reporting.EntityHelper.AddEntityFieldForAttribute( entityFields, attribute );
-                            }
-                        }
-
-                        // Re-sort fields
-                        int index = 0;
-                        var sortedFields = new List<Rock.Reporting.EntityField>();
-                        foreach ( var entityProperty in entityFields.OrderBy( p => p.Title ).ThenBy( p => p.Name ) )
-                        {
-                            entityProperty.Index = index;
-                            index++;
-                            sortedFields.Add( entityProperty );
-                        }
-
-                        // Save new fields to cache ( which report field will use instead of reading them again )
-                        HttpContext.Current.Items[string.Format( "EntityHelper:GetEntityFields:{0}", entityType.FullName )] = sortedFields;
-                    }
-
-                    return entityFields;
-                }
-            }
-
-            return null;
         }
 
         /// <summary>
@@ -1064,12 +1131,10 @@ $(document).ready(function() {
         /// <param name="rockContext">The rock context.</param>
         private void CreateFilterControl( ContentChannel channel, DataViewFilter filter, bool setSelection, RockContext rockContext )
         {
-            HackEntityFields( channel, rockContext );
-
             phFilters.Controls.Clear();
             if ( filter != null )
             {
-                CreateFilterControl( phFilters, filter, setSelection, rockContext );
+                CreateFilterControl( phFilters, filter, setSelection, rockContext, channel );
             }
         }
 
@@ -1080,25 +1145,31 @@ $(document).ready(function() {
         /// <param name="filter">The filter.</param>
         /// <param name="setSelection">if set to <c>true</c> [set selection].</param>
         /// <param name="rockContext">The rock context.</param>
-        private void CreateFilterControl( Control parentControl, DataViewFilter filter, bool setSelection, RockContext rockContext )
+        /// <param name="contentChannel">The content channel.</param>
+        private void CreateFilterControl( Control parentControl, DataViewFilter filter, bool setSelection, RockContext rockContext, ContentChannel contentChannel )
         {
             try
             {
                 if ( filter.ExpressionType == FilterExpressionType.Filter )
                 {
                     var filterControl = new FilterField();
-                
+                    filterControl.Entity = new ContentChannelItem
+                    {
+                        ContentChannelId = contentChannel.Id,
+                        ContentChannelTypeId = contentChannel.ContentChannelTypeId
+                    };
+
                     parentControl.Controls.Add( filterControl );
                     filterControl.DataViewFilterGuid = filter.Guid;
                     filterControl.ID = string.Format( "ff_{0}", filterControl.DataViewFilterGuid.ToString( "N" ) );
-                
+
                     // Remove the 'Other Data View' Filter as it doesn't really make sense to have it available in this scenario
                     filterControl.ExcludedFilterTypes = new string[] { typeof( Rock.Reporting.DataFilter.OtherDataViewFilter ).FullName };
                     filterControl.FilteredEntityTypeName = ITEM_TYPE_NAME;
 
                     if ( filter.EntityTypeId.HasValue )
                     {
-                        var entityTypeCache = Rock.Web.Cache.EntityTypeCache.Read( filter.EntityTypeId.Value, rockContext );
+                        var entityTypeCache = EntityTypeCache.Get( filter.EntityTypeId.Value, rockContext );
                         if ( entityTypeCache != null )
                         {
                             filterControl.FilterEntityTypeName = entityTypeCache.Name;
@@ -1138,7 +1209,7 @@ $(document).ready(function() {
                     groupControl.DeleteGroupClick += groupControl_DeleteGroupClick;
                     foreach ( var childFilter in filter.ChildFilters )
                     {
-                        CreateFilterControl( groupControl, childFilter, setSelection, rockContext );
+                        CreateFilterControl( groupControl, childFilter, setSelection, rockContext, contentChannel );
                     }
                 }
             }
@@ -1146,65 +1217,6 @@ $(document).ready(function() {
             {
                 this.LogException( new Exception( "Exception creating FilterControl for DataViewFilter: " + filter.Guid, ex ) );
             }
-        }
-
-        private DataViewFilter GetFilterControl()
-        {
-            if ( phFilters.Controls.Count > 0 )
-            {
-                return GetFilterControl( phFilters.Controls[0] );
-            }
-
-            return null;
-        }
-
-        private DataViewFilter GetFilterControl( Control control )
-        {
-            FilterGroup groupControl = control as FilterGroup;
-            if ( groupControl != null )
-            {
-                return GetFilterGroupControl( groupControl );
-            }
-
-            FilterField filterControl = control as FilterField;
-            if ( filterControl != null )
-            {
-                return GetFilterFieldControl( filterControl );
-            }
-
-            return null;
-        }
-
-        private DataViewFilter GetFilterGroupControl( FilterGroup filterGroup )
-        {
-            DataViewFilter filter = new DataViewFilter();
-            filter.Guid = filterGroup.DataViewFilterGuid;
-            filter.ExpressionType = filterGroup.FilterType;
-            foreach ( Control control in filterGroup.Controls )
-            {
-                DataViewFilter childFilter = GetFilterControl( control );
-                if ( childFilter != null )
-                {
-                    filter.ChildFilters.Add( childFilter );
-                }
-            }
-
-            return filter;
-        }
-
-        private DataViewFilter GetFilterFieldControl( FilterField filterField )
-        {
-            DataViewFilter filter = new DataViewFilter();
-            filter.Guid = filterField.DataViewFilterGuid;
-            filter.ExpressionType = FilterExpressionType.Filter;
-            filter.Expanded = filterField.Expanded;
-            if ( filterField.FilterEntityTypeName != null )
-            {
-                filter.EntityTypeId = Rock.Web.Cache.EntityTypeCache.Read( filterField.FilterEntityTypeName ).Id;
-                filter.Selection = filterField.GetSelection();
-            }
-
-            return filter;
         }
 
         private void SetNewDataFilterGuids( DataViewFilter dataViewFilter )
@@ -1272,12 +1284,12 @@ $(document).ready(function() {
             /// <value>
             /// The previous page.
             /// </value>
-            public int PreviousPage 
-            { 
-                get 
+            public int PreviousPage
+            {
+                get
                 {
                     CurrentPage = CurrentPage > TotalPages ? TotalPages : CurrentPage;
-                    return ( CurrentPage > 1 ) ? CurrentPage - 1 : -1; 
+                    return ( CurrentPage > 1 ) ? CurrentPage - 1 : -1;
                 }
             }
 
@@ -1287,9 +1299,9 @@ $(document).ready(function() {
             /// <value>
             /// The next page.
             /// </value>
-            public int NextPage 
-            { 
-                get 
+            public int NextPage
+            {
+                get
                 {
                     CurrentPage = CurrentPage > TotalPages ? TotalPages : CurrentPage;
                     return ( CurrentPage < TotalPages ) ? CurrentPage + 1 : -1;
@@ -1313,7 +1325,7 @@ $(document).ready(function() {
                     else
                     {
                         return Convert.ToInt32( Math.Abs( ItemCount / PageSize ) ) +
-                            ((ItemCount % PageSize) > 0 ? 1 : 0);
+                            ( ( ItemCount % PageSize ) > 0 ? 1 : 0 );
                     }
                 }
             }
@@ -1369,7 +1381,7 @@ $(document).ready(function() {
             /// </summary>
             /// <param name="urlTemplate">The URL template.</param>
             /// <param name="pageNumber">The page number.</param>
-            public PaginationPage( string urlTemplate, int pageNumber)
+            public PaginationPage( string urlTemplate, int pageNumber )
             {
                 UrlTemplate = urlTemplate;
                 PageNumber = pageNumber;
@@ -1391,11 +1403,11 @@ $(document).ready(function() {
             /// <value>
             /// The page URL.
             /// </value>
-            public string PageUrl 
-            { 
+            public string PageUrl
+            {
                 get
                 {
-                    if ( !string.IsNullOrWhiteSpace( UrlTemplate ) && UrlTemplate.Contains( "{0}"))
+                    if ( !string.IsNullOrWhiteSpace( UrlTemplate ) && UrlTemplate.Contains( "{0}" ) )
                     {
                         return string.Format( UrlTemplate, PageNumber );
                     }
@@ -1406,7 +1418,7 @@ $(document).ready(function() {
                 }
             }
 
-        #endregion
+            #endregion
 
         }
     }

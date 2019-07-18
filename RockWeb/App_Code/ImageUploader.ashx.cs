@@ -51,13 +51,15 @@ namespace RockWeb
         {
             base.ValidateFileType( context, uploadedFile );
 
-            var globalAttributesCache = GlobalAttributesCache.Read();
+            var globalAttributesCache = GlobalAttributesCache.Get();
             IEnumerable<string> contentImageFileTypeWhiteList = ( globalAttributesCache.GetValue( "ContentImageFiletypeWhitelist" ) ?? string.Empty ).Split( new char[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries );
 
             // clean up list
             contentImageFileTypeWhiteList = contentImageFileTypeWhiteList.Select( a => a.ToLower().TrimStart( new char[] { '.', ' ' } ) );
 
-            string fileExtension = Path.GetExtension( uploadedFile.FileName ).ToLower().TrimStart( new char[] { '.' } );
+            var filename = base.ScrubFileName( uploadedFile.FileName );
+
+            string fileExtension = Path.GetExtension( filename ).ToLower().TrimStart( new char[] { '.' } );
             if ( !contentImageFileTypeWhiteList.Contains( fileExtension ) )
             {
                 throw new Rock.Web.FileUploadException( "Image filetype not allowed", System.Net.HttpStatusCode.NotAcceptable );

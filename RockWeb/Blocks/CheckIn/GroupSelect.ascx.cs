@@ -32,6 +32,12 @@ namespace RockWeb.Blocks.CheckIn
     [DisplayName("Group Select")]
     [Category("Check-in")]
     [Description("Displays a list of groups that a person is configured to checkin to.")]
+
+    [TextField( "Title", "Title to display. Use {0} for person/schedule.", false, "{0}", "Text", 8 )]
+    [TextField( "Sub Title", "Sub-Title to display. Use {0} for selected group type name.", false, "{0}", "Text", 9 )]
+    [TextField( "Caption", "", false, "Select Group", "Text", 10 )]
+    [TextField( "No Option Message", "", false, "Sorry, no one in your family is eligible to check-in at this location.", "Text", 11 )]
+
     public partial class GroupSelect : CheckInBlockMultiPerson
     {
         /// <summary>
@@ -120,7 +126,6 @@ namespace RockWeb.Blocks.CheckIn
         {
             base.OnLoad( e );
 
-            RockPage.AddScriptLink( "~/Scripts/iscroll.js" );
             RockPage.AddScriptLink( "~/Scripts/CheckinClient/checkin-core.js" );
 
             var bodyTag = this.Page.Master.FindControl( "bodyTag" ) as HtmlGenericControl;
@@ -153,13 +158,15 @@ namespace RockWeb.Blocks.CheckIn
                         GoBack();
                     }
 
-                    lTitle.Text = GetPersonScheduleSubTitle();
+                    lTitle.Text = string.Format( GetAttributeValue( "Title" ), GetPersonScheduleSubTitle() );
 
-                    lSubTitle.Text = groupTypes
+                    string groupTypeNames = groupTypes
                         .Where( t => t.GroupType != null )
                         .Select( t => t.GroupType.Name )
                         .ToList().AsDelimited( ", " );
+                    lSubTitle.Text = string.Format( GetAttributeValue( "SubTitle" ), groupTypeNames );
 
+                    lCaption.Text = GetAttributeValue( "Caption" );
                     var availGroups = groupTypes.SelectMany( t => t.GetAvailableGroups( schedule ) ).ToList();
                     if ( availGroups.Any() )
                     {

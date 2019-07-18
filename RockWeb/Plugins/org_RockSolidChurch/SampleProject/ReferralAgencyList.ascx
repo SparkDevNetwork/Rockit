@@ -11,7 +11,7 @@
 
                 <Rock:GridFilter ID="gfSettings" runat="server">
                     <Rock:CampusPicker ID="cpCampus" runat="server" Label="Campus" />
-                    <Rock:RockDropDownList ID="ddlAgencyType" runat="server" Label="Agency Type" />
+                    <Rock:DefinedValuePicker ID="dvpAgencyType" runat="server" Label="Agency Type"></Rock:DefinedValuePicker>
                 </Rock:GridFilter>
 
                 <Rock:ModalAlert ID="mdGridWarning" runat="server" />

@@ -1,6 +1,6 @@
-﻿/*
+/*
     Used to manage styles related to the CMS admin UI for on page editing
-    
+
     1. Zone Configuration
     2. Module Configuration
     3. Admin Footer
@@ -8,20 +8,17 @@
 */
 
 
-
 // 1. Zone Config
 // -------------------------
 
 .zone-instance.outline {
   position: relative;
-  z-index: @zindex-modal - 1;
   float: left;
   width: 100%;
   min-width: 50px;
   min-height: 30px;
-  margin: 1px;
-  border: 1px dashed #909090; /* todo */
-  border-radius: 3px;
+  outline: 1px dashed #909090;
+  outline-offset: -1px;
 }
 
 .zone-configuration {
@@ -87,9 +84,7 @@
 }
 
 .config-bar {
-  -webkit-box-shadow: 3px 3px 3px 0 rgba(0,0,0, .4);
-     -moz-box-shadow: 3px 3px 3px 0 rgba(0,0,0, .4);
-          box-shadow: 3px 3px 3px 0 rgba(0,0,0, .4);
+  box-shadow: 3px 3px 3px 0 rgba(0,0,0, .4);
 
   & > a {
     padding: 0 !important; // important to keep themes from changing this
@@ -116,6 +111,10 @@
   margin-left: 6px;
   overflow: hidden;
   color: @adminbar-text-color;
+
+  div {
+    display: inline;
+  }
 }
 
 .block-configuration-bar .btn {
@@ -151,6 +150,10 @@
   border-width: 1px 1px 0 1px;
   transition: .5s;
 
+  a.btn {
+    font-size: 16px;
+  }
+
   > span {
     display: none;
     margin-top: 3px;
@@ -159,8 +162,12 @@
     text-align: center;
   }
 
-  a {
-    font-size: 16px;
+  > span.label {
+    margin-top: 1px;
+  }
+
+  a:hover {
+    text-decoration: none;
   }
 
   .button-bar {
@@ -169,7 +176,6 @@
     text-align: center;
   }
 }
-
 
 
 #cms-admin-footer .button-bar a {

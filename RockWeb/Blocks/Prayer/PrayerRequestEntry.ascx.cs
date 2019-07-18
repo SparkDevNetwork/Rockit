@@ -42,7 +42,7 @@ namespace RockWeb.Blocks.Prayer
     // Category Selection
     [CategoryField( "Category Selection", "A top level category. This controls which categories the person can choose from when entering their prayer request.", false, "Rock.Model.PrayerRequest", "", "", false, "", "Category Selection", 1, "GroupCategoryId" )]
     [CategoryField( "Default Category", "If categories are not being shown, choose a default category to use for all new prayer requests.", false, "Rock.Model.PrayerRequest", "", "", false, "4B2D88F5-6E45-4B4B-8776-11118C8E8269", "Category Selection", 2, "DefaultCategory" )]
-    
+
     // Features
     [BooleanField( "Enable Auto Approve", "If enabled, prayer requests are automatically approved; otherwise they must be approved by an admin before they can be seen by the prayer team.", true, "Features", 3 )]
     [IntegerField( "Expires After (Days)", "Number of days until the request will expire (only applies when auto-approved is enabled).", false, 14, "Features", 4, "ExpireDays" )]
@@ -50,23 +50,31 @@ namespace RockWeb.Blocks.Prayer
     [BooleanField( "Enable Urgent Flag", "If enabled, requestors will be able to flag prayer requests as urgent.", false, "Features", 6 )]
     [BooleanField( "Enable Comments Flag", "If enabled, requestors will be able set whether or not they want to allow comments on their requests.", false, "Features", 7 )]
     [BooleanField( "Enable Public Display Flag", "If enabled, requestors will be able set whether or not they want their request displayed on the public website.", false, "Features", 8 )]
-    [IntegerField( "Character Limit", "If set to something other than 0, this will limit the number of characters allowed when entering a new prayer request.", false, 250, "Features", 9 )]
-    [BooleanField( "Require Last Name", "Require that a last name be entered", true, "Features", 10 )]
-    
+    [BooleanField( "Default To Public", "If enabled, all prayers will be set to public by default", false, "Features", 9 )]
+    [IntegerField( "Character Limit", "If set to something other than 0, this will limit the number of characters allowed when entering a new prayer request.", false, 250, "Features", 10 )]
+    [BooleanField( "Require Last Name", "Require that a last name be entered", true, "Features", 11 )]
+    [BooleanField( "Show Campus", "Show a campus picker", true, "Features", 12 )]
+    [BooleanField( "Require Campus", "Require that a campus be selected", false, "Features", 13 )]
+    [BooleanField( "Enable Person Matching", "If enabled, the request will be linked to an existing person if a match can be made between the requester and an existing person.", false, "Features", 14 )]
+
     // On Save Behavior
-    [BooleanField( "Navigate To Parent On Save", "If enabled, on successful save control will redirect back to the parent page.", false, "On Save Behavior", 11 )]
-    [CodeEditorField( "Save Success Text", "Text to display upon successful save. (Only applies if not navigating to parent page on save.) <span class='tip tip-lava'></span><span class='tip tip-html'></span>", CodeEditorMode.Html, CodeEditorTheme.Rock, 200, false, "<p>Thank you for allowing us to pray for you.</p>", "On Save Behavior", 12 )]
-    [WorkflowTypeField( "Workflow", "An optional workflow to start when prayer request is created. The PrayerRequest will be set as the workflow 'Entity' attribute when processing is started.", false, false, "", "On Save Behavior", 13 )]
-    [BooleanField( "Enable Debug", "Outputs the object graph to help create your liquid syntax.", false, "On Save Behavior", 14 )]
+    [BooleanField( "Navigate To Parent On Save", "If enabled, on successful save control will redirect back to the parent page.", false, "On Save Behavior", 14 )]
+    [BooleanField( "Refresh Page On Save", "If enabled, on successful save control will reload the current page. NOTE: This is ignored if 'Navigate to Parent On Save' is enabled.", false, "On Save Behavior", 15 )]
+
+    [CodeEditorField( "Save Success Text", "Text to display upon successful save. (Only applies if not navigating to parent page on save.) <span class='tip tip-lava'></span><span class='tip tip-html'></span>", CodeEditorMode.Html, CodeEditorTheme.Rock, 200, false, "<p>Thank you for allowing us to pray for you.</p>", "On Save Behavior", 16 )]
+    [WorkflowTypeField( "Workflow", "An optional workflow to start when prayer request is created. The PrayerRequest will be set as the workflow 'Entity' attribute when processing is started.", false, false, "", "On Save Behavior", 17 )]
+
+    [ContextAware(typeof(Rock.Model.Person))]
     public partial class PrayerRequestEntry : RockBlock
     {
         #region Properties
         public int? PrayerRequestEntityTypeId { get; private set; }
-        
+
         // note: the ascx uses these for rendering logic
         public bool EnableUrgentFlag { get; private set; }
         public bool EnableCommentsFlag { get; private set; }
         public bool EnablePublicDisplayFlag { get; private set; }
+        public bool DefaultToPublic { get; private set; }
 
         #endregion
 
@@ -79,14 +87,28 @@ namespace RockWeb.Blocks.Prayer
         {
             base.OnInit( e );
 
+            // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
+            this.BlockUpdated += PrayerRequestEntry_BlockUpdated;
+            this.AddConfigurationUpdateTrigger( upAdd );
+
+            pnlRequester.Visible = this.ContextEntity<Rock.Model.Person>() == null;
+
             RockContext rockContext = new RockContext();
 
             this.EnableUrgentFlag = GetAttributeValue( "EnableUrgentFlag" ).AsBoolean();
             this.EnableCommentsFlag = GetAttributeValue( "EnableCommentsFlag" ).AsBoolean();
             this.EnablePublicDisplayFlag = GetAttributeValue( "EnablePublicDisplayFlag" ).AsBoolean();
+            this.DefaultToPublic = GetAttributeValue( "DefaultToPublic" ).AsBoolean();
             tbLastName.Required = GetAttributeValue( "RequireLastName" ).AsBooleanOrNull() ?? true;
+            cpCampus.Visible = GetAttributeValue( "ShowCampus" ).AsBoolean();
+            cpCampus.Required = GetAttributeValue( "RequireCampus" ).AsBoolean();
+            pnbPhone.Visible = GetAttributeValue( "EnablePersonMatching" ).AsBoolean();
 
-            RockPage.AddScriptLink( Page, ResolveUrl( "~/Scripts/bootstrap-limit.js" ) );
+            if ( cpCampus.Visible )
+            {
+                cpCampus.Campuses = CampusCache.All( false );
+            }
+
             var categoryGuid = GetAttributeValue( "GroupCategoryId" );
             if ( ! string.IsNullOrEmpty( categoryGuid ) )
             {
@@ -95,9 +117,9 @@ namespace RockWeb.Blocks.Prayer
                 // set the default category
                 if ( !string.IsNullOrWhiteSpace( GetAttributeValue( "DefaultCategory" ) ) )
                 {
-                    
+
                     Guid defaultCategoryGuid = GetAttributeValue( "DefaultCategory" ).AsGuid();
-                    var defaultCategoryId = CategoryCache.Read( defaultCategoryGuid, rockContext ).Id;
+                    var defaultCategoryId = CategoryCache.Get( defaultCategoryGuid, rockContext ).Id;
 
                     bddlCategory.SetValue( defaultCategoryId );
                 }
@@ -108,7 +130,7 @@ namespace RockWeb.Blocks.Prayer
             }
 
             Type type = new PrayerRequest().GetType();
-            this.PrayerRequestEntityTypeId = Rock.Web.Cache.EntityTypeCache.GetId( type.FullName );
+            this.PrayerRequestEntityTypeId = EntityTypeCache.GetId( type.FullName );
 
             int charLimit = GetAttributeValue( "CharacterLimit" ).AsInteger();
             if ( charLimit > 0 )
@@ -134,6 +156,18 @@ namespace RockWeb.Blocks.Prayer
         }
 
         /// <summary>
+        /// Handles the BlockUpdated event of the PrayerRequestEntry control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void PrayerRequestEntry_BlockUpdated( object sender, EventArgs e )
+        {
+            // reload the page to make sure we get fresh settings
+            this.NavigateToCurrentPage();
+        }
+
+        /// <summary>
         /// Handles the <see cref="E:System.Web.UI.Control.Load" /> event.
         /// </summary>
         /// <param name="e">The <see cref="T:System.EventArgs" /> object that contains the event data.</param>
@@ -148,10 +182,19 @@ namespace RockWeb.Blocks.Prayer
                     tbFirstName.Text = CurrentPerson.FirstName;
                     tbLastName.Text = CurrentPerson.LastName;
                     tbEmail.Text = CurrentPerson.Email;
+                    cpCampus.SetValue( CurrentPerson.GetCampus() );
                 }
 
                 dtbRequest.Text = PageParameter( "Request" );
+                cbAllowPublicDisplay.Checked = this.DefaultToPublic;
             }
+
+            var prayerRequest = new PrayerRequest { Id = 0 };
+            prayerRequest.LoadAttributes();
+            phAttributes.Controls.Clear();
+            // Filter to only include attribute / attribute values that the person is authorized to edit.
+            var excludeForEdit = prayerRequest.Attributes.Where( a => !a.Value.IsAuthorized( Authorization.EDIT, this.CurrentPerson ) ).Select( a => a.Key ).ToList();
+            Rock.Attribute.Helper.AddEditControls( prayerRequest, phAttributes, false, BlockValidationGroup, excludeForEdit );
         }
 
         #endregion
@@ -176,12 +219,11 @@ namespace RockWeb.Blocks.Prayer
 
             bool isAutoApproved = GetAttributeValue( "EnableAutoApprove" ).AsBoolean();
             bool defaultAllowComments = GetAttributeValue( "DefaultAllowCommentsSetting" ).AsBoolean();
+            bool isPersonMatchingEnabled = GetAttributeValue( "EnablePersonMatching" ).AsBoolean();
 
             PrayerRequest prayerRequest = new PrayerRequest { Id = 0, IsActive = true, IsApproved = isAutoApproved, AllowComments = defaultAllowComments };
 
             var rockContext = new RockContext();
-            PrayerRequestService prayerRequestService = new PrayerRequestService( rockContext );
-            prayerRequestService.Add( prayerRequest );
             prayerRequest.EnteredDateTime = RockDateTime.Now;
 
             if ( isAutoApproved )
@@ -209,12 +251,74 @@ namespace RockWeb.Blocks.Prayer
 
             prayerRequest.CategoryId = categoryId;
             prayerRequest.Category = category;
-            prayerRequest.RequestedByPersonAliasId = CurrentPersonAliasId;
-            prayerRequest.FirstName = tbFirstName.Text;
-            prayerRequest.LastName = tbLastName.Text;
-            prayerRequest.Email = tbEmail.Text;
+
+            var personContext = this.ContextEntity<Person>();
+            if ( personContext == null )
+            {
+                Person person = null;
+                if ( isPersonMatchingEnabled )
+                {
+                    var personService = new PersonService( new RockContext() );
+                    person = personService.FindPerson( new PersonService.PersonMatchQuery( tbFirstName.Text, tbLastName.Text, tbEmail.Text, pnbPhone.Number ), false, true, false );
+
+                    if ( person == null && ( !string.IsNullOrWhiteSpace( tbEmail.Text ) || !string.IsNullOrWhiteSpace( PhoneNumber.CleanNumber( pnbPhone.Number ) ) ) )
+                    {
+                        var personRecordTypeId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
+                        var personStatusPending = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid() ).Id;
+
+                        person = new Person();
+                        person.IsSystem = false;
+                        person.RecordTypeValueId = personRecordTypeId;
+                        person.RecordStatusValueId = personStatusPending;
+                        person.FirstName = tbFirstName.Text;
+                        person.LastName = tbLastName.Text;
+                        person.Gender = Gender.Unknown;
+
+                        if ( !string.IsNullOrWhiteSpace( tbEmail.Text ) )
+                        {
+                            person.Email = tbEmail.Text;
+                            person.IsEmailActive = true;
+                            person.EmailPreference = EmailPreference.EmailAllowed;
+                        }
+
+                        PersonService.SaveNewPerson( person, rockContext, cpCampus.SelectedCampusId );
+
+                        if ( !string.IsNullOrWhiteSpace( PhoneNumber.CleanNumber( pnbPhone.Number ) ) )
+                        {
+                            var mobilePhoneType = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_MOBILE ) );
+
+                            var phoneNumber = new PhoneNumber { NumberTypeValueId = mobilePhoneType.Id };
+                            phoneNumber.CountryCode = PhoneNumber.CleanNumber( pnbPhone.CountryCode );
+                            phoneNumber.Number = PhoneNumber.CleanNumber( pnbPhone.Number );
+                            person.PhoneNumbers.Add( phoneNumber );
+                        }
+                    }
+                }
+
+                prayerRequest.FirstName = tbFirstName.Text;
+                prayerRequest.LastName = tbLastName.Text;
+                prayerRequest.Email = tbEmail.Text;
+                if ( person != null )
+                {
+                    prayerRequest.RequestedByPersonAliasId = person.PrimaryAliasId;
+                }
+                else
+                {
+                    prayerRequest.RequestedByPersonAliasId = CurrentPersonAliasId;
+                }
+            }
+            else
+            {
+                prayerRequest.RequestedByPersonAliasId = personContext.PrimaryAliasId;
+                prayerRequest.FirstName = string.IsNullOrEmpty( personContext.NickName ) ? personContext.FirstName : personContext.NickName;
+                prayerRequest.LastName = personContext.LastName;
+                prayerRequest.Email = personContext.Email;
+            }
+
+            prayerRequest.CampusId = cpCampus.SelectedCampusId;
+
             prayerRequest.Text = dtbRequest.Text;
-            
+
             if ( this.EnableUrgentFlag )
             {
                 prayerRequest.IsUrgent = cbIsUrgent.Checked;
@@ -235,7 +339,7 @@ namespace RockWeb.Blocks.Prayer
             }
             else
             {
-                prayerRequest.IsPublic = false;
+                prayerRequest.IsPublic = this.DefaultToPublic;
             }
 
             if ( !Page.IsValid )
@@ -243,13 +347,23 @@ namespace RockWeb.Blocks.Prayer
                 return;
             }
 
+            PrayerRequestService prayerRequestService = new PrayerRequestService( rockContext );
+            prayerRequestService.Add( prayerRequest );
+            prayerRequest.LoadAttributes( rockContext );
+            Rock.Attribute.Helper.GetEditValues( phAttributes, prayerRequest );
+
             if ( !prayerRequest.IsValid )
             {
                 // field controls render error messages
                 return;
             }
 
-            rockContext.SaveChanges();
+            rockContext.WrapTransaction( () =>
+            {
+                rockContext.SaveChanges();
+                prayerRequest.SaveAttributeValues( rockContext );
+            } );
+
 
             StartWorkflow( prayerRequest, rockContext );
 
@@ -258,6 +372,10 @@ namespace RockWeb.Blocks.Prayer
             if ( isNavigateToParent )
             {
                 NavigateToParentPage();
+            }
+            else if (GetAttributeValue( "RefreshPageOnSave" ).AsBoolean() )
+            {
+                NavigateToCurrentPage( this.PageParameters().Where(a => a.Value is string).ToDictionary( k => k.Key, v => v.Value.ToString()) );
             }
             else
             {
@@ -274,11 +392,6 @@ namespace RockWeb.Blocks.Prayer
                 string themeRoot = ResolveRockUrl( "~~/" );
                 nbMessage.Text = nbMessage.Text.Replace( "~~/", themeRoot ).Replace( "~/", appRoot );
 
-                // show liquid help for debug
-                if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
-                {
-                    nbMessage.Text += mergeFields.lavaDebugInfo();
-                }
             }
         }
 
@@ -292,6 +405,7 @@ namespace RockWeb.Blocks.Prayer
             pnlForm.Visible = true;
             pnlReceipt.Visible = false;
             dtbRequest.Text = string.Empty;
+            cbAllowPublicDisplay.Checked = this.DefaultToPublic;
             dtbRequest.Focus();
         }
 
@@ -348,13 +462,11 @@ namespace RockWeb.Blocks.Prayer
         /// <param name="rockContext">The rock context.</param>
         private void StartWorkflow( PrayerRequest prayerRequest, RockContext rockContext )
         {
-            WorkflowType workflowType = null;
             Guid? workflowTypeGuid = GetAttributeValue( "Workflow" ).AsGuidOrNull();
             if ( workflowTypeGuid.HasValue )
             {
-                var workflowTypeService = new WorkflowTypeService( rockContext );
-                workflowType = workflowTypeService.Get( workflowTypeGuid.Value );
-                if ( workflowType != null )
+                var workflowType = WorkflowTypeCache.Get( workflowTypeGuid.Value );
+                if ( workflowType != null && ( workflowType.IsActive ?? true ) )
                 {
                     try
                     {

@@ -136,19 +136,19 @@ namespace RockWeb.Blocks.Store
                 switch ( installResponse.PurchaseResult )
                 {
                     case PurchaseResult.AuthenticationFailed:
-                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Could Not Authenticate</strong> {0}</div>", installResponse.Message );
+                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Could Not Authenticate</strong> {0} If you need further help see the <a href='{1}'>Rock Shop Help Page</a>.</div>", installResponse.Message, "https://rockrms.com/RockShopHelp" );
                         break;
                     case PurchaseResult.Error:
                         lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>An Error Occurred</strong> {0}</div>", installResponse.Message );
                         break;
                     case PurchaseResult.NoCardOnFile:
-                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>No Card On File</strong> No credit card is on file for your organization. Please add a card from your <a href='{0}'>Account Page</a>.</div>", ResolveRockUrl( "~/RockShop/Account" ) );
+                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>No Card On File</strong> No credit card is on file for your organization. Please add a card from your <a href='{0}'>Account Page</a> or see the <a href='{1}'>Rock Shop Help Page</a>.</div>", ResolveRockUrl( "~/RockShop/Account" ), "https://rockrms.com/RockShopHelp" );
                         break;
                     case PurchaseResult.NotAuthorized:
-                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Unauthorized</strong> You are not currently authorized to make purchases for this organization. Please see your organization's primary contact to enable your account for purchases.</div>" );
+                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Unauthorized</strong> You are not currently authorized to make purchases for this organization. Please see your organization's primary contact to enable your account for purchases or see the <a href='{0}'>Rock Shop Help Page</a>.</div>", "https://rockrms.com/RockShopHelp" );
                         break;
                     case PurchaseResult.PaymentFailed:
-                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Payment Error</strong> An error occurred while processing the credit card on file for your organization. The error was: {0}. Please update your card's information from your <a href='{1}'>Account Page</a>.</div>", installResponse.Message, ResolveRockUrl( "~/RockShop/Account" ) );
+                        lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Payment Error</strong> An error occurred while processing the credit card on file for your organization. The error was: {0}. Please update your card's information from your <a href='{1}'>Account Page</a> or see the <a href='{2}'>Rock Shop Help Page</a>.</div>", installResponse.Message, ResolveRockUrl( "~/RockShop/Account" ), "https://rockrms.com/RockShopHelp" );
                         break;
                     case PurchaseResult.Success:
                         ProcessInstall( installResponse );
@@ -211,7 +211,7 @@ namespace RockWeb.Blocks.Store
                         using ( ZipArchive packageZip = ZipFile.OpenRead( destinationFile ) )
                         {
                             // unzip content folder and process xdts
-                            foreach ( ZipArchiveEntry entry in packageZip.Entries.Where(e => e.FullName.StartsWith("content/")) )
+                            foreach ( ZipArchiveEntry entry in packageZip.Entries.Where(e => e.FullName.StartsWith("content/", StringComparison.OrdinalIgnoreCase)) )
                             {
                                if ( entry.FullName.EndsWith( _xdtExtension, StringComparison.OrdinalIgnoreCase ) )
                                 {
@@ -309,7 +309,7 @@ namespace RockWeb.Blocks.Store
                             }
                             catch ( Exception ex )
                             {
-                                lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Error Modifing Files</strong> An error occurred while modifing files. <br><em>Error: {0}</em></div>", ex.Message );
+                                lMessages.Text = string.Format( "<div class='alert alert-warning margin-t-md'><strong>Error Modifying Files</strong> An error occurred while modifying files. <br><em>Error: {0}</em></div>", ex.Message );
                                 return;
                             }
                             
@@ -325,10 +325,7 @@ namespace RockWeb.Blocks.Store
                     InstalledPackageService.SaveInstall( purchaseResponse.PackageId, purchaseResponse.PackageName, installStep.VersionId, installStep.VersionLabel, purchaseResponse.VendorId, purchaseResponse.VendorName, purchaseResponse.InstalledBy );
                 
                     // Clear all cached items
-                    Rock.Web.Cache.RockMemoryCache.Clear();
-
-                    // Clear the static object that contains all auth rules (so that it will be refreshed)
-                    Rock.Security.Authorization.Flush();
+                    RockCache.ClearAllCachedItems();
 
                     // show result message
                     lMessages.Text = string.Format( "<div class='alert alert-success margin-t-md'><strong>Package Installed</strong><p>{0}</p>", installStep.PostInstallInstructions );

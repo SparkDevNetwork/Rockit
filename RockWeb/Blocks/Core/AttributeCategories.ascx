@@ -14,7 +14,7 @@
 
                     <div class="grid grid-panel">
                         <Rock:GridFilter ID="rFilter" runat="server" OnDisplayFilterValue="rFilter_DisplayFilterValue">
-                            <Rock:EntityTypePicker ID="entityTypeFilter" runat="server" Required="false" Label="Entity Type" IncludeGlobalOption="true" />
+                            <Rock:EntityTypePicker ID="entityTypeFilter" runat="server" Required="false" Label="Entity Type" IncludeGlobalOption="true" EnhanceForLongLists="true" />
                         </Rock:GridFilter>
                         <Rock:Grid ID="rGrid" runat="server" RowItemText="Category" OnRowSelected="rGrid_Edit" TooltipField="Description">
                             <Columns>
@@ -34,8 +34,6 @@
 
                 </div>
             </div>
-
-            
 
         </asp:Panel>
 
@@ -60,10 +58,10 @@
 
                 <div class="row">
                     <div class="col-md-6">
-                        <Rock:EntityTypePicker ID="entityTypePicker" runat="server" Required="true" Label="Entity Type" IncludeGlobalOption="true" />
+                        <Rock:EntityTypePicker ID="entityTypePicker" runat="server" Required="true" Label="Entity Type" IncludeGlobalOption="true" EnhanceForLongLists="true" />
                     </div>
                     <div class="col-md-6">
-                        <Rock:DataTextBox ID="tbIconCssClass" runat="server" SourceTypeName="Rock.Model.Category, Rock" PropertyName="IconCssClass" />
+                        <Rock:DataTextBox ID="tbIconCssClass" runat="server" SourceTypeName="Rock.Model.Category, Rock" PropertyName="IconCssClass" Label="Icon CSS Class" />
                         <Rock:DataTextBox ID="tbHighlightColor" runat="server" SourceTypeName="Rock.Model.Category, Rock" PropertyName="HighlightColor" />
                     </div>
 

@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,15 +35,14 @@ using Rock.Web.Cache;
 
 namespace RockWeb.Blocks.Cms
 {
-    [DisplayName("RSS Feed Item")]
-    [Category("CMS")]
-    [Description("Gets an item from a RSS feed and displays the content of that item based on a provided liquid template.")]
-    [TextField("RSS Feed Url", "The Url to the RSS feed that the item belongs to.", true, "", "Feed")]
-    [IntegerField("Cache Duration", "The length of time (in minutes) that the RSS feed data is stored in cache. If this value is 0, the feed will not be cached. Default is 20 minutes.", false, 20, "Feed")]
-    [TextField("CSS File", "An optional CSS File to add to the page for styling. Example \"Styles/rss.css\" would point to a stylesheet in the current theme's style folder.", false, "", "Layout")]
-    [CodeEditorField( "Template", "The liquid template to use for rendering. This template would typically be in the theme's \"Assets/Liquid\" folder.",
+    [DisplayName( "RSS Feed Item" )]
+    [Category( "CMS" )]
+    [Description( "Gets an item from a RSS feed and displays the content of that item based on a provided Lava template." )]
+    [TextField( "RSS Feed Url", "The Url to the RSS feed that the item belongs to.", true, "", "Feed" )]
+    [IntegerField( "Cache Duration", "The length of time (in minutes) that the RSS feed data is stored in cache. If this value is 0, the feed will not be cached. Default is 20 minutes.", false, 20, "Feed" )]
+    [TextField( "CSS File", "An optional CSS File to add to the page for styling. Example \"Styles/rss.css\" would point to a stylesheet in the current theme's style folder.", false, "", "Layout" )]
+    [CodeEditorField( "Template", "The Lava template to use for rendering. This template would typically be in the theme's \"Assets/Lava\" folder.",
         CodeEditorMode.Lava, CodeEditorTheme.Rock, 200, true, @"{% include '~~/Assets/Lava/RSSFeedItem.lava' %}", "Layout" )]
-    [BooleanField( "Enable Debug", "Flag indicating that the control should output the feed data that will be passed to Liquid for parsing.", false )]
     [BooleanField( "Include RSS Link", "Flag indicating that an RSS link should be included in the page header.", true, "Feed" )]
     public partial class RSSFeedItem : RockBlock
     {
@@ -80,7 +79,7 @@ namespace RockWeb.Blocks.Cms
 
             string feedItemId = System.Web.HttpUtility.UrlDecode( PageParameter( "feedItemId" ) );
             SetNotificationBox( String.Empty, String.Empty );
-            
+
             LoadFeedItem( feedItemId );
         }
         #endregion
@@ -99,26 +98,13 @@ namespace RockWeb.Blocks.Cms
         private void ClearCache()
         {
             SyndicationFeedHelper.ClearCachedFeed( GetAttributeValue( "RSSFeedUrl" ) );
-            RockMemoryCache cache = RockMemoryCache.Default;
-            cache.Remove( TemplateCacheKey );
+            RockCache.Remove( TemplateCacheKey );
         }
 
         private Template GetTemplate()
         {
-            RockMemoryCache cache = RockMemoryCache.Default;
-            Template template = null;
-
-            if ( cache[TemplateCacheKey] != null )
-            {
-                template = (Template)cache[TemplateCacheKey];
-            }
-            else
-            {
-                template = Template.Parse( GetAttributeValue( "Template" ) );
-                cache.Set( TemplateCacheKey, template, new CacheItemPolicy() );
-            }
-
-            return template;
+            var cacheTemplate = LavaTemplateCache.Get( TemplateCacheKey, GetAttributeValue( "Template" ) );
+            return cacheTemplate != null ? cacheTemplate.Template : null;
         }
 
         private string LoadDebugData( Dictionary<string, object> feedDictionary )
@@ -137,7 +123,7 @@ namespace RockWeb.Blocks.Cms
             return sb.ToString();
         }
 
-        private string FeedDebugNode( KeyValuePair<string,object> node )
+        private string FeedDebugNode( KeyValuePair<string, object> node )
         {
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
@@ -182,7 +168,7 @@ namespace RockWeb.Blocks.Cms
             return sb.ToString();
         }
 
-        private void LoadFeedItem(string feedItemId)
+        private void LoadFeedItem( string feedItemId )
         {
             string feedUrl = GetAttributeValue( "RSSFeedUrl" );
             Dictionary<string, string> messages = new Dictionary<string, string>();
@@ -198,8 +184,8 @@ namespace RockWeb.Blocks.Cms
 
                     if ( !String.IsNullOrWhiteSpace( GetAttributeValue( "RSSFeedUrl" ) ) && GetAttributeValue( "IncludeRSSLink" ).AsBoolean() )
                     {
-                        string rssLink = string.Format( "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"{0}\" href=\"{1}\" />", 
-                            feedDictionary.ContainsKey("title") ? feedDictionary["title"].ToString(): "RSS",
+                        string rssLink = string.Format( "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"{0}\" href=\"{1}\" />",
+                            feedDictionary.ContainsKey( "title" ) ? feedDictionary["title"].ToString() : "RSS",
                             GetAttributeValue( "RSSFeedUrl" ) );
 
                         Page.Header.Controls.Add( new LiteralControl( rssLink ) );
@@ -208,7 +194,7 @@ namespace RockWeb.Blocks.Cms
                     Dictionary<string, object> previousItem = null;
                     Dictionary<string, object> selectedItem = null;
                     Dictionary<string, object> nextItem = null;
-                    if( feedDictionary.ContainsKey( "item" ) || feedDictionary.ContainsKey( "entry" ) )
+                    if ( feedDictionary.ContainsKey( "item" ) || feedDictionary.ContainsKey( "entry" ) )
                     {
                         List<Dictionary<string, object>> items = ( (List<Dictionary<string, object>>)feedDictionary.Where( i => i.Key == "item" || i.Key == "entry" ).FirstOrDefault().Value );
                         for ( int i = 0; i < items.Count; i++ )
@@ -239,23 +225,13 @@ namespace RockWeb.Blocks.Cms
                     feedFinal.Add( "PreviousItem", previousItem );
                     feedFinal.Add( "NextItem", nextItem );
 
-                    if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Rock.Security.Authorization.EDIT ) )
-                    {
-                        string debugValue = LoadDebugData( feedFinal );
-                        phFeedItem.Controls.Clear();
-                        phFeedItem.Controls.Add( new LiteralControl( debugValue ) );
-                        pnlContent.Visible = true;
-                        return;
-
-                    }
-
                     if ( selectedItem == null )
                     {
                         messages.Add( "Requested item not available", "The item that you requested is currently not available." );
                     }
                     else
                     {
-                        string content = GetTemplate().Render( Hash.FromDictionary( feedFinal ) );                        
+                        string content = GetTemplate().Render( Hash.FromDictionary( feedFinal ) );
 
                         if ( content.Contains( "No such template" ) )
                         {

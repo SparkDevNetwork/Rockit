@@ -15,7 +15,7 @@
                     <div class="col-md-6">
                         <Rock:RockDropDownList ID="ddlUserDataView" runat="server" Label="Dataview" Help="Select the dataview to use to filter the results." Required="true" />
                         <Rock:CampusesPicker ID="cpCampuses" runat="server" Label="Campus Filter" Help="Select the campuses to narrow the results down to families with that home campus." Required="false" />
-                        <Rock:GroupPicker ID="gpGroupToMap" runat="server" Label="Geo-fencing Group" Help="Select a Group to show the geofences for that group and it's child groups" />
+                        <Rock:GroupPicker ID="gpGroupToMap" runat="server" Label="Geo-fencing Group" Help="Select a Group to show the geofences for that group and its child groups" />
                     </div>
                     <div class="col-md-6">
                         <Rock:RockCheckBox ID="cbShowCampusLocations" runat="server" Label="Show Campus Locations On Map" Checked="true" />
@@ -37,7 +37,7 @@
                         <i class='fa fa-floppy-o' title="Save selected shape to a named location"></i>
                     </asp:Panel>
 
-                    <div class="btn btn-danger btn-xs js-deleteshape"><i class='fa fa-times' title="Delete selected shape"></i></div>
+                    <div class="btn btn-danger btn-xs js-deleteshape" style="display:none"><i class='fa fa-times' title="Delete selected shape"></i></div>
                 </div>
             </div>
             <div class="panel-body">
@@ -170,16 +170,17 @@
 
                     var campusMarkersData = [
 <%=this.CampusMarkersData%>]
-                    
-                    var pinImage = new google.maps.MarkerImage('//chart.googleapis.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|' + 'FE7569',
-                        new google.maps.Size(21, 34),
-                        new google.maps.Point(0,0),
-                        new google.maps.Point(10, 34));
 
-                    var pinShadow = new google.maps.MarkerImage('//chart.googleapis.com/chart?chst=d_map_pin_shadow',
-                        new google.maps.Size(40, 37),
-                        new google.maps.Point(0, 0),
-                        new google.maps.Point(12, 35));
+                    var pinImage = {
+                        path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
+                        fillColor: '#FE7569',
+                        fillOpacity: 1,
+                        strokeColor: '#000',
+                        strokeWeight: 1,
+                        scale: 1,
+                        labelOrigin: new google.maps.Point(0,-28)
+                
+                    };
 
                     campusMarkersData.forEach( function (c) {
                         marker = new google.maps.Marker({
@@ -187,7 +188,7 @@
                             map: map,
                             title: c.campusName,
                             icon: pinImage,
-                            shadow: pinShadow
+                            label: String.fromCharCode(9679)
                         });
                     });
 
@@ -227,6 +228,10 @@
                         if (allShapesIndex > -1)
                         {
                             map.AllShapes.splice(allShapesIndex, 1);
+                            if (map.AllShapes.length == 0)
+                            {
+                                $('.js-deleteshape').hide();
+                            }
                         }
                                     
                         shape.setMap(null);
@@ -283,6 +288,7 @@
                             }
 
                             map.AllShapes.push(shape);
+                            $('.js-deleteshape').show();
                         }
                         
                         // NOTE: bounds is the rectangle bounds of the shape (not the actual shape)
@@ -654,7 +660,7 @@
                 var locationId = $('#<%=lpLocation.ClientID%> .js-item-id-value').val();
                 var locationName = $('#<%=lpLocation.ClientID%> .js-item-name-value').val();
                 $('#<%=hfLocationId.ClientID%>').val(locationId);
-                __doPostBack('<%=upSaveLocation.ClientID%>');
+                window.location = "javascript:__doPostBack('<%=upSaveLocation.ClientID%>')";
 
                 var map = $('#map_canvas').data().googleMap;
 

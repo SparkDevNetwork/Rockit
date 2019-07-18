@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,7 @@
 // </copyright>
 //
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
@@ -35,8 +36,8 @@ namespace RockWeb.Blocks.Core
     [Description( "Lists all the devices." )]
 
     [LinkedPage("Detail Page")]
-    public partial class DeviceList : RockBlock
-    { 
+    public partial class DeviceList : RockBlock, ICustomGridColumns
+    {
         #region Control Methods
 
         /// <summary>
@@ -55,6 +56,8 @@ namespace RockWeb.Blocks.Core
             gDevice.Actions.ShowAdd = true;
             gDevice.Actions.AddClick += gDevice_Add;
             gDevice.GridRebind += gDevice_GridRebind;
+
+            AddDynamicColumns();
 
             // Block Security and special attributes (RockPage takes care of View)
             bool canAddEditDelete = IsUserAuthorized( Authorization.EDIT );
@@ -88,11 +91,12 @@ namespace RockWeb.Blocks.Core
         protected void fDevice_ApplyFilterClick( object sender, EventArgs e )
         {
             fDevice.SaveUserPreference( "Name", tbName.Text );
-            fDevice.SaveUserPreference( "Device Type", ddlDeviceType.SelectedValue );
+            fDevice.SaveUserPreference( "Device Type", dvpDeviceType.SelectedValue );
             fDevice.SaveUserPreference( "IP Address", tbIPAddress.Text );
             fDevice.SaveUserPreference( "Print To", ddlPrintTo.SelectedValue );
             fDevice.SaveUserPreference( "Printer", ddlPrinter.SelectedValue );
             fDevice.SaveUserPreference( "Print From", ddlPrintFrom.SelectedValue );
+            fDevice.SaveUserPreference( "Active Status", ddlActiveFilter.SelectedValue );
 
             BindGrid();
         }
@@ -126,7 +130,7 @@ namespace RockWeb.Blocks.Core
                     int definedValueId = 0;
                     if ( int.TryParse( e.Value, out definedValueId ) )
                     {
-                        var definedValue = DefinedValueCache.Read( definedValueId );
+                        var definedValue = DefinedValueCache.Get( definedValueId );
                         if ( definedValue != null )
                         {
                             e.Value = definedValue.Value;
@@ -143,6 +147,14 @@ namespace RockWeb.Blocks.Core
                 case "Print From":
 
                     e.Value = ( (PrintFrom)System.Enum.Parse( typeof( PrintFrom ), e.Value ) ).ToString();
+                    break;
+                case "Active Status":
+
+                    if ( !string.IsNullOrEmpty( e.Value) && e.Value == "all" )
+                    {
+                        e.Value = string.Empty;
+                    }
+
                     break;
 
             }
@@ -193,7 +205,7 @@ namespace RockWeb.Blocks.Core
                 DeviceService.Delete( Device );
                 rockContext.SaveChanges();
 
-                Rock.CheckIn.KioskDevice.Flush( deviceId );
+                Rock.CheckIn.KioskDevice.Remove( deviceId );
             }
 
             BindGrid();
@@ -214,12 +226,57 @@ namespace RockWeb.Blocks.Core
         #region Internal Methods
 
         /// <summary>
+        /// Add all the dynamic columns needed to properly display devices.
+        /// </summary>
+        protected void AddDynamicColumns()
+        {
+            // Remove attribute columns
+            foreach ( var column in gDevice.Columns.OfType<AttributeField>().ToList() )
+            {
+                gDevice.Columns.Remove( column );
+            }
+
+            // Add attribute columns
+            int entityTypeId = EntityTypeCache.Get( typeof( Rock.Model.Device ) ).Id;
+            foreach ( var attribute in new AttributeService( new RockContext() ).Queryable()
+                .Where( a =>
+                    a.EntityTypeId == entityTypeId &&
+                    a.IsGridColumn && 
+                    a.EntityTypeQualifierColumn == string.Empty
+                    )
+                .OrderBy( a => a.Order )
+                .ThenBy( a => a.Name ) )
+            {
+                string dataFieldExpression = attribute.Key;
+                bool columnExists = gDevice.Columns.OfType<AttributeField>().FirstOrDefault( a => a.DataField.Equals( dataFieldExpression ) ) != null;
+                if ( !columnExists )
+                {
+                    AttributeField boundField = new AttributeField();
+                    boundField.DataField = dataFieldExpression;
+                    boundField.AttributeId = attribute.Id;
+                    boundField.HeaderText = attribute.Name;
+
+                    var attributeCache = Rock.Web.Cache.AttributeCache.Get( attribute.Id );
+                    if ( attributeCache != null )
+                    {
+                        boundField.ItemStyle.HorizontalAlign = attributeCache.FieldType.Field.AlignValue;
+                    }
+
+                    gDevice.Columns.Add( boundField );
+                }
+            }
+
+            var deleteField = new DeleteField();
+            gDevice.Columns.Add( deleteField );
+            deleteField.Click += gDevice_Delete;
+        }
+
+        /// <summary>
         /// Binds the filter.
         /// </summary>
         private void BindFilter()
         {
-            ddlDeviceType.BindToDefinedType( DefinedTypeCache.Read( new Guid( Rock.SystemGuid.DefinedType.DEVICE_TYPE ) ) );
-            ddlDeviceType.Items.Insert( 0, new ListItem( string.Empty, string.Empty ) );
+            dvpDeviceType.DefinedTypeId = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.DEVICE_TYPE ) ).Id;
 
             ddlPrintTo.BindToEnum<PrintTo>();
             ddlPrintTo.Items.Insert( 0, new ListItem( string.Empty, string.Empty ) );
@@ -237,11 +294,16 @@ namespace RockWeb.Blocks.Core
             if ( !Page.IsPostBack )
             {
                 tbName.Text = fDevice.GetUserPreference( "Name" );
-                ddlDeviceType.SetValue( fDevice.GetUserPreference( "Device Type" ) );
+                dvpDeviceType.SetValue( fDevice.GetUserPreference( "Device Type" ) );
                 tbIPAddress.Text = fDevice.GetUserPreference( "IP Address" );
                 ddlPrintTo.SetValue( fDevice.GetUserPreference( "Print To" ) );
                 ddlPrinter.SetValue( fDevice.GetUserPreference( "Printer" ) );
                 ddlPrintFrom.SetValue( fDevice.GetUserPreference( "Print From" ) );
+                var itemActiveStatus = ddlActiveFilter.Items.FindByValue( fDevice.GetUserPreference( "Active Status" ) );
+                if ( itemActiveStatus != null )
+                {
+                    itemActiveStatus.Selected = true;
+                }
             }            
         }
 
@@ -252,21 +314,9 @@ namespace RockWeb.Blocks.Core
         {
             var deviceService = new DeviceService( new RockContext() );
             var sortProperty = gDevice.SortProperty;
-            gDevice.EntityTypeId = EntityTypeCache.Read<Device>().Id;
+            gDevice.EntityTypeId = EntityTypeCache.Get<Device>().Id;
 
-            var queryable = deviceService.Queryable().Select( a =>
-                new
-                {
-                    a.Id,
-                    a.Name,
-                    DeviceTypeName = a.DeviceType.Value,
-                    a.IPAddress,
-                    a.PrintToOverride,
-                    a.PrintFrom,
-                    PrinterDeviceName = a.PrinterDevice.Name,
-                    a.PrinterDeviceId,
-                    a.DeviceTypeValueId
-                } );
+            var queryable = deviceService.Queryable();
 
             string name = fDevice.GetUserPreference( "Name" );
             if ( !string.IsNullOrWhiteSpace( name ) )
@@ -304,17 +354,49 @@ namespace RockWeb.Blocks.Core
                 PrintFrom printFrom = (PrintFrom)System.Enum.Parse( typeof( PrintFrom ), fDevice.GetUserPreference( "Print From" ) ); ;
                 queryable = queryable.Where( d => d.PrintFrom == printFrom );
             }
-                   
-            if ( sortProperty != null )
+
+            string activeFilterValue = fDevice.GetUserPreference( "Active Status" );
+            if ( !string.IsNullOrWhiteSpace( activeFilterValue ) )
             {
-                gDevice.DataSource = queryable.Sort( sortProperty ).ToList();
+                if ( activeFilterValue != "all" )
+                {
+                    var activeFilter = activeFilterValue.AsBoolean();
+                    queryable = queryable.Where( b => b.IsActive == activeFilter );
+                }
             }
             else
             {
-                gDevice.DataSource = queryable.OrderBy( d => d.Name ).ToList();
+                queryable = queryable.Where( b => b.IsActive );
             }
 
-            gDevice.EntityTypeId = EntityTypeCache.Read<Rock.Model.Device>().Id;
+            gDevice.ObjectList = new Dictionary<string, object>();
+            queryable.ToList().ForEach( d => gDevice.ObjectList.Add( d.Id.ToString(), d ) );
+
+            var gridList = queryable.Select( a =>
+                new
+                {
+                    a.Id,
+                    a.Name,
+                    DeviceTypeName = a.DeviceType.Value,
+                    a.IPAddress,
+                    a.PrintToOverride,
+                    a.PrintFrom,
+                    PrinterDeviceName = a.PrinterDevice.Name,
+                    a.PrinterDeviceId,
+                    a.DeviceTypeValueId,
+                    a.IsActive
+                } );
+
+            if ( sortProperty != null )
+            {
+                gDevice.DataSource = gridList.Sort( sortProperty ).ToList();
+            }
+            else
+            {
+                gDevice.DataSource = gridList.OrderBy( d => d.Name ).ToList();
+            }
+
+            gDevice.EntityTypeId = EntityTypeCache.Get<Rock.Model.Device>().Id;
             gDevice.DataBind();
         }
 

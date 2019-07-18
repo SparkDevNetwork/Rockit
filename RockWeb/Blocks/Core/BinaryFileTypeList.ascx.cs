@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,7 @@ namespace RockWeb.Blocks.Administration
     [Description( "Displays a list of all binary file types." )]
 
     [LinkedPage( "Detail Page" )]
-    public partial class BinaryFileTypeList : RockBlock
+    public partial class BinaryFileTypeList : RockBlock, ICustomGridColumns
     {
         #region Control Methods
 
@@ -57,7 +57,7 @@ namespace RockWeb.Blocks.Administration
             gBinaryFileType.IsDeleteEnabled = canAddEditDelete;
 
             SecurityField securityField = gBinaryFileType.Columns.OfType<SecurityField>().FirstOrDefault();
-            securityField.EntityTypeId = EntityTypeCache.Read( typeof( Rock.Model.BinaryFileType ) ).Id;
+            securityField.EntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.BinaryFileType ) ).Id;
         }
 
         /// <summary>
@@ -176,7 +176,7 @@ namespace RockWeb.Blocks.Administration
                 gBinaryFileType.DataSource = qry.OrderBy( p => p.Name ).ToList();
             }
 
-            gBinaryFileType.EntityTypeId = EntityTypeCache.Read<Rock.Model.BinaryFileType>().Id;
+            gBinaryFileType.EntityTypeId = EntityTypeCache.Get<Rock.Model.BinaryFileType>().Id;
             gBinaryFileType.DataBind();
         }
 

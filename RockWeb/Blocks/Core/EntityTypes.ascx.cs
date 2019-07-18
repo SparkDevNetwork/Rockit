@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -216,10 +216,11 @@ namespace RockWeb.Blocks.Core
             entityType.Name = tbName.Text;
             entityType.FriendlyName = tbFriendlyName.Text;
             entityType.IsCommon = cbCommon.Checked;
+            entityType.IndexResultTemplate = ceIndexResultsTemplate.Text;
+            entityType.IndexDocumentUrl = ceIndexDocumentUrl.Text;
+            entityType.LinkUrlLavaTemplate = ceLinkUrl.Text;
 
             rockContext.SaveChanges();
-
-            EntityTypeCache.Flush( entityType.Id );
 
             hfEntityTypeId.Value = string.Empty;
 
@@ -240,7 +241,7 @@ namespace RockWeb.Blocks.Core
             EntityTypeService entityTypeService = new EntityTypeService( new RockContext() );
             SortProperty sortProperty = gEntityTypes.SortProperty;
 
-            var qry = entityTypeService.Queryable().Where( e => e.IsSecured || e.IsEntity );
+            var qry = entityTypeService.Queryable().Where( e => e.IsEntity );
 
             string search = gfSettings.GetUserPreference( "Search" );
             if ( !string.IsNullOrWhiteSpace( search ) )
@@ -278,6 +279,9 @@ namespace RockWeb.Blocks.Core
                 tbName.Enabled = false; // !entityType.IsEntity;
                 tbFriendlyName.Text = entityType.FriendlyName;
                 cbCommon.Checked = entityType.IsCommon;
+                ceIndexResultsTemplate.Text = entityType.IndexResultTemplate;
+                ceIndexDocumentUrl.Text = entityType.IndexDocumentUrl;
+                ceLinkUrl.Text = entityType.LinkUrlLavaTemplate;
             }
             else
             {
@@ -287,6 +291,9 @@ namespace RockWeb.Blocks.Core
                 tbName.Enabled = true;
                 tbFriendlyName.Text = string.Empty;
                 cbCommon.Checked = false;
+                ceIndexResultsTemplate.Text = string.Empty;
+                ceIndexDocumentUrl.Text = string.Empty;
+                ceLinkUrl.Text = string.Empty;
             }
 
             ShowDialog( "Edit" );

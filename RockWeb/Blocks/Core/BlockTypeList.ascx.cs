@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,7 @@ namespace RockWeb.Blocks.Core
     [Description( "Lists all the block types registered in Rock." )]
 
     [LinkedPage("Detail Page")]
-    public partial class BlockTypeList : RockBlock
+    public partial class BlockTypeList : RockBlock, ICustomGridColumns
     {
 
         #region Base Control Methods
@@ -142,7 +142,6 @@ namespace RockWeb.Blocks.Core
 
                 blockTypeService.Delete( blockType );
                 rockContext.SaveChanges();
-                Rock.Web.Cache.BlockTypeCache.Flush( blockType.Id );
             }
 
             BindGrid();
@@ -280,7 +279,7 @@ namespace RockWeb.Blocks.Core
                 gBlockTypes.DataSource = selectQry.OrderBy( b => b.Name ).ToList();
             }
 
-            gBlockTypes.EntityTypeId = EntityTypeCache.Read<Rock.Model.BlockType>().Id;
+            gBlockTypes.EntityTypeId = EntityTypeCache.Get<Rock.Model.BlockType>().Id;
             gBlockTypes.DataBind();
         }
 

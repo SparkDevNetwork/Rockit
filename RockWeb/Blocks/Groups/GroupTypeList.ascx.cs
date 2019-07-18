@@ -35,7 +35,7 @@ namespace RockWeb.Blocks.Groups
     [Description( "Lists all group types with filtering by purpose and system group types." )]
 
     [LinkedPage( "Detail Page" )]
-    public partial class GroupTypeList : RockBlock
+    public partial class GroupTypeList : RockBlock, ICustomGridColumns
     {
         #region Control Methods
 
@@ -94,9 +94,9 @@ namespace RockWeb.Blocks.Groups
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
         protected void rFilter_ApplyFilterClick( object sender, EventArgs e )
         {
-            rFilter.SaveUserPreference( "Purpose", ddlPurpose.SelectedValue );
+            rFilter.SaveUserPreference( "Purpose", dvpPurpose.SelectedValue );
             rFilter.SaveUserPreference( "System Group Types", ddlIsSystem.SelectedValue );
-            rFilter.SaveUserPreference("Shown in Navigation", ddlShowInNavigation.SelectedValue);
+            rFilter.SaveUserPreference( "Shown in Navigation", ddlShowInNavigation.SelectedValue );
             BindGrid();
         }
 
@@ -114,7 +114,7 @@ namespace RockWeb.Blocks.Groups
                     int? id = e.Value.AsIntegerOrNull();
                     if ( id.HasValue )
                     {
-                        var purpose = DefinedValueCache.Read( id.Value );
+                        var purpose = DefinedValueCache.Get( id.Value );
                         if ( purpose != null )
                         {
                             e.Value = purpose.Value;
@@ -178,8 +178,6 @@ namespace RockWeb.Blocks.Groups
 
                 groupTypeService.Delete( groupType );
                 rockContext.SaveChanges();
-
-                GroupTypeCache.Flush( groupTypeId );
             }
 
             BindGrid();
@@ -223,10 +221,10 @@ namespace RockWeb.Blocks.Groups
         /// </summary>
         private void BindFilter()
         {
-            ddlPurpose.BindToDefinedType( DefinedTypeCache.Read( new Guid( Rock.SystemGuid.DefinedType.GROUPTYPE_PURPOSE ) ), true );
-            ddlPurpose.SelectedValue = rFilter.GetUserPreference( "Purpose" );
+            dvpPurpose.DefinedTypeId = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.GROUPTYPE_PURPOSE ) ).Id;
+            dvpPurpose.SelectedValue = rFilter.GetUserPreference( "Purpose" );
             ddlIsSystem.SelectedValue = rFilter.GetUserPreference( "System Group Types" );
-            ddlIsSystem.SelectedValue = rFilter.GetUserPreference("Shown in Navigation");
+            ddlIsSystem.SelectedValue = rFilter.GetUserPreference( "Shown in Navigation" );
         }
 
         /// <summary>
@@ -234,7 +232,7 @@ namespace RockWeb.Blocks.Groups
         /// </summary>
         private void BindGrid()
         {
-            var selectQry = GetGroupTypes(new RockContext())
+            var selectQry = GetGroupTypes( new RockContext() )
                 .Select( a => new
                 {
                     a.Id,
@@ -258,7 +256,7 @@ namespace RockWeb.Blocks.Groups
         private IQueryable<GroupType> GetGroupTypes( RockContext rockContext )
         {
             var qry = new GroupTypeService( rockContext ).Queryable();
-            
+
 
             int? purposeId = rFilter.GetUserPreference( "Purpose" ).AsIntegerOrNull();
             if ( purposeId.HasValue )
@@ -276,21 +274,21 @@ namespace RockWeb.Blocks.Groups
                 qry = qry.Where( t => !t.IsSystem );
             }
 
-            var isShownInNavigation = rFilter.GetUserPreference("Shown in Navigation").AsBooleanOrNull();
-            if (isShownInNavigation.HasValue)
+            var isShownInNavigation = rFilter.GetUserPreference( "Shown in Navigation" ).AsBooleanOrNull();
+            if ( isShownInNavigation.HasValue )
             {
-                if (isShownInNavigation.Value)
+                if ( isShownInNavigation.Value )
                 {
-                    qry = qry.Where(t => t.ShowInNavigation);
+                    qry = qry.Where( t => t.ShowInNavigation );
                 }
-                else if (!isShownInNavigation.Value)
+                else if ( !isShownInNavigation.Value )
                 {
-                    qry = qry.Where(t => !t.ShowInNavigation);
+                    qry = qry.Where( t => !t.ShowInNavigation );
                 }
 
             }
 
-            return qry.OrderBy( g => g.Order );
+            return qry.OrderBy( g => g.Order ).ThenBy( g => g.Name );
         }
 
         #endregion

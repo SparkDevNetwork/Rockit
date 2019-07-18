@@ -1,10 +1,23 @@
 ﻿<%@ Control Language="C#" AutoEventWireup="false" CodeFile="HtmlContentDetail.ascx.cs" Inherits="RockWeb.Blocks.Cms.HtmlContentDetail" %>
 
-<asp:UpdatePanel runat="server" ID="upnlHtmlContent" ChildrenAsTriggers="false" UpdateMode="Conditional">
+<%-- Two update panels to minimize the need for ViewState --%>
+<asp:UpdatePanel runat="server" ID="upnlHtmlContentView" ChildrenAsTriggers="false" UpdateMode="Conditional">
+    <ContentTemplate>
+        <Rock:NotificationBox ID="nbApprovalRequired" runat="server" NotificationBoxType="Info" Text="Your changes will not be visible until they are reviewed and approved." Visible="false" />
+        <%--<div class="html-content-view">--%><asp:Literal ID="lHtmlContent" runat="server" EnableViewState="false" /><%--</div>--%>
+    </ContentTemplate>
+</asp:UpdatePanel>
+
+<asp:UpdatePanel runat="server" ID="upnlHtmlContentEdit" ChildrenAsTriggers="false" UpdateMode="Conditional">
     <ContentTemplate>
 
-        <Rock:NotificationBox ID="nbApprovalRequired" runat="server" NotificationBoxType="Info" Text="Your changes will not be visible until they are reviewed and approved." Visible="false" />
-        <asp:Literal ID="lHtmlContent" runat="server" />
+<%--
+        <asp:HiddenField ID="hfEntityValue" runat="server" />
+
+        <span style="display:none">
+            <asp:LinkButton ID="lbQuickEdit" runat="server" OnClick="lbQuickEdit_Click"></asp:LinkButton>
+        </span>
+--%>
 
         <%-- Edit Panel --%>
         <asp:Panel ID="pnlEditModel" runat="server" Visible="false">
@@ -43,7 +56,7 @@
                                     <asp:LinkButton runat="server" ID="lbShowVersionGrid" Text="History" OnClick="lbShowVersionGrid_Click" />
                                 </div>
 
-                                <!-- Edit Html -->
+                                <!-- Edit HTML -->
 
                                 <Rock:DateRangePicker ID="drpDateRange" runat="server" Label="Display from" />
 

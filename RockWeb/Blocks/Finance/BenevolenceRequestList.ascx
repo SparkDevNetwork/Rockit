@@ -13,17 +13,17 @@
 
                     <div class="grid grid-panel">
                         <Rock:GridFilter ID="rFilter" runat="server" OnDisplayFilterValue="rFilter_DisplayFilterValue">
-                            <Rock:DateRangePicker ID="drpDate" runat="server" Label="Select from Date Range" />
+                            <Rock:DateRangePicker ID="drpDate" runat="server" Label="Date Range" />
                             <Rock:RockTextBox ID="tbFirstName" runat="server" Label="First Name" />
                             <Rock:RockTextBox ID="tbLastName" runat="server" Label="Last Name" />
                             <Rock:RockTextBox ID="tbGovernmentId" runat="server" Label="Government ID" />
-                            <Rock:RockDropDownList ID="ddlCaseWorker" runat="server" Label="Case Worker" />
-                            <Rock:RockDropDownList ID="ddlResult" runat="server" Label="Result" DataTextField="Value" DataValueField="Id" />
-                            <Rock:RockDropDownList ID="ddlStatus" runat="server" Label="Request Status" DataTextField="Value" DataValueField="Id" />
+                            <Rock:RockDropDownList ID="ddlCaseWorker" runat="server" Label="Case Worker" EnhanceForLongLists="true" />
+                            <Rock:DefinedValuePicker ID="dvpResult" runat="server" Label="Result" DataTextField="Value" DataValueField="Id" />
+                            <Rock:DefinedValuePicker ID="dvpStatus" runat="server" Label="Request Status" DataTextField="Value" DataValueField="Id" />
                             <Rock:CampusPicker ID="cpCampus" runat="server" Label="Campus" />
                             <asp:PlaceHolder ID="phAttributeFilters" runat="server" />
                         </Rock:GridFilter>
-                        <Rock:Grid ID="gList" runat="server" DisplayType="Full" AllowSorting="true" OnRowDataBound="gList_RowDataBound" OnRowSelected="gList_Edit">
+                        <Rock:Grid ID="gList" runat="server" DisplayType="Full" AllowSorting="true" OnRowDataBound="gList_RowDataBound" OnRowSelected="gList_Edit" ExportSource="DataSource">
                             <Columns>
                                 <Rock:RockBoundField DataField="RequestDateTime" HeaderText="Date" DataFormatString="{0:d}" SortExpression="RequestDateTime" />
                                 <Rock:RockBoundField DataField="Campus.Name" HeaderText="Campus" SortExpression="Campus.Name" />
@@ -63,7 +63,7 @@
                 </div>
             </div>
         </asp:Panel>
-        
+
         <div class="row">
             <div class="col-md-4 col-md-offset-8 margin-t-md">
                 <asp:Panel ID="pnlSummary" runat="server" CssClass="panel panel-block">

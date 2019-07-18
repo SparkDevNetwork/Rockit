@@ -48,7 +48,7 @@ namespace RockWeb.Blocks.Event
     [LinkedPage( "Registration Instance Page", "The page to view registration details", true, "", "", 1 )]
     [LinkedPage( "Group Detail Page", "The page for viewing details about a group", true, "", "", 2 )]
     [LinkedPage( "Content Item Detail Page", "The page for viewing details about a content item", true, "", "", 3 )]
-    public partial class EventItemOccurrenceList : RockBlock, ISecondaryBlock
+    public partial class EventItemOccurrenceList : RockBlock, ISecondaryBlock, ICustomGridColumns
     {
         #region Properties
 
@@ -88,12 +88,31 @@ namespace RockWeb.Blocks.Event
                     gCalendarItemOccurrenceList.Actions.AddClick += gCalendarItemOccurrenceList_Add;
                     gCalendarItemOccurrenceList.GridRebind += gCalendarItemOccurrenceList_GridRebind;
 
-                    var registrationCol = gCalendarItemOccurrenceList.Columns[3] as HyperLinkField;
-                    registrationCol.DataNavigateUrlFormatString = LinkedPageUrl("RegistrationInstancePage") + "?RegistrationInstanceId={0}";
+                    var registrationField = gCalendarItemOccurrenceList.ColumnsOfType<HyperLinkField>().FirstOrDefault( a => a.HeaderText == "Registration" );
+                    if ( registrationField != null )
+                    {
+                        registrationField.DataNavigateUrlFormatString = LinkedPageUrl( "RegistrationInstancePage" ) + "?RegistrationInstanceId={0}";
+                    }
 
-                    var groupCol = gCalendarItemOccurrenceList.Columns[4] as HyperLinkField;
-                    groupCol.DataNavigateUrlFormatString = LinkedPageUrl("GroupDetailPage") + "?GroupId={0}";
+                    var groupField = gCalendarItemOccurrenceList.ColumnsOfType<HyperLinkField>().FirstOrDefault( a => a.HeaderText == "Group" );
+                    if ( groupField != null )
+                    {
+                        groupField.DataNavigateUrlFormatString = LinkedPageUrl( "GroupDetailPage" ) + "?GroupId={0}";
+                    }
 
+                    AddAttributeColumns();
+
+                    var copyField = new LinkButtonField();
+                    copyField.HeaderText = "Copy";
+                    copyField.CssClass = "btn btn-default btn-sm fa fa-clone";
+                    copyField.HeaderStyle.HorizontalAlign = HorizontalAlign.Center;
+                    copyField.ItemStyle.HorizontalAlign = HorizontalAlign.Center;
+                    gCalendarItemOccurrenceList.Columns.Add( copyField );
+                    copyField.Click += gCalendarItemOccurrenceList_Copy;
+
+                    var deleteField = new DeleteField();
+                    gCalendarItemOccurrenceList.Columns.Add( deleteField );
+                    deleteField.Click += gCalendarItemOccurrenceList_Delete;
                 }
             }
         }
@@ -405,6 +424,9 @@ namespace RockWeb.Blocks.Event
                     }
                 }
 
+                gCalendarItemOccurrenceList.EntityTypeId = EntityTypeCache.Get<Rock.Model.EventItemOccurrence>().Id;
+                gCalendarItemOccurrenceList.ObjectList = new Dictionary<string, object>();
+                eventItemOccurrencesWithDates.ForEach( i => gCalendarItemOccurrenceList.ObjectList.Add( i.EventItemOccurrence.Id.ToString(), i.EventItemOccurrence ) );
                 gCalendarItemOccurrenceList.DataSource = eventItemOccurrencesWithDates
                     .Select( c => new
                     {
@@ -413,9 +435,9 @@ namespace RockWeb.Blocks.Event
                         Campus = c.EventItemOccurrence.Campus != null ? c.EventItemOccurrence.Campus.Name : "All Campuses",
                         Date = c.NextStartDateTime.HasValue ? c.NextStartDateTime.Value.ToShortDateString() : "N/A",
                         Location = c.EventItemOccurrence.Location,
-                        RegistrationInstanceId = c.EventItemOccurrence.Linkages.Any() ? c.EventItemOccurrence.Linkages.FirstOrDefault().RegistrationInstanceId : (int?)null,
+                        RegistrationInstanceId = c.EventItemOccurrence.Linkages.Any() ? c.EventItemOccurrence.Linkages.FirstOrDefault().RegistrationInstanceId : ( int? ) null,
                         RegistrationInstance = c.EventItemOccurrence.Linkages.Any() ? c.EventItemOccurrence.Linkages.FirstOrDefault().RegistrationInstance : null,
-                        GroupId = c.EventItemOccurrence.Linkages.Any() ? c.EventItemOccurrence.Linkages.FirstOrDefault().GroupId : (int?)null,
+                        GroupId = c.EventItemOccurrence.Linkages.Any() ? c.EventItemOccurrence.Linkages.FirstOrDefault().GroupId : ( int? ) null,
                         Group = c.EventItemOccurrence.Linkages.Any() ? c.EventItemOccurrence.Linkages.FirstOrDefault().Group : null,
                         ContentItems = FormatContentItems( c.EventItemOccurrence.ContentChannelItems.Select( i => i.ContentChannelItem ).ToList() ),
                         Contact = c.EventItemOccurrence.ContactPersonAlias != null ? c.EventItemOccurrence.ContactPersonAlias.Person.FullName : "",
@@ -442,6 +464,46 @@ namespace RockWeb.Blocks.Event
                 itemLinks.Add( string.Format( "<a href='{0}'>{1}</a> ({2})", LinkedPageUrl( "ContentItemDetailPage", qryParams ), item.Title, item.ContentChannelType.Name ) );
             }
             return itemLinks.AsDelimited( "<br/>" );
+        }
+
+        /// <summary>s
+        /// Adds columns for any Account attributes marked as Show In Grid
+        /// </summary>
+        protected void AddAttributeColumns()
+        {
+            // Remove attribute columns
+            foreach ( var column in gCalendarItemOccurrenceList.Columns.OfType<AttributeField>().ToList() )
+            {
+                gCalendarItemOccurrenceList.Columns.Remove( column );
+            }
+
+            int entityTypeId = new EventItemOccurrence().TypeId;
+            foreach ( var attribute in new AttributeService( new RockContext() ).Queryable()
+                .Where( a =>
+                    a.EntityTypeId == entityTypeId &&
+                    a.IsGridColumn
+                   )
+                .OrderBy( a => a.Order )
+                .ThenBy( a => a.Name ) )
+            {
+                string dataFieldExpression = attribute.Key;
+                bool columnExists = gCalendarItemOccurrenceList.Columns.OfType<AttributeField>().FirstOrDefault( a => a.DataField.Equals( dataFieldExpression ) ) != null;
+                if ( !columnExists )
+                {
+                    AttributeField boundField = new AttributeField();
+                    boundField.DataField = dataFieldExpression;
+                    boundField.AttributeId = attribute.Id;
+                    boundField.HeaderText = attribute.Name;
+
+                    var attributeCache = Rock.Web.Cache.AttributeCache.Get( attribute.Id );
+                    if ( attributeCache != null )
+                    {
+                        boundField.ItemStyle.HorizontalAlign = attributeCache.FieldType.Field.AlignValue;
+                    }
+
+                    gCalendarItemOccurrenceList.Columns.Add( boundField );
+                }
+            }
         }
 
         #endregion

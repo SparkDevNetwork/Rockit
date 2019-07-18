@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,7 +39,7 @@ namespace RockWeb.Blocks.Follow
     [Category( "Follow" )]
     [Description( "Block for displaying people that have been suggested to current person to follow." )]
 
-    public partial class PersonSuggestionList : Rock.Web.UI.RockBlock
+    public partial class PersonSuggestionList : RockBlock, ICustomGridColumns
     {
 
         #region Base Control Methods
@@ -118,7 +118,7 @@ namespace RockWeb.Blocks.Follow
             gSuggestions.SelectedKeys.ToList().ForEach( f => itemsSelected.Add( f.ToString().AsInteger() ) );
 
             // Get the personAlias entity type
-            var personAliasEntityType = EntityTypeCache.Read( typeof( Rock.Model.PersonAlias ));
+            var personAliasEntityType = EntityTypeCache.Get( typeof( Rock.Model.PersonAlias ));
 
             // If we have a valid current person and items were selected
             if ( personAliasEntityType != null && CurrentPersonAliasId.HasValue && itemsSelected.Any() )
@@ -219,7 +219,7 @@ namespace RockWeb.Blocks.Follow
         /// </summary>
         private void BindGrid()
         {
-            var personAliasEntityType = EntityTypeCache.Read( "Rock.Model.PersonAlias" );
+            var personAliasEntityType = EntityTypeCache.Get( "Rock.Model.PersonAlias" );
             if ( personAliasEntityType != null && CurrentPersonAlias != null )
             {
                 var rockContext = new RockContext();

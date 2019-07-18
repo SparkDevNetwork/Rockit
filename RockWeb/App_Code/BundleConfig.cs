@@ -30,6 +30,10 @@ public class BundleConfig
     {
         // start with a clean bundles (this seems to have fixed the javascript errors that would occur on the first time you debug after opening the solution)
         bundles.ResetAll();
+        
+        bundles.Add( new ScriptBundle( "~/Scripts/Bundles/RockJQueryLatest" ).Include(
+            "~/Scripts/jquery-3.3.1.min.js",
+            "~/Scripts/jquery-migrate-3.0.0.min.js" ) );
 
         bundles.Add( new ScriptBundle( "~/bundles/WebFormsJs" ).Include(
             "~/Scripts/WebForms/WebForms.js",
@@ -42,26 +46,31 @@ public class BundleConfig
             "~/Scripts/WebForms/WebParts.js" ) );
 
         bundles.Add( new ScriptBundle( "~/Scripts/Bundles/RockLibs" ).Include(
-            "~/Scripts/jquery-ui-1.10.0.custom.min.js",
+            "~/Scripts/jquery-ui-1.10.4.custom.min.js",
             "~/Scripts/bootstrap.min.js",
             "~/Scripts/bootstrap-timepicker.js",
             "~/Scripts/bootstrap-datepicker.js",
+            "~/Scripts/bootstrap-limit.js",
             "~/Scripts/bootstrap-modalmanager.js",
             "~/Scripts/bootstrap-modal.js",
             "~/Scripts/bootbox.min.js",
+            "~/Scripts/chosen.jquery.min.js",
             "~/Scripts/typeahead.min.js",
             "~/Scripts/jquery.fileupload.js",
-            "~/Scripts/jquery.tinyscrollbar.js",
+            "~/Scripts/jquery.stickytableheaders.js",
+            "~/Scripts/iscroll.js",
             "~/Scripts/jcrop.min.js",
             "~/Scripts/ResizeSensor.js",       
             "~/Scripts/ion.rangeSlider/js/ion-rangeSlider/ion.rangeSlider.min.js",
             "~/Scripts/Rock/Extensions/*.js" ) );
 
         bundles.Add( new ScriptBundle( "~/Scripts/Bundles/RockUi" ).Include(
+            "~/Scripts/Rock/coreListeners.js",
             "~/Scripts/Rock/dialogs.js",
             "~/Scripts/Rock/settings.js",
             "~/Scripts/Rock/utility.js",
-            "~/Scripts/Rock/Controls/*.js" ) );
+            "~/Scripts/Rock/Controls/*.js",
+            "~/Scripts/Rock/reportingInclude.js" ) );
 
         bundles.Add( new ScriptBundle( "~/Scripts/Bundles/RockValidation" ).Include(
             "~/Scripts/Rock/Validate/*.js" ) );
@@ -76,7 +85,7 @@ public class BundleConfig
         bundles.Add( new ScriptBundle( "~/Scripts/Bundles/RockHtmlEditorPlugins" ).Include(
             "~/Scripts/summernote/plugins/*.js" ) );
 
-        // make sure the ConcatenationToken is what we want.  This is supposed to be the default, but it occassionally was an empty string.
+        // make sure the ConcatenationToken is what we want.  This is supposed to be the default, but it occasionally was an empty string.
         foreach ( var bundle in bundles )
         {
             bundle.ConcatenationToken = ";\r\n";

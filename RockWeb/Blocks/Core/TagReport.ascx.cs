@@ -28,6 +28,8 @@ using Rock;
 using System.Web.UI.WebControls;
 using Rock.Web.UI.Controls;
 using Rock.Data;
+using Rock.Security;
+using System.Data.Entity;
 
 namespace RockWeb.Blocks.Core
 {
@@ -71,62 +73,71 @@ namespace RockWeb.Blocks.Core
             base.OnInit( e );
 
             gReport.DataKeyNames = new string[] { "Id" };
+            gReport.Actions.ShowAdd = false;
             gReport.GridRebind += gReport_GridRebind;
+            gReport.Actions.AddClick += gReport_AddClick;
 
-            int tagId = int.MinValue;
-            if ( int.TryParse( PageParameter( "tagId" ), out tagId ) && tagId > 0 )
+            TagId = PageParameter( "TagId" ).AsIntegerOrNull();
+            if ( TagId.HasValue && TagId.Value > 0 )
             {
-                Tag _tag = new TagService( new RockContext() ).Get( tagId );
-
-                if ( _tag != null )
+                Tag _tag = new TagService( new RockContext() ).Get( TagId.Value );
+                if ( _tag != null && _tag.IsAuthorized( Authorization.VIEW, CurrentPerson ) )
                 {
-                    TagId = tagId;
-                    TagEntityType = EntityTypeCache.Read( _tag.EntityTypeId );
+                    pnlGrid.Visible = true;
+                    lTaggedTitle.Text = "Tagged Items";
 
+                    TagEntityType = EntityTypeCache.Get( _tag.EntityTypeId ?? 0 );
                     if ( TagEntityType != null )
                     {
-                        Type modelType = TagEntityType.GetEntityType();
-
-                        gReport.RowItemText = modelType.Name + " Tag";
-                        lTaggedTitle.Text = "Tagged " + modelType.Name.Pluralize();
-
-                        if ( modelType != null )
+                        if ( TagEntityType.Name == "Rock.Model.Person" )
                         {
-                            // If displaying people, set the person id fiels so that merge and communication icons are displayed
-                            if ( TagEntityType.Name == "Rock.Model.Person" )
-                            {
-                                gReport.PersonIdField = "Id";
-                            }
+                            gReport.ColumnsOfType<SelectField>().First().Visible = true;
+                            gReport.PersonIdField = "PersonId";
+                            gReport.Actions.ShowAdd = _tag.IsAuthorized( Rock.Security.Authorization.TAG, CurrentPerson );
+                        }
 
-                            foreach ( var column in gReport.GetPreviewColumns( modelType ) )
-                            {
-                                gReport.Columns.Add( column );
-                            }
-
-                            // Add a CreatedDateTime if one does not exist
-                            var gridBoundColumns = gReport.Columns.OfType<BoundField>();
-                            if ( gridBoundColumns.Any( c => c.DataField.Equals( "CreatedDateTime" ) ) == false )
-                            {
-                                BoundField addedDateTime = new DateField();
-                                addedDateTime.DataField = "CreatedDateTime";
-                                addedDateTime.SortExpression = "CreatedDateTime";
-                                addedDateTime.HeaderText = "Date Tagged";
-                                gReport.Columns.Add( addedDateTime );
-                            }
-
-                            // Add delete column
-                            var deleteField = new DeleteField();
-                            gReport.Columns.Add( deleteField );
-                            deleteField.Click += gReport_Delete;
-
-                            if ( !Page.IsPostBack )
-                            {
-                                BindGrid();
-                            }
+                        var entityType = TagEntityType.GetEntityType();
+                        if ( entityType != null )
+                        {
+                            lTaggedTitle.Text = "Tagged " + entityType.Name.Pluralize().SplitCase();
+                            gReport.ColumnsOfType<RockTemplateField>().First( c => c.HeaderText == "Item" ).HeaderText = entityType.Name.SplitCase();
                         }
                     }
+
+                    gReport.ColumnsOfType<DeleteField>().First().Visible = _tag.IsAuthorized( Rock.Security.Authorization.TAG, CurrentPerson );
+
+                    if ( !Page.IsPostBack )
+                    {
+                        BindGrid();
+                    }
+                }
+                else
+                {
+                    pnlGrid.Visible = false;
                 }
             }
+        }
+
+        /// <summary>
+        /// Raises the <see cref="E:System.Web.UI.Control.Load" /> event.
+        /// </summary>
+        /// <param name="e">An <see cref="T:System.EventArgs" /> object that contains the event data.</param>
+        protected override void OnLoad( EventArgs e )
+        {
+            base.OnLoad( e );
+
+            var personPickerStartupScript = @"Sys.Application.add_load(function () {
+
+                // if the person picker is empty then open it for quick entry
+                var personPicker = $('.js-newperson');
+                var currentPerson = personPicker.find('.picker-selectedperson').html();
+                if (currentPerson != null && currentPerson.length == 0) {
+                    $(personPicker).find('a.picker-label').trigger('click');
+                }
+
+            });";
+
+            this.Page.ClientScript.RegisterStartupScript( this.GetType(), "StartupScript", personPickerStartupScript, true );
         }
 
         /// <summary>
@@ -146,11 +157,26 @@ namespace RockWeb.Blocks.Core
         /// <param name="e">The <see cref="Rock.Web.UI.Controls.RowEventArgs"/> instance containing the event data.</param>
         protected void gReport_RowSelected( object sender, Rock.Web.UI.Controls.RowEventArgs e )
         {
-            int id = int.MinValue;
-            if ( TagEntityType != null && int.TryParse( e.RowKeyValue.ToString(), out id ) )
+            using ( var rockContext = new RockContext() )
             {
-                string routePath = string.Format( "~/{0}/{1}", TagEntityType.FriendlyName.Replace( " ", "" ), id );
-                Response.Redirect( routePath, false );
+                var taggedItem = new TaggedItemService( rockContext ).Get( e.RowKeyId );
+                if ( taggedItem != null )
+                {
+                    var entityType = EntityTypeCache.Get( taggedItem.EntityTypeId );
+                    if ( entityType != null )
+                    {
+                        var entity = GetGenericEntity( entityType.GetEntityType(), taggedItem.EntityGuid ) as IEntity;
+                        if ( entity != null )
+                        {
+                            string url = string.Format( "~/{0}/{1}", entityType.FriendlyName.Replace( " ", "" ), entity.Id );
+                            if ( entityType.LinkUrlLavaTemplate.IsNotNullOrWhiteSpace() )
+                            {
+                                url = entityType.LinkUrlLavaTemplate.ResolveMergeFields( new Dictionary<string, object> { { "Entity", entity } } );
+                            }
+                            Response.Redirect( url, false );
+                        }
+                    }
+                }
             }
         }
 
@@ -161,35 +187,100 @@ namespace RockWeb.Blocks.Core
         /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
         protected void gReport_Delete( object sender, RowEventArgs e )
         {
-            int id = int.MinValue;
-            if ( TagId.HasValue && int.TryParse( e.RowKeyValue.ToString(), out id ) )
+            using ( var rockContext = new RockContext() )
             {
-                object obj = InvokeServiceMethod( "Get", new Type[] { typeof( int ) }, new object[] { id } );
-                if ( obj != null )
+                var taggedItemService = new TaggedItemService( rockContext );
+                var taggedItem = taggedItemService.Get( e.RowKeyId );
+                if ( taggedItem != null && taggedItem.IsAuthorized( Rock.Security.Authorization.TAG, CurrentPerson ) )
                 {
-                    Rock.Data.IEntity entity = obj as Rock.Data.IEntity;
-                    if ( entity != null )
+                    string errorMessage;
+                    if ( !taggedItemService.CanDelete( taggedItem, out errorMessage ) )
                     {
-                        var rockContext = new RockContext();
-                        var service = new TaggedItemService( rockContext );
-                        var taggedItem = service.Get( TagId.Value, entity.Guid );
-                        if ( taggedItem != null )
-                        {
-                            string errorMessage;
-                            if ( !service.CanDelete( taggedItem, out errorMessage ) )
-                            {
-                                mdGridWarning.Show( errorMessage, ModalAlertType.Information );
-                                return;
-                            }
-
-                            service.Delete( taggedItem );
-                            rockContext.SaveChanges();
-                        }
+                        mdGridWarning.Show( errorMessage, ModalAlertType.Information );
+                        return;
                     }
+
+                    taggedItemService.Delete( taggedItem );
+                    rockContext.SaveChanges();
                 }
+
+                BindGrid();
+            }
+        }
+
+        /// <summary>
+        /// Handles the AddClick event of the gReport control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        private void gReport_AddClick( object sender, EventArgs e )
+        {
+            nbAddPersonExists.Visible = false;
+            mdAddPerson.Show();
+        }
+
+        /// <summary>
+        /// Handles the SaveClick event of the mdAddPerson control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void mdAddPerson_SaveClick( object sender, EventArgs e )
+        {
+            if ( !AddPerson( ppNewPerson.SelectedValue.Value ) )
+            {
+                nbAddPersonExists.Visible = true;
+                return;
+            }
+
+            mdAddPerson.Hide();
+            BindGrid();
+        }
+
+        /// <summary>
+        /// Handles the SaveThenAddClick event of the mdAddPerson control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void mdAddPerson_SaveThenAddClick( object sender, EventArgs e )
+        {
+            if ( !AddPerson( ppNewPerson.SelectedValue.Value ) )
+            {
+                nbAddPersonExists.Visible = true;
+                return;
             }
 
             BindGrid();
+            ppNewPerson.SetValue( null );
+            nbAddPersonExists.Visible = false;
+        }
+
+        /// <summary>
+        /// Add the person to the tag.
+        /// </summary>
+        /// <returns>True if the person was added, false if they already existed in the tag.</returns>
+        private bool AddPerson( int personId )
+        {
+            using ( var rockContext = new RockContext() )
+            {
+                var taggedItemService = new TaggedItemService( rockContext );
+                Tag tag = new TagService( rockContext ).Get( TagId.Value );
+                var person = new PersonService( rockContext ).Get( personId );
+
+                if ( taggedItemService.Get( tag.Id, person.Guid ) != null )
+                {
+                    return false;
+                }
+
+                var taggedItem = new TaggedItem();
+                taggedItem.TagId = TagId.Value;
+                taggedItem.EntityTypeId = TagEntityType.Id;
+                taggedItem.EntityGuid = person.Guid;
+                taggedItemService.Add( taggedItem );
+
+                rockContext.SaveChanges();
+
+                return true;
+            }
         }
 
         #endregion
@@ -201,44 +292,64 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         private void BindGrid()
         {
-            var guids = new TaggedItemService( new RockContext() ).Queryable().Where( t => t.TagId == TagId.Value )
-                .Select( t => new { t.EntityGuid, t.CreatedDateTime } )
-                .ToDictionary( o => o.EntityGuid, o => o.CreatedDateTime );
-
-            var enumerable = InvokeServiceMethod( "GetListByGuids", new Type[] { typeof( List<Guid> ) }, new object[] { guids.Keys.ToList() } ) as System.Collections.IEnumerable;
-
-            // Since we don't really know what is in the "obj" that was returned, we check if it's
-            // enumerable then reuse the CreatedDateTime property of the DataSource if it has one.
-            // In the future, perhaps consider creating a merged data source so the CreatedDateTime
-            // property/column doesn't have to be hijacked.
-            if ( enumerable != null )
+            using ( var rockContext = new RockContext() )
             {
-                if ( enumerable is IEnumerable<Person> )
+                var service = new TaggedItemService( rockContext );
+                var people = new PersonService( rockContext ).Queryable().AsNoTracking();
+
+                IQueryable<TaggedItemRow> results = null;
+
+                if ( TagEntityType != null && TagEntityType.Name == "Rock.Model.Person" )
                 {
-                    enumerable = ( enumerable as IEnumerable<Person> ).AsQueryable().Sort( gReport.SortProperty ?? new SortProperty { Property = "Id" } ).ToList();
-                    gReport.AllowSorting = true;
+                    results = service.Queryable().AsNoTracking()
+                        .Where( t =>
+                            t.TagId == TagId.Value )
+                        .Join( people, t => t.EntityGuid, p => p.Guid, ( t, p ) => new TaggedItemRow
+                        {
+                            Id = t.Id,
+                            EntityTypeId = t.EntityTypeId,
+                            EntityGuid = t.EntityGuid,
+                            CreatedDateTime = t.CreatedDateTime,
+                            PersonId = p.Id,
+                        } );
                 }
                 else
                 {
-                    gReport.AllowSorting = false;
+                    results = service.Queryable().AsNoTracking()
+                        .Where( t =>
+                            t.TagId == TagId.Value )
+                        .Select( t => new TaggedItemRow
+                        {
+                            Id = t.Id,
+                            EntityTypeId = t.EntityTypeId,
+                            EntityGuid = t.EntityGuid,
+                            CreatedDateTime = t.CreatedDateTime
+                        } );
                 }
 
-                foreach ( var entity in enumerable )
+                if ( TagEntityType != null )
                 {
-                    var property = entity.GetType().GetProperty( "CreatedDateTime" );
-                    var guid = entity.GetType().GetProperty( "Guid" );
-                    // Now re-set the CreatedDateTime with the tag's CreatedDateTime (if that property is in the entity)
-                    if ( property != null && guid != null )
-                    {
-                        var val = (Guid)guid.GetValue( entity, null );
-                        property.SetValue( entity, guids[val], null );
-                    }
+                    gReport.EntityTypeId = TagEntityType.Id;
+                }
+
+                gReport.DataSource = results.ToList();
+                gReport.DataBind();
+            }
+        }
+
+        public string GetItemName( int entityTypeId, Guid entityGuid )
+        {
+            var entityType = EntityTypeCache.Get( entityTypeId );
+            if ( entityType != null )
+            {
+                var entity = GetGenericEntity( entityType.GetEntityType(), entityGuid ) as IEntity;
+                if ( entity != null )
+                {
+                    return entity.ToString();
                 }
             }
 
-            gReport.DataSource = enumerable;
-
-            gReport.DataBind();
+            return "Item?";
         }
 
         /// <summary>
@@ -250,10 +361,8 @@ namespace RockWeb.Blocks.Core
             pnlContent.Visible = visible;
         }
 
-        private object InvokeServiceMethod( string methodName, Type[] types, object[] parameters )
+        private object GetGenericEntity( Type modelType, Guid guid )
         {
-            Type modelType = TagEntityType.GetEntityType();
-
             // Get the context type since this may be for a non-rock core object
             Type contextType = null;
             var contexts = Rock.Reflection.SearchAssembly( modelType.Assembly, typeof( System.Data.Entity.DbContext ) );
@@ -275,10 +384,10 @@ namespace RockWeb.Blocks.Core
                 Object serviceInstance = Activator.CreateInstance( modelServiceType, new object[] { context } );
                 if ( serviceInstance != null )
                 {
-                    MethodInfo method = serviceInstance.GetType().GetMethod( methodName, types );
+                    MethodInfo method = serviceInstance.GetType().GetMethod( "Get", new Type[] { typeof( Guid ) } );
                     if ( method != null )
                     {
-                        return method.Invoke( serviceInstance, parameters );
+                        return method.Invoke( serviceInstance, new object[] { guid } );
                     }
                 }
             }
@@ -288,5 +397,13 @@ namespace RockWeb.Blocks.Core
 
         #endregion
 
+        private class TaggedItemRow
+        {
+            public int Id { get; set; }
+            public int PersonId { get; set; }
+            public int EntityTypeId { get; set; }
+            public Guid EntityGuid { get; set; }
+            public DateTime? CreatedDateTime { get; set; }
+        }
     }
 }

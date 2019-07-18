@@ -10,7 +10,7 @@
                 <main>
                     <div class="row">
                         <div class="col-md-8">
-                            <asp:ValidationSummary ID="valValidation" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                            <asp:ValidationSummary ID="valValidation" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
                             <Rock:NotificationBox ID="nbWarningMessage" runat="server" NotificationBoxType="Warning" Title="Warning" Visible="false" />
 
                             <fieldset>
@@ -44,7 +44,7 @@
                             </fieldset>
                         </div>
                         <div class="col-md-4">
-                            <asp:LinkButton ID="lbSave" runat="server" AccessKey="s" Text="Save Request" OnClick="btnSave_Click" CssClass="btn btn-primary btn-kiosk btn-kiosk-lg" CausesValidation="True"/>
+                            <asp:LinkButton ID="lbSave" runat="server" AccessKey="s" ToolTip="Alt+s" Text="Save Request" OnClick="btnSave_Click" CssClass="btn btn-primary btn-kiosk btn-kiosk-lg" CausesValidation="True"/>
                         </div>
                     </div>
                 </main>

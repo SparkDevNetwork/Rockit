@@ -92,6 +92,14 @@ namespace RockWeb.Blocks.Core
             // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upCategoryTree );
+
+            bool? hideInactiveItems = this.GetUserPreference( "HideInactiveItems" ).AsBooleanOrNull();
+            if ( !hideInactiveItems.HasValue )
+            {
+                hideInactiveItems = false;
+            }
+
+            tglHideInactiveItems.Checked = hideInactiveItems ?? false;
         }
 
         /// <summary>
@@ -130,7 +138,7 @@ namespace RockWeb.Blocks.Core
             else
             {
                 hfPageRouteTemplate.Value = string.Empty;
-                var pageCache = PageCache.Read( detailPageReference.PageId );
+                var pageCache = PageCache.Get( detailPageReference.PageId );
                 if ( pageCache != null )
                 {
                     var route = pageCache.PageRoutes.FirstOrDefault( a => a.Id == detailPageReference.RouteId );
@@ -149,59 +157,14 @@ namespace RockWeb.Blocks.Core
             nbWarning.Visible = !entityTypeGuid.HasValue;
             if ( entityTypeGuid.HasValue )
             {
-                int entityTypeId = Rock.Web.Cache.EntityTypeCache.Read( entityTypeGuid.Value ).Id;
-                string entityTypeQualiferColumn = GetAttributeValue( "EntityTypeQualifierProperty" );
-                string entityTypeQualifierValue = GetAttributeValue( "EntityTypeQualifierValue" );
-                bool showUnnamedEntityItems = GetAttributeValue( "ShowUnnamedEntityItems" ).AsBooleanOrNull() ?? true;
-
-                string parms = string.Format( "?getCategorizedItems=true&showUnnamedEntityItems={0}", showUnnamedEntityItems.ToTrueFalse().ToLower() );
-                parms += string.Format( "&entityTypeId={0}", entityTypeId );
-
-                var rootCategory = CategoryCache.Read( this.GetAttributeValue( "RootCategory" ).AsGuid() );
-
-                // make sure the rootCategory matches the EntityTypeId (just in case they changed the EntityType after setting RootCategory
-                if ( rootCategory != null && rootCategory.EntityTypeId == entityTypeId )
-                {
-                    parms += string.Format( "&rootCategoryId={0}", rootCategory.Id );
-                }
-
-                if ( !string.IsNullOrEmpty( entityTypeQualiferColumn ) )
-                {
-                    parms += string.Format( "&entityQualifier={0}", entityTypeQualiferColumn );
-
-                    if ( !string.IsNullOrEmpty( entityTypeQualifierValue ) )
-                    {
-                        parms += string.Format( "&entityQualifierValue={0}", entityTypeQualifierValue );
-                    }
-                }
-
-                var excludeCategoriesGuids = this.GetAttributeValue( "ExcludeCategories" ).SplitDelimitedValues().AsGuidList();
-                List<int> excludedCategoriesIds = new List<int>();
-                if ( excludeCategoriesGuids != null && excludeCategoriesGuids.Any() )
-                {
-                    foreach ( var excludeCategoryGuid in excludeCategoriesGuids )
-                    {
-                        var excludedCategory = CategoryCache.Read( excludeCategoryGuid );
-                        if (excludedCategory != null)
-                        {
-                            excludedCategoriesIds.Add( excludedCategory.Id );
-                        }
-                    }
-                    
-                    parms += string.Format( "&excludedCategoryIds={0}", excludedCategoriesIds.AsDelimited(",") );
-                }
-
-                string defaultIconCssClass = GetAttributeValue("DefaultIconCSSClass");
-                if ( !string.IsNullOrWhiteSpace( defaultIconCssClass ) )
-                {
-                    parms += string.Format( "&defaultIconCssClass={0}", defaultIconCssClass );
-                }
-
-                RestParms = parms;
-
-                var cachedEntityType = Rock.Web.Cache.EntityTypeCache.Read( entityTypeId );
+                var cachedEntityType = EntityTypeCache.Get( entityTypeGuid.Value );
                 if ( cachedEntityType != null )
                 {
+                    Type entityType = cachedEntityType.GetEntityType();
+                    bool isActivatedType = entityType != null && typeof( IHasActiveFlag ).IsAssignableFrom( entityType );
+                    pnlConfigPanel.Visible = isActivatedType;
+                    pnlRolloverConfig.Visible = isActivatedType;
+
                     string entityTypeFriendlyName = GetAttributeValue( "EntityTypeFriendlyName" );
                     if ( string.IsNullOrWhiteSpace( entityTypeFriendlyName ) )
                     {
@@ -210,54 +173,106 @@ namespace RockWeb.Blocks.Core
 
                     lbAddItem.ToolTip = "Add " + entityTypeFriendlyName;
                     lAddItem.Text = entityTypeFriendlyName;
-                }
 
-                // Attempt to retrieve an EntityId from the Page URL parameters.
-                PageParameterName = GetAttributeValue( "PageParameterKey" );
+                    string entityTypeQualiferColumn = GetAttributeValue( "EntityTypeQualifierProperty" );
+                    string entityTypeQualifierValue = GetAttributeValue( "EntityTypeQualifierValue" );
+                    bool showUnnamedEntityItems = GetAttributeValue( "ShowUnnamedEntityItems" ).AsBooleanOrNull() ?? true;
 
-                string selectedNodeId = null;
-                
-                int? itemId = PageParameter( PageParameterName ).AsIntegerOrNull();
-                string selectedEntityType;
-                if (itemId.HasValue)
-                {
-                    selectedNodeId = itemId.ToString();
-                    selectedEntityType = (cachedEntityType != null) ? cachedEntityType.Name : string.Empty;
-                }
-                else
-                {
-                    // If an EntityId was not specified, check for a CategoryId.
-                    itemId = PageParameter( "CategoryId" ).AsIntegerOrNull();
+                    string parms = string.Format( "?getCategorizedItems=true&showUnnamedEntityItems={0}", showUnnamedEntityItems.ToTrueFalse().ToLower() );
+                    parms += string.Format( "&entityTypeId={0}", cachedEntityType.Id );
+                    parms += string.Format( "&includeInactiveItems={0}", ( !tglHideInactiveItems.Checked ).ToTrueFalse() );
 
-                    selectedNodeId = CategoryNodePrefix + itemId;
-                    selectedEntityType = "category";
-                }
+                    Guid? rootCategoryGuid = this.GetAttributeValue( "RootCategory" ).AsGuidOrNull();
 
-                lbAddCategoryRoot.Enabled = true;
-                lbAddCategoryChild.Enabled = false;
-                lbAddItem.Enabled = false;
-
-                CategoryCache selectedCategory = null;
-
-                if ( !string.IsNullOrEmpty( selectedNodeId ) )
-                {
-                    hfSelectedItemId.Value = selectedNodeId;
-                    List<string> parentIdList = new List<string>();
-
-                    if ( selectedEntityType.Equals( "category" ) )
+                    CategoryCache rootCategory = null;
+                    if ( rootCategoryGuid.HasValue )
                     {
-                        selectedCategory = CategoryCache.Read( itemId.GetValueOrDefault() );
-                        if ( selectedCategory != null && !canEditBlock && selectedCategory.IsAuthorized( Authorization.EDIT, CurrentPerson ) )
+                        rootCategory = CategoryCache.Get( rootCategoryGuid.Value );
+                    }
+
+                    // make sure the rootCategory matches the EntityTypeId (just in case they changed the EntityType after setting RootCategory
+                    if ( rootCategory != null && rootCategory.EntityTypeId == cachedEntityType.Id )
+                    {
+                        parms += string.Format( "&rootCategoryId={0}", rootCategory.Id );
+                    }
+
+                    if ( !string.IsNullOrEmpty( entityTypeQualiferColumn ) )
+                    {
+                        parms += string.Format( "&entityQualifier={0}", entityTypeQualiferColumn );
+
+                        if ( !string.IsNullOrEmpty( entityTypeQualifierValue ) )
                         {
-                            // Show the action buttons if user has edit rights to category
-                            divTreeviewActions.Visible = true;
+                            parms += string.Format( "&entityQualifierValue={0}", entityTypeQualifierValue );
                         }
+                    }
+
+                    var excludeCategoriesGuids = this.GetAttributeValue( "ExcludeCategories" ).SplitDelimitedValues().AsGuidList();
+                    List<int> excludedCategoriesIds = new List<int>();
+                    if ( excludeCategoriesGuids != null && excludeCategoriesGuids.Any() )
+                    {
+                        foreach ( var excludeCategoryGuid in excludeCategoriesGuids )
+                        {
+                            var excludedCategory = CategoryCache.Get( excludeCategoryGuid );
+                            if ( excludedCategory != null )
+                            {
+                                excludedCategoriesIds.Add( excludedCategory.Id );
+                            }
+                        }
+
+                        parms += string.Format( "&excludedCategoryIds={0}", excludedCategoriesIds.AsDelimited( "," ) );
+                    }
+
+                    string defaultIconCssClass = GetAttributeValue( "DefaultIconCSSClass" );
+                    if ( !string.IsNullOrWhiteSpace( defaultIconCssClass ) )
+                    {
+                        parms += string.Format( "&defaultIconCssClass={0}", defaultIconCssClass );
+                    }
+
+                    RestParms = parms;
+
+                    // Attempt to retrieve an EntityId from the Page URL parameters.
+                    PageParameterName = GetAttributeValue( "PageParameterKey" );
+
+                    string selectedNodeId = null;
+
+                    int? itemId = PageParameter( PageParameterName ).AsIntegerOrNull();
+                    string selectedEntityType;
+                    if ( itemId.HasValue )
+                    {
+                        selectedNodeId = itemId.ToString();
+                        selectedEntityType = ( cachedEntityType != null ) ? cachedEntityType.Name : string.Empty;
                     }
                     else
                     {
-                        if ( cachedEntityType != null )
+                        // If an EntityId was not specified, check for a CategoryId.
+                        itemId = PageParameter( "CategoryId" ).AsIntegerOrNull();
+
+                        selectedNodeId = CategoryNodePrefix + itemId;
+                        selectedEntityType = "category";
+                    }
+
+                    lbAddCategoryRoot.Enabled = true;
+                    lbAddCategoryChild.Enabled = false;
+                    lbAddItem.Enabled = false;
+
+                    CategoryCache selectedCategory = null;
+
+                    if ( !string.IsNullOrEmpty( selectedNodeId ) )
+                    {
+                        hfSelectedItemId.Value = selectedNodeId;
+                        List<string> parentIdList = new List<string>();
+
+                        if ( selectedEntityType.Equals( "category" ) )
                         {
-                            Type entityType = cachedEntityType.GetEntityType();
+                            selectedCategory = CategoryCache.Get( itemId.GetValueOrDefault() );
+                            if ( selectedCategory != null && !canEditBlock && selectedCategory.IsAuthorized( Authorization.EDIT, CurrentPerson ) )
+                            {
+                                // Show the action buttons if user has edit rights to category
+                                divTreeviewActions.Visible = true;
+                            }
+                        }
+                        else
+                        {
                             if ( entityType != null )
                             {
                                 Type serviceType = typeof( Rock.Data.Service<> );
@@ -272,7 +287,7 @@ namespace RockWeb.Blocks.Core
                                     lbAddCategoryChild.Enabled = false;
                                     if ( entity.CategoryId.HasValue )
                                     {
-                                        selectedCategory = CategoryCache.Read( entity.CategoryId.Value );
+                                        selectedCategory = CategoryCache.Get( entity.CategoryId.Value );
                                         if ( selectedCategory != null )
                                         {
                                             string categoryExpandedID = CategoryNodePrefix + selectedCategory.Id.ToString();
@@ -282,58 +297,66 @@ namespace RockWeb.Blocks.Core
                                 }
                             }
                         }
-                    }
 
-                    // get the parents of the selected item so we can tell the treeview to expand those
-                    var category = selectedCategory;
-                    while ( category != null )
-                    {
-                        category = category.ParentCategory;
-                        if ( category != null )
+                        // get the parents of the selected item so we can tell the treeview to expand those
+                        var category = selectedCategory;
+                        while ( category != null )
                         {
-                            string categoryExpandedID = CategoryNodePrefix + category.Id.ToString();
-                            if ( !parentIdList.Contains( categoryExpandedID ) )
+                            category = category.ParentCategory;
+                            if ( category != null )
                             {
-                                parentIdList.Insert( 0, categoryExpandedID );
+                                string categoryExpandedID = CategoryNodePrefix + category.Id.ToString();
+                                if ( !parentIdList.Contains( categoryExpandedID ) )
+                                {
+                                    parentIdList.Insert( 0, categoryExpandedID );
+                                }
+                                else
+                                {
+                                    // infinite recursion
+                                    break;
+                                }
                             }
-                            else
+
+                        }
+                        // also get any additional expanded nodes that were sent in the Post
+                        string postedExpandedIds = this.Request.Params["ExpandedIds"];
+                        if ( !string.IsNullOrWhiteSpace( postedExpandedIds ) )
+                        {
+                            var postedExpandedIdList = postedExpandedIds.Split( ',' ).ToList();
+                            foreach ( var id in postedExpandedIdList )
                             {
-                                // infinite recursion
-                                break;
+                                if ( !parentIdList.Contains( id ) )
+                                {
+                                    parentIdList.Add( id );
+                                }
                             }
                         }
 
+                        hfInitialCategoryParentIds.Value = parentIdList.AsDelimited( "," );
                     }
-                    // also get any additional expanded nodes that were sent in the Post
-                    string postedExpandedIds = this.Request.Params["ExpandedIds"];
-                    if ( !string.IsNullOrWhiteSpace( postedExpandedIds ) )
+
+                    selectedCategory = selectedCategory ?? rootCategory;
+
+                    if ( selectedCategory != null )
                     {
-                        var postedExpandedIdList = postedExpandedIds.Split( ',' ).ToList();
-                        foreach ( var id in postedExpandedIdList )
-                        {
-                            if ( !parentIdList.Contains( id ) )
-                            {
-                                parentIdList.Add( id );
-                            }
-                        }
+                        lbAddItem.Enabled = true;
+                        lbAddCategoryChild.Enabled = true;
+                        this.SelectedCategoryId = selectedCategory.Id;
                     }
-
-                    hfInitialCategoryParentIds.Value = parentIdList.AsDelimited( "," );
-                }
-
-                selectedCategory = selectedCategory ?? rootCategory;
-
-                if ( selectedCategory != null )
-                {
-                    lbAddItem.Enabled = true;
-                    lbAddCategoryChild.Enabled = true;
-                    this.SelectedCategoryId = selectedCategory.Id;
-                }
-                else
-                {
-                    this.SelectedCategoryId = null;
+                    else
+                    {
+                        this.SelectedCategoryId = null;
+                    }
                 }
             }
+        }
+
+        protected void tglHideInactiveItems_CheckedChanged( object sender, EventArgs e )
+        {
+            this.SetUserPreference( "HideInactiveItems", tglHideInactiveItems.Checked.ToTrueFalse() );
+
+            // reload the whole page
+            NavigateToPage( this.RockPage.Guid, new Dictionary<string, string>() );
         }
 
         /// <summary>
@@ -404,7 +427,7 @@ namespace RockWeb.Blocks.Core
         protected override void ShowSettings()
         {
             mdCategoryTreeConfig.Visible = true;
-            var entityType = EntityTypeCache.Read( this.GetAttributeValue( "EntityType" ).AsGuid() );
+            var entityType = EntityTypeCache.Get( this.GetAttributeValue( "EntityType" ).AsGuid() );
             var rootCategory = new CategoryService( new RockContext() ).Get( this.GetAttributeValue( "RootCategory" ).AsGuid() );
             
 
@@ -447,14 +470,14 @@ namespace RockWeb.Blocks.Core
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void mdCategoryTreeConfig_SaveClick( object sender, EventArgs e )
         {
-            var selectedCategory = CategoryCache.Read( cpRootCategory.SelectedValue.AsInteger() );
+            var selectedCategory = CategoryCache.Get( cpRootCategory.SelectedValue.AsInteger() );
             this.SetAttributeValue( "RootCategory", selectedCategory != null ? selectedCategory.Guid.ToString() : string.Empty );
 
             var excludedCategoryIds = cpExcludeCategories.SelectedValuesAsInt();
             var excludedCategoryGuids = new List<Guid>();
             foreach (int excludedCategoryId in excludedCategoryIds)
             {
-                var excludedCategory = CategoryCache.Read( excludedCategoryId );
+                var excludedCategory = CategoryCache.Get( excludedCategoryId );
                 if (excludedCategory != null)
                 {
                     excludedCategoryGuids.Add( excludedCategory.Guid );

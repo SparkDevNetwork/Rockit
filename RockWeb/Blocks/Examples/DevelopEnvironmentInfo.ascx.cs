@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,12 +16,17 @@
 //
 using System;
 using System.ComponentModel;
+using System.Data.Entity;
+using System.Linq;
 using System.Net;
+using System.Web;
 using System.Web.UI;
 using Rock;
 using Rock.Data;
 using Rock.Model;
+using Rock.Utility;
 using Rock.Web;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 
 namespace RockWeb.Blocks.Examples
@@ -106,13 +111,30 @@ Path: {2}",
         }
 
         /// <summary>
-        /// Handles the Click event of the btnLoadPages control.
+        /// Handles the Click event of the btnLoadBlockTypesAndPages control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void btnLoadPages_Click( object sender, EventArgs e )
+        protected void btnLoadBlockTypesAndPages_Click( object sender, EventArgs e )
         {
             var rockContext = new RockContext();
+
+            // ensure update attributes is called on every blocktype
+            foreach( var blockType in new BlockTypeService(rockContext).Queryable().AsNoTracking().ToList())
+            {
+                System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var blockTypeCache = BlockTypeCache.Get( blockType.Guid );
+                if ( !blockTypeCache.IsInstancePropertiesVerified )
+                {
+                    var blockControl = this.Page.LoadControl( blockTypeCache.Path ) as RockBlock;
+                    int? blockEntityTypeId = EntityTypeCache.Get( typeof( Block ) ).Id;
+                    Rock.Attribute.Helper.UpdateAttributes( blockControl.GetType(), blockEntityTypeId, "BlockTypeId", blockType.Id.ToString(), rockContext );
+                    blockTypeCache.MarkInstancePropertiesVerified( true );
+                    System.Diagnostics.Debug.WriteLine( string.Format( "[{1}ms] BlockType {0}", blockTypeCache.Path, stopwatch.Elapsed.TotalMilliseconds ) );
+                }
+
+                stopwatch.Stop();
+            }
 
             foreach ( var page in new PageService( rockContext ).Queryable() )
             {
@@ -123,7 +145,7 @@ Path: {2}",
 
                     url = string.Format( "http{0}://{1}:{2}{3}",
                         ( Request.IsSecureConnection ) ? "s" : "",
-                        Request.Url.Host,
+                        WebRequestHelper.GetHostNameFromRequest( HttpContext.Current ),
                         Request.Url.Port,
                         ResolveRockUrl( new PageReference( page.Id ).BuildUrl() ) );
 

@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +37,7 @@ namespace RockWeb.Blocks.Cms
     [DisplayName("Layout Block List")]
     [Category("CMS")]
     [Description("Lists blocks that are on a given site layout.")]
-    public partial class LayoutBlockList : RockBlock, ISecondaryBlock
+    public partial class LayoutBlockList : RockBlock, ISecondaryBlock, ICustomGridColumns
     {
         #region Control Methods
 
@@ -55,7 +55,7 @@ namespace RockWeb.Blocks.Cms
                 gLayoutBlocks.Actions.ShowAdd = false;
                 gLayoutBlocks.GridRebind += gLayoutBlocks_GridRebind;
                 //SecurityField securityField = gLayoutBlocks.Columns[4] as SecurityField;
-                //securityField.EntityTypeId = EntityTypeCache.Read( typeof( Rock.Model.Block ) ).Id;
+                //securityField.EntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.Block ) ).Id;
             }
         }
 
@@ -98,8 +98,6 @@ namespace RockWeb.Blocks.Cms
 
                 blockService.Delete( block );
                 rockContext.SaveChanges();
-
-                BlockCache.Flush( e.RowKeyId );
             }
 
             BindLayoutBlocksGrid();
@@ -131,7 +129,7 @@ namespace RockWeb.Blocks.Cms
             }
 
             var rockContext = new RockContext();
-            var layout = LayoutCache.Read( layoutId, rockContext );
+            var layout = LayoutCache.Get( layoutId, rockContext );
             if (layout == null)
             {
                 pnlContent.Visible = false;

@@ -8,14 +8,22 @@
   A better method for styling can be seen below with .jcrop-light
   (Add a class to the holder and style elements for that extended class)
 */
+.crop-container {
+  margin: 0 auto;
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABlBMVEVmZmZ/f39ERVlDAAAAEUlEQVQIW2P8z8iIFTH8x4oAgXMQCWJFLxgAAAAASUVORK5CYII=');
+  overflow: hidden;
+}
 .jcrop-holder {
   direction: ltr;
   text-align: left;
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
 }
 /* Selection Border */
 .jcrop-vline,
 .jcrop-hline {
-  background: #ffffff url(data:image/gif;base64, R0lGODlhCAAIAJEAAKqqqv///wAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQJCgAAACwAAAAACAAIAAACDZQFCadrzVRMB9FZ5SwAIfkECQoAAAAsAAAAAAgACAAAAg+ELqCYaudeW9ChyOyltQAAIfkECQoAAAAsAAAAAAgACAAAAg8EhGKXm+rQYtC0WGl9oAAAIfkECQoAAAAsAAAAAAgACAAAAg+EhWKQernaYmjCWLF7qAAAIfkECQoAAAAsAAAAAAgACAAAAg2EISmna81UTAfRWeUsACH5BAkKAAAALAAAAAAIAAgAAAIPFA6imGrnXlvQocjspbUAACH5BAkKAAAALAAAAAAIAAgAAAIPlIBgl5vq0GLQtFhpfaIAACH5BAUKAAAALAAAAAAIAAgAAAIPlIFgknq52mJowlixe6gAADs=);
+  background: #39f;
   font-size: 0;
   position: absolute;
 }
@@ -44,61 +52,76 @@
   /* disable cut copy paste */
   -webkit-user-select: none;
 }
+
+// .jcrop-holder > div .jcrop-tracker {
+//   &::before,
+//   &::after {
+//     border: 0 dashed #eee;
+//     display: block;
+//     opacity: .5;
+//     position: absolute;
+//   }
+
+//   &::before {
+//     content: " ";
+//     border-bottom-width: 1px;
+//     border-top-width: 1px;
+//     height: calc(100% / 3);
+//     left: 0;
+//     top: calc(100% / 3);
+//     width: 100%;
+//   }
+
+//   &::after {
+//     content: " ";
+//     border-left-width: 1px;
+//     border-right-width: 1px;
+//     height: 100%;
+//     left: calc(100% / 3);
+//     top: 0;
+//     width: calc(100% / 3);
+//   }
+// }
+
 /* Selection Handles */
+@jcrop-handle-size: 10px;
+
 .jcrop-handle {
-  background-color: #333333;
-  border: 1px #eeeeee solid;
-  width: 7px;
-  height: 7px;
+  background-color: #39f;
+  width: @jcrop-handle-size;
+  height: @jcrop-handle-size;
   font-size: 1px;
+  opacity: 1 !important;
 }
-.jcrop-handle.ord-n {
-  left: 50%;
-  margin-left: -4px;
-  margin-top: -4px;
-  top: 0;
-}
-.jcrop-handle.ord-s {
-  bottom: 0;
-  left: 50%;
-  margin-bottom: -4px;
-  margin-left: -4px;
-}
-.jcrop-handle.ord-e {
-  margin-right: -4px;
-  margin-top: -4px;
-  right: 0;
-  top: 50%;
-}
+.jcrop-handle.ord-n,
+.jcrop-handle.ord-s,
+.jcrop-handle.ord-e,
 .jcrop-handle.ord-w {
-  left: 0;
-  margin-left: -4px;
-  margin-top: -4px;
-  top: 50%;
+  display: none;
 }
 .jcrop-handle.ord-nw {
   left: 0;
-  margin-left: -4px;
-  margin-top: -4px;
+  margin-left: -(@jcrop-handle-size / 2);
+  margin-top: -(@jcrop-handle-size / 2);
   top: 0;
 }
 .jcrop-handle.ord-ne {
-  margin-right: -4px;
-  margin-top: -4px;
+  margin-right: -(@jcrop-handle-size / 2);
+  margin-top: -(@jcrop-handle-size / 2);
   right: 0;
   top: 0;
 }
 .jcrop-handle.ord-se {
   bottom: 0;
-  margin-bottom: -4px;
-  margin-right: -4px;
+  margin-bottom: -(@jcrop-handle-size / 2);
+  margin-right: -(@jcrop-handle-size / 2);
   right: 0;
 }
 .jcrop-handle.ord-sw {
   bottom: 0;
   left: 0;
-  margin-bottom: -4px;
-  margin-left: -4px;
+  margin-bottom: -(@jcrop-handle-size / 2);
+  margin-left: -(@jcrop-handle-size / 2);
 }
 /* Dragbars */
 .jcrop-dragbar.ord-n,
@@ -112,18 +135,18 @@
   width: 7px;
 }
 .jcrop-dragbar.ord-n {
-  margin-top: -4px;
+  margin-top: -(@jcrop-handle-size / 2);
 }
 .jcrop-dragbar.ord-s {
   bottom: 0;
-  margin-bottom: -4px;
+  margin-bottom: -(@jcrop-handle-size / 2);
 }
 .jcrop-dragbar.ord-e {
-  margin-right: -4px;
+  margin-right: -(@jcrop-handle-size / 2);
   right: 0;
 }
 .jcrop-dragbar.ord-w {
-  margin-left: -4px;
+  margin-left: -(@jcrop-handle-size / 2);
 }
 /* The "jcrop-light" class/extension */
 .jcrop-light .jcrop-vline,
@@ -138,25 +161,6 @@
   background-color: #000000;
   border-color: #ffffff;
   border-radius: 3px;
-}
-/* The "jcrop-dark" class/extension */
-.jcrop-dark .jcrop-vline,
-.jcrop-dark .jcrop-hline {
-  background: #000000;
-  filter: alpha(opacity=70) !important;
-  opacity: 0.7 !important;
-}
-.jcrop-dark .jcrop-handle {
-  -moz-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  background-color: #ffffff;
-  border-color: #000000;
-  border-radius: 3px;
-}
-/* Simple macro to turn off the antlines */
-.solid-line .jcrop-vline,
-.solid-line .jcrop-hline {
-  background: #ffffff;
 }
 /* Fix for twitter bootstrap et al. */
 .jcrop-holder img,

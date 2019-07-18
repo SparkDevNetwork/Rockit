@@ -1,4 +1,4 @@
-﻿
+
 
 //
 // MODAL STYLES
@@ -9,7 +9,7 @@
 // -------------------------
 
 // import as less files so they are concatenated properly
-@import (less) "./bootstrap-modal/bootstrap-modal-bs3patch.css";
+@import "./bootstrap-modal/_bootstrap-modal-bs3patch.less";
 @import (less) "./bootstrap-modal/bootstrap-modal.css";
 
 
@@ -18,15 +18,17 @@
 
 .modal-content.rock-modal,
 .rock-modal .modal-content {
-  border: 0;
-  background-color: @modal-body-bg;
   color: @modal-body-text-color;
+  background-color: @modal-body-bg;
+  border: 0;
+  .box-shadow(@shadow-modal);
 
   .modal-header {
-    background-color: @modal-header-bg;
-    color: @modal-header-text-color;
-    padding: 5px 15px;
     min-height: 34px;
+    padding: 5px 15px;
+    color: @modal-header-text-color;
+    background-color: @modal-header-bg;
+
     .clearfix();
 
     h3 {
@@ -34,10 +36,16 @@
       margin-right: 12px;
     }
 
-    .close {
-      margin: 0;
-      padding: 6px;
+    a {
       color: @modal-header-text-color;
+      text-decoration: underline;
+    }
+
+    .close {
+      padding: 6px;
+      margin: 0;
+      color: @modal-header-text-color;
+      text-decoration: none;
       text-shadow: none;
     }
 
@@ -46,8 +54,8 @@
     }
 
     small {
-      margin-top: 12px;
       display: block;
+      margin-top: 12px;
       color: darken(@modal-header-text-color, 10%);
     }
   }
@@ -72,8 +80,8 @@
   .modal-footer {
     padding: 8px;
     margin-top: 10px;
-    background-color: @modal-footer-bg;
     color: @modal-footer-text-color;
+    background-color: @modal-footer-bg;
     border-radius: 0 0 @border-radius-base @border-radius-base;
   }
 }
@@ -82,7 +90,7 @@
   .modal-body {
     padding: 8px 12px 12px 12px;
   }
-  .modal-footer:after {
+  .modal-footer::after {
     clear: both;
   }
   .modal-footer .btn {
@@ -91,15 +99,23 @@
   }
 }
 
+// Fix for overflow scrolling on iOS
 .modal.modal-overflow {
   top: @grid-gutter-width;
+  margin-bottom: @grid-gutter-width;
+
+  @supports (-webkit-overflow-scrolling: touch) {
+    // CSS specific to iOS devices
+    top: 1%;
+    height: ~"calc(100% - 1px)" !important;
+  }
 }
 
 #modal-popup_iframe {
-  height: 100%;
-  width: 100%;
-  border: 0;
   display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 
@@ -109,21 +125,20 @@
 // This next section is needed because we're using bootstrap-modal plugin to allow for responsive sized modals. Since they
 // hard code the opacity in their CSS we override it here.
 .modal-backdrop,
-.modal-backdrop.fade.in{
-  opacity: @modal-backdrop-opacity;
-  filter: alpha(opacity=70);
+.modal-backdrop.fade.in {
   background: @modal-backdrop-bg;
+  filter: alpha(opacity=70);
+  opacity: @modal-backdrop-opacity;
 }
 
 // Fixes some appearance issues from switching standard BS modal to
 // responsive bootstrap-modal.
 
 .modal-dialog {
-  margin: 0;
   width: auto;
+  margin: 0;
 }
 
 .modal-content {
   border: none;
 }
-

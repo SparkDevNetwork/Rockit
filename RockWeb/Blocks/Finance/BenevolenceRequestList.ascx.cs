@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.Web.UI;
@@ -43,7 +44,7 @@ namespace RockWeb.Blocks.Finance
     [ContextAware( typeof( Person ) )]
     [LinkedPage( "Detail Page" )]
     [SecurityRoleField( "Case Worker Role", "The security role to draw case workers from", true, Rock.SystemGuid.Group.GROUP_BENEVOLENCE )]
-    public partial class BenevolenceRequestList : RockBlock
+    public partial class BenevolenceRequestList : RockBlock, ICustomGridColumns
     {
         #region Properties
 
@@ -159,7 +160,7 @@ namespace RockWeb.Blocks.Finance
                 .ThenBy( a => a.Order )
                 .ThenBy( a => a.Name ) )
             {
-                AvailableAttributes.Add( AttributeCache.Read( attributeModel ) );
+                AvailableAttributes.Add( AttributeCache.Get( attributeModel ) );
             }
             
         }
@@ -188,8 +189,8 @@ namespace RockWeb.Blocks.Finance
             rFilter.SaveUserPreference( "Last Name", "Last Name", tbLastName.Text );
             rFilter.SaveUserPreference( "Government ID", "Government ID", tbGovernmentId.Text );
             rFilter.SaveUserPreference( "Case Worker", "Case Worker", ddlCaseWorker.SelectedItem.Value );
-            rFilter.SaveUserPreference( "Result", "Result", ddlResult.SelectedItem.Value );
-            rFilter.SaveUserPreference( "Status", "Status", ddlStatus.SelectedItem.Value );
+            rFilter.SaveUserPreference( "Result", "Result", dvpResult.SelectedItem.Value );
+            rFilter.SaveUserPreference( "Status", "Status", dvpStatus.SelectedItem.Value );
             rFilter.SaveUserPreference( "Campus", "Campus", cpCampus.SelectedCampusId.ToString() );
 
             if ( AvailableAttributes != null )
@@ -249,7 +250,7 @@ namespace RockWeb.Blocks.Finance
                         int? campusId = e.Value.AsIntegerOrNull();
                         if( campusId.HasValue )
                         {
-                            e.Value = CampusCache.Read( campusId.Value ).Name;
+                            e.Value = CampusCache.Get( campusId.Value ).Name;
                         }
                         return;
                     }
@@ -275,7 +276,7 @@ namespace RockWeb.Blocks.Finance
                     var definedValueId = e.Value.AsIntegerOrNull();
                     if ( definedValueId.HasValue )
                     {
-                        var definedValue = DefinedValueCache.Read( definedValueId.Value );
+                        var definedValue = DefinedValueCache.Get( definedValueId.Value );
                         if ( definedValue != null )
                         {
                             e.Value = definedValue.Value;
@@ -352,6 +353,10 @@ namespace RockWeb.Blocks.Finance
                             case "Pending":
                                 hlStatus.Text = "Pending";
                                 hlStatus.LabelType = LabelType.Default;
+                                return;
+                            default:
+                                hlStatus.Text = benevolenceRequest.RequestStatusValue.Value;
+                                hlStatus.LabelType = LabelType.Info;
                                 return;
                         }
                     }
@@ -465,11 +470,11 @@ namespace RockWeb.Blocks.Finance
             ddlCaseWorker.Items.Insert( 0, new ListItem() );
             ddlCaseWorker.SetValue( rFilter.GetUserPreference( "Case Worker" ) );
 
-            ddlResult.BindToDefinedType( DefinedTypeCache.Read( new Guid( Rock.SystemGuid.DefinedType.BENEVOLENCE_RESULT_TYPE ) ), true );
-            ddlResult.SetValue( rFilter.GetUserPreference( "Result" ) );
+            dvpResult.DefinedTypeId = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.BENEVOLENCE_RESULT_TYPE ) ).Id;
+            dvpResult.SetValue( rFilter.GetUserPreference( "Result" ) );
 
-            ddlStatus.BindToDefinedType( DefinedTypeCache.Read( new Guid( Rock.SystemGuid.DefinedType.BENEVOLENCE_REQUEST_STATUS ) ), true );
-            ddlStatus.SetValue( rFilter.GetUserPreference( "Status" ) );
+            dvpStatus.DefinedTypeId = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.BENEVOLENCE_REQUEST_STATUS ) ).Id;
+            dvpStatus.SetValue( rFilter.GetUserPreference( "Status" ) );
 
             // set attribute filters
             BindAttributes();
@@ -524,7 +529,7 @@ namespace RockWeb.Blocks.Finance
                         boundField.AttributeId = attribute.Id;
                         boundField.HeaderText = attribute.Name;
 
-                        var attributeCache = Rock.Web.Cache.AttributeCache.Read( attribute.Id );
+                        var attributeCache = Rock.Web.Cache.AttributeCache.Get( attribute.Id );
                         if ( attributeCache != null )
                         {
                             boundField.ItemStyle.HorizontalAlign = attributeCache.FieldType.Field.AlignValue;
@@ -551,7 +556,7 @@ namespace RockWeb.Blocks.Finance
             gList.Visible = true;
             RockContext rockContext = new RockContext();
             BenevolenceRequestService benevolenceRequestService = new BenevolenceRequestService( rockContext );
-            var qry = benevolenceRequestService.Queryable( "BenevolenceResults,RequestedByPersonAlias,RequestedByPersonAlias.Person,CaseWorkerPersonAlias,CaseWorkerPersonAlias.Person" );
+            var qry = benevolenceRequestService.Queryable( "BenevolenceResults,RequestedByPersonAlias,RequestedByPersonAlias.Person,CaseWorkerPersonAlias,CaseWorkerPersonAlias.Person" ).AsNoTracking();
 
             // Filter by Start Date
             DateTime? startDate = drpDate.LowerValue;
@@ -611,14 +616,14 @@ namespace RockWeb.Blocks.Finance
             }
 
             // Filter by Result
-            int? resultTypeValueId = ddlResult.SelectedItem.Value.AsIntegerOrNull();
+            int? resultTypeValueId = dvpResult.SelectedItem.Value.AsIntegerOrNull();
             if ( resultTypeValueId != null )
             {
                 qry = qry.Where( b => b.BenevolenceResults.Where( r => r.ResultTypeValueId == resultTypeValueId ).Count() > 0 );
             }
 
             // Filter by Request Status
-            int? requestStatusValueId = ddlStatus.SelectedItem.Value.AsIntegerOrNull();
+            int? requestStatusValueId = dvpStatus.SelectedItem.Value.AsIntegerOrNull();
             if ( requestStatusValueId != null )
             {
                 qry = qry.Where( b => b.RequestStatusValueId == requestStatusValueId );
@@ -651,38 +656,23 @@ namespace RockWeb.Blocks.Finance
             // Filter query by any configured attribute filters
             if ( AvailableAttributes != null && AvailableAttributes.Any() )
             {
-                var attributeValueService = new AttributeValueService( rockContext );
-                var parameterExpression = attributeValueService.ParameterExpression;
-
                 foreach ( var attribute in AvailableAttributes )
                 {
                     var filterControl = phAttributeFilters.FindControl( "filter_" + attribute.Id.ToString() );
-                    if ( filterControl != null )
-                    {
-                        var filterValues = attribute.FieldType.Field.GetFilterValues( filterControl, attribute.QualifierValues, Rock.Reporting.FilterMode.SimpleFilter );
-                        var expression = attribute.FieldType.Field.AttributeFilterExpression( attribute.QualifierValues, filterValues, parameterExpression );
-                        if ( expression != null )
-                        {
-                            var attributeValues = attributeValueService
-                                .Queryable()
-                                .Where( v => v.Attribute.Id == attribute.Id );
-
-                            attributeValues = attributeValues.Where( parameterExpression, expression, null );
-
-                            qry = qry.Where( w => attributeValues.Select( v => v.EntityId ).Contains( w.Id ) );
-                        }
-                    }
+                    qry = attribute.FieldType.Field.ApplyAttributeQueryFilter( qry, filterControl, attribute, benevolenceRequestService, Rock.Reporting.FilterMode.SimpleFilter );
                 }
             }
 
-            gList.DataSource = qry.ToList();
+            var list = qry.ToList();
+
+            gList.DataSource = list;
             gList.DataBind();
 
             // Builds the Totals section
-            var definedTypeCache = DefinedTypeCache.Read( new Guid( Rock.SystemGuid.DefinedType.BENEVOLENCE_RESULT_TYPE ) );
+            var definedTypeCache = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.BENEVOLENCE_RESULT_TYPE ) );
             Dictionary<string, decimal> resultTotals = new Dictionary<string, decimal>();
             decimal grandTotal = 0;
-            foreach ( BenevolenceRequest request in qry.ToList() )
+            foreach ( BenevolenceRequest request in list )
             {
                 foreach ( BenevolenceResult result in request.BenevolenceResults )
                 {
