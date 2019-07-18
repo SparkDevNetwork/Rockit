@@ -64,7 +64,6 @@ namespace RockWeb.Blocks.Crm
                                 <li>MobilePhone (Text)</li>
                                 <li>OtherUpdates (Memo)</li>
                             </ul>", false, false, "", "", 12)]
-    [BooleanField( "Enable Debug", "Shows the fields available to merge in lava.", false, "", 13 )]
     public partial class PersonUpdateKiosk : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -108,7 +107,6 @@ namespace RockWeb.Blocks.Crm
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
 
-            RockPage.AddScriptLink( "~/Scripts/iscroll.js" );
             RockPage.AddScriptLink( "~/Scripts/Kiosk/kiosk-core.js" );
         }
 
@@ -243,8 +241,10 @@ namespace RockWeb.Blocks.Crm
 
         protected void lbPersonSelectBack_Click( object sender, EventArgs e )
         {
-
+            HidePanels();
+            pnlSearch.Visible = true;
         }
+
         protected void lbPersonSelectCancel_Click( object sender, EventArgs e )
         {
             GoHome();
@@ -352,25 +352,25 @@ namespace RockWeb.Blocks.Crm
             {
                 var receiptEmail = new SystemEmailService( rockContext ).Get( new Guid( GetAttributeValue( "UpdateEmail" ) ) );
 
-                if ( receiptEmail != null )
+                if ( receiptEmail != null && receiptEmail.To.IsNotNullOrWhiteSpace() )
                 {
-                    var appRoot = Rock.Web.Cache.GlobalAttributesCache.Read( rockContext ).GetValue( "ExternalApplicationRoot" );
-
-                    var recipients = new List<RecipientData>();
-                    recipients.Add( new RecipientData( null, mergeFields ) );
-
-                    Email.Send( receiptEmail.Guid, recipients, appRoot );
+                    var errorMessages = new List<string>();
+                    var message = new RockEmailMessage( receiptEmail );
+                    foreach ( var recipient in message.GetRecipientData() )
+                    {
+                        recipient.MergeFields = mergeFields;
+                    }
+                    message.Send( out errorMessages );
                 }
             }
 
             // launch workflow if configured
             if ( !string.IsNullOrWhiteSpace( GetAttributeValue( "WorkflowType" ) ) )
             {
-                var workflowTypeService = new WorkflowTypeService( rockContext );
                 var workflowService = new WorkflowService( rockContext );
-                var workflowType = workflowTypeService.Get( new Guid( GetAttributeValue( "WorkflowType" ) ) );
+                var workflowType = WorkflowTypeCache.Get( new Guid( GetAttributeValue( "WorkflowType" ) ) );
 
-                if ( workflowType != null )
+                if ( workflowType != null && ( workflowType.IsActive ?? true ) )
                 {
                     var workflow = Rock.Model.Workflow.Activate( workflowType, "Kiosk Update Info" );
 
@@ -389,7 +389,7 @@ namespace RockWeb.Blocks.Crm
                     workflow.SetAttributeValue( "BirthDate", dpBirthdate.Text );
                     workflow.SetAttributeValue( "OtherUpdates", tbOtherUpdates.Text );
 
-                    // lauch workflow
+                    // launch workflow
                     List<string> workflowErrors;
                     workflowService.Process( workflow, out workflowErrors );
                 }
@@ -400,12 +400,6 @@ namespace RockWeb.Blocks.Crm
 
             lCompleteMessage.Text = GetAttributeValue( "CompleteMessageLava" ).ResolveMergeFields( mergeFields );
 
-            bool enableDebug = GetAttributeValue( "EnableDebug" ).AsBoolean();
-            if ( enableDebug && IsUserAuthorized( Authorization.EDIT ) )
-            {
-                lDebug.Visible = true;
-                lDebug.Text = mergeFields.lavaDebugInfo();
-            }
         }
 
         #endregion

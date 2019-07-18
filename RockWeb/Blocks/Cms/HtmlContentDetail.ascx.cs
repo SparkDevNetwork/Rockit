@@ -31,6 +31,7 @@ using Rock.Data;
 using Rock.Web.Cache;
 using System.Text;
 using HtmlAgilityPack;
+using System.Web;
 
 namespace RockWeb.Blocks.Cms
 {
@@ -38,29 +39,41 @@ namespace RockWeb.Blocks.Cms
     /// Adds an editable HTML fragment to the page.
     /// </summary>
     [DisplayName( "HTML Content" )]
-    [Category( "CMS" )]
+    [Category( "CMS" )] 
     [Description( "Adds an editable HTML fragment to the page." )]
 
     [SecurityAction( Authorization.EDIT, "The roles and/or users that can edit the HTML content.")]
     [SecurityAction( Authorization.APPROVE, "The roles and/or users that have access to approve HTML content." )]
 
     [LavaCommandsField("Enabled Lava Commands", "The Lava commands that should be enabled for this HTML block.", false, order: 0)]
-    [BooleanField( "Use Code Editor", "Use the code editor instead of the WYSIWYG editor", true, "", 1 )]
+    [BooleanField( "Start in Code Editor mode", "Start the editor in code editor mode instead of WYSIWYG editor mode.", defaultValue: true, key:"UseCodeEditor", order:1 )]
     [TextField("Document Root Folder", "The folder to use as the root when browsing or uploading documents.", false, "~/Content", "", 2 )]
     [TextField( "Image Root Folder", "The folder to use as the root when browsing or uploading images.", false, "~/Content", "", 3 )]
     [BooleanField( "User Specific Folders", "Should the root folders be specific to current user?", false, "", 4 )]
-    [IntegerField( "Cache Duration", "Number of seconds to cache the content.", false, 3600, "", 5 )]
+    [IntegerField( "Cache Duration", "Number of seconds to cache the content.", false, 0, "", 5 )]
     [TextField( "Context Parameter", "Query string parameter to use for 'personalizing' content based on unique values.", false, "", "", 6 )]
     [TextField( "Context Name", "Name to use to further 'personalize' content.  Blocks with the same name, and referenced with the same context parameter will share html values.", false, "", "", 7 )]
     [BooleanField( "Enable Versioning", "If checked, previous versions of the content will be preserved. Versioning is required if you want to require approval.", false, "", 8, "SupportVersions" )]
     [BooleanField( "Require Approval", "Require that content be approved?", false, "", 9 )]
-    [BooleanField( "Enable Debug", "Show lava merge fields.", false, "", 10 )]
+    [CustomCheckboxListField("Cache Tags", "Cached tags are used to link cached content so that it can be expired as a group", CACHE_TAG_LIST, false, key: "CacheTags", order: 10)]
+    // Disable QuickEdit for v7
+    //[CustomDropdownListField( "Quick Edit", "Allow quick editing of HTML contents.", "AIREDIT^In Place Editing,DBLCLICK^Double-Click For Edit Dialog", false, "", "", 11, "QuickEdit")]
 
+    [BooleanField( "Is Secondary Block", "Flag indicating whether this block is considered secondary and should be hidden when other secondary blocks are hidden.", false, "", 11 )]
     [ContextAware]
-    public partial class HtmlContentDetail : RockBlockCustomSettings
+    public partial class HtmlContentDetail : RockBlockCustomSettings, ISecondaryBlock
     {
 
         #region Properties
+
+        /// <summary>
+        /// Supplies the CustomCheckboxListField "CacheTags" with a list of tags.
+        /// </summary>
+        private const string CACHE_TAG_LIST = @"
+            SELECT CAST([DefinedValue].[Value] AS VARCHAR) AS [Value], [DefinedValue].[Value] AS [Text]
+            FROM[DefinedType]
+            JOIN[DefinedValue] ON[DefinedType].[Id] = [DefinedValue].[DefinedTypeId]
+            WHERE[DefinedType].[Guid] = 'BDF73089-9154-40C1-90E4-74518E9937DC'";
 
         /// <summary>
         /// Gets the settings tool tip.
@@ -89,7 +102,10 @@ namespace RockWeb.Blocks.Cms
             base.OnInit( e );
 
             this.BlockUpdated += HtmlContentDetail_BlockUpdated;
-            this.AddConfigurationUpdateTrigger( upnlHtmlContent );
+            this.AddConfigurationUpdateTrigger( upnlHtmlContentEdit );
+
+            // Disable QuickEdit for v7
+            //RegisterScript();
 
             gVersions.GridRebind += gVersions_GridRebind;
         }
@@ -111,6 +127,21 @@ namespace RockWeb.Blocks.Cms
                 nbApprovalRequired.Visible = false;
             }
         }
+
+        /// <summary>
+        /// Raises the <see cref="E:System.Web.UI.Control.PreRender" /> event.
+        /// </summary>
+        /// <param name="e">An <see cref="T:System.EventArgs" /> object that contains the event data.</param>
+        // Disable QuickEdit for v7
+        //protected override void OnPreRender( EventArgs e )
+        //{
+        //    if ( GetAttributeValue( "QuickEdit" ) == "AIREDIT" )
+        //    {
+        //        hfEntityValue.Value = EntityValue();
+        //    }
+
+        //    base.OnPreRender( e );
+        //}
 
         #endregion
 
@@ -135,6 +166,17 @@ namespace RockWeb.Blocks.Cms
             
             ShowView();
         }
+
+        /// <summary>
+        /// Handles the Click event of the lbQuickEdit control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        // Disable QuickEdit for v7
+        //protected void lbQuickEdit_Click( object sender, EventArgs e )
+        //{
+        //    ShowSettings();
+        //}
 
         /// <summary>
         /// Handles the Click event of the lbSave control.
@@ -345,9 +387,55 @@ namespace RockWeb.Blocks.Cms
 
         #region Methods
 
-        /// <summary>
-        /// Binds the grid.
-        /// </summary>
+// Disable QuickEdit for v7
+//        private void RegisterScript()
+//        {
+//            if ( UserCanEdit )
+//            {
+//                string script = "";
+//                if ( GetAttributeValue( "QuickEdit" ) == "DBLCLICK" )
+//                {
+//                    script = string.Format( @"
+//    Sys.Application.add_load( function () {{
+//        $('#{0} > div.html-content-view').dblclick(function (e) {{
+//            {1};
+//        }});
+//    }});
+//", upnlHtmlContent.ClientID, this.Page.ClientScript.GetPostBackEventReference( lbQuickEdit, "" ) );
+//                }
+
+//                if ( GetAttributeValue( "QuickEdit" ) == "AIREDIT" )
+//                {
+//                    RockPage.AddScriptLink( Page, "~/Scripts/summernote/summernote.min.js", true );
+
+//                    script = string.Format( @"
+//    Sys.Application.add_load( function () {{
+//        $('#{0} > div.html-content-view').summernote( {{
+//            airMode: true,
+//            callbacks: {{
+//                onChange: function( contents, $editable ) {{
+//                    var htmlContents = {{
+//                        EntityValue: $('#{2}').val(),
+//                        Content: contents
+//                    }};
+//                    $.post( Rock.settings.get('baseUrl') + 'api/HtmlContents/UpdateContents/{1}', htmlContents, null, 'application/json' );
+//                }}
+//            }}
+//        }});
+//    }});
+//", upnlHtmlContent.ClientID, this.BlockId, hfEntityValue.ClientID );
+//                }
+
+//                if ( !string.IsNullOrWhiteSpace( script ) )
+//                {
+//                    ScriptManager.RegisterStartupScript( lbQuickEdit, lbQuickEdit.GetType(), string.Format( "html-content-block-{0}", this.BlockId ), script, true );
+//                }
+//            }
+//        }
+
+/// <summary>
+/// Binds the grid.
+/// </summary>
         private void BindGrid()
         {
             var htmlContentService = new HtmlContentService( new RockContext() );
@@ -367,7 +455,7 @@ namespace RockWeb.Blocks.Cms
                     v.ExpireDateTime
                 } ).ToList();
 
-            gVersions.EntityTypeId = EntityTypeCache.Read<HtmlContent>().Id;
+            gVersions.EntityTypeId = EntityTypeCache.Get<HtmlContent>().Id;
             gVersions.DataSource = versions;
             
             gVersions.DataBind();
@@ -385,7 +473,7 @@ namespace RockWeb.Blocks.Cms
             pnlEdit.Visible = true;
             pnlVersionGrid.Visible = false;
             pnlEditModel.Visible = true;
-            upnlHtmlContent.Update();
+            upnlHtmlContentEdit.Update();
             mdEdit.Show();
 
             bool useCodeEditor = GetAttributeValue( "UseCodeEditor" ).AsBoolean();
@@ -406,7 +494,7 @@ namespace RockWeb.Blocks.Cms
 
                 string onchangeScript = string.Format( onchangeScriptFormat, lblApprovalStatus.ClientID, hfApprovalStatus.ClientID, hfApprovalStatusPersonId.ClientID, lblApprovalStatusPerson.ClientID );
 
-                htmlEditor.OnChangeScript = onchangeScript;
+                htmlEditor.CallbackOnKeyupScript = onchangeScript;
             }
 
             htmlEditor.MergeFields.Clear();
@@ -454,7 +542,7 @@ namespace RockWeb.Blocks.Cms
             lbDeny.Enabled = IsUserAuthorized( "Approve" );
 
             string entityValue = EntityValue();
-            HtmlContent htmlContent = new HtmlContentService( new RockContext() ).GetActiveContent( this.BlockId, entityValue );
+            HtmlContent htmlContent = new HtmlContentService( new RockContext() ).GetLatestVersion( this.BlockId, entityValue );
 
             // set Height of editors
             if ( supportsVersioning && requireApproval )
@@ -558,7 +646,8 @@ namespace RockWeb.Blocks.Cms
         {
             mdEdit.Hide();
             pnlEditModel.Visible = false;
-            upnlHtmlContent.Update();
+            upnlHtmlContentEdit.Update();
+            upnlHtmlContentView.Update();
 
             // prevent htmlEditor from using viewstate when not needed
             pnlEdit.EnableViewState = false;
@@ -568,7 +657,15 @@ namespace RockWeb.Blocks.Cms
             string entityValue = EntityValue();
             string html = string.Empty;
 
-            string cachedContent = HtmlContentService.GetCachedContent( this.BlockId, entityValue );
+            int cacheDuration = GetAttributeValue( "CacheDuration" ).AsInteger();
+            string cacheTags = GetAttributeValue( "CacheTags" ) ?? string.Empty;
+            string cachedContent = null;
+
+            // only load from the cache if a cacheDuration was specified
+            if ( cacheDuration > 0 )
+            {
+                cachedContent = HtmlContentService.GetCachedContent( this.BlockId, entityValue );
+            }
 
             // if content not cached load it from DB
             if ( cachedContent == null )
@@ -580,33 +677,25 @@ namespace RockWeb.Blocks.Cms
 
                     if ( content != null )
                     {
-                        bool enableDebug = GetAttributeValue( "EnableDebug" ).AsBoolean();
-
-                        if ( content.Content.HasMergeFields() || enableDebug )
+                        if ( content.Content.HasMergeFields() )
                         {
                             var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
-                            mergeFields.Add( "CurrentPage", Rock.Lava.LavaHelper.GetPagePropertiesMergeObject( this.RockPage ) );
+                            mergeFields.Add( "CurrentPage", this.PageCache );
+
                             if ( CurrentPerson != null )
                             {
                                 // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
                                 mergeFields.AddOrIgnore( "Person", CurrentPerson );
                             }
-                            
+
+                            mergeFields.Add( "CurrentBrowser", this.RockPage.BrowserClient );
                             
                             mergeFields.Add( "RockVersion", Rock.VersionInfo.VersionInfo.GetRockProductVersionNumber() );
                             mergeFields.Add( "CurrentPersonCanEdit", IsUserAuthorized( Authorization.EDIT ) );
                             mergeFields.Add( "CurrentPersonCanAdministrate", IsUserAuthorized( Authorization.ADMINISTRATE ) );
 
                             html = content.Content.ResolveMergeFields( mergeFields, GetAttributeValue("EnabledLavaCommands") );
-
-                            // show merge fields if enable debug true
-                            if ( enableDebug && IsUserAuthorized( Authorization.EDIT ) )
-                            {
-                                // TODO: When support for "Person" is not supported anymore (should use "CurrentPerson" instead), remove this line
-                                mergeFields.Remove( "Person" );
-                                html += mergeFields.lavaDebugInfo();
-                            }
-                        }
+                         }
                         else
                         {
                             html = content.Content;
@@ -624,10 +713,9 @@ namespace RockWeb.Blocks.Cms
                 html = html.Replace( "~~/", themeRoot ).Replace( "~/", appRoot );
 
                 // cache content
-                int cacheDuration = GetAttributeValue( "CacheDuration" ).AsInteger();
                 if ( cacheDuration > 0 )
                 {
-                    HtmlContentService.AddCachedContent( this.BlockId, entityValue, html, cacheDuration );
+                    HtmlContentService.AddCachedContent( this.BlockId, entityValue, html, cacheDuration, cacheTags );
                 }
             }
             else
@@ -660,6 +748,24 @@ namespace RockWeb.Blocks.Cms
             }
 
             return entityValue;
+        }
+
+        /// <summary>
+        /// Hook so that other blocks can set the visibility of all ISecondaryBlocks on its page
+        /// </summary>
+        /// <param name="visible">if set to <c>true</c> [visible].</param>
+        public void SetVisible( bool visible )
+        {
+            if ( this.GetAttributeValue("IsSecondaryBlock").AsBooleanOrNull() ?? false )
+            {
+                if ( lHtmlContent.Visible != visible )
+                {
+                    lHtmlContent.Visible = visible;
+
+                    // upnlHtmlContent has UpdateMode=Conditional so tell it to update if Visible changed 
+                    upnlHtmlContentView.Update();
+                }
+            }
         }
 
         #endregion

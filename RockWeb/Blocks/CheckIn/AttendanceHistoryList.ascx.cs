@@ -21,10 +21,9 @@ using System.Data.Entity;
 using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
-
 using Rock;
-using Rock.Data;
 using Rock.Attribute;
+using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
 using Rock.Web.UI;
@@ -38,9 +37,9 @@ namespace RockWeb.Blocks.Checkin
     [DisplayName( "Attendance History" )]
     [Category( "Checkin" )]
     [Description( "Block for displaying the attendance history of a person or a group." )]
-    [BooleanField( "Filter Attendance By Default", "Sets the default display of Attended to Did Attend instead of [All]", false)]
+    [BooleanField( "Filter Attendance By Default", "Sets the default display of Attended to Did Attend instead of [All]", false )]
     [ContextAware]
-    public partial class AttendanceHistoryList : RockBlock
+    public partial class AttendanceHistoryList : RockBlock, ICustomGridColumns
     {
         #region Fields
 
@@ -87,13 +86,13 @@ namespace RockWeb.Blocks.Checkin
             if ( !Page.IsPostBack )
             {
                 bool valid = true;
-                int personEntityTypeId = EntityTypeCache.Read( "Rock.Model.Person" ).Id;
+                int personEntityTypeId = EntityTypeCache.Get( "Rock.Model.Person" ).Id;
                 if ( ContextTypesRequired.Any( p => p.Id == personEntityTypeId ) && _person == null )
                 {
                     valid = false;
                 }
 
-                int batchEntityTypeId = EntityTypeCache.Read( "Rock.Model.Group" ).Id;
+                int batchEntityTypeId = EntityTypeCache.Get( "Rock.Model.Group" ).Id;
                 if ( ContextTypesRequired.Any( g => g.Id == batchEntityTypeId ) && _group == null )
                 {
                     valid = false;
@@ -224,7 +223,7 @@ namespace RockWeb.Blocks.Checkin
         protected void RFilter_ClearFilterClick( object sender, EventArgs e )
         {
             rFilter.DeleteUserPreferences();
-            BindGrid();
+            BindFilter();
         }
 
         #endregion
@@ -256,7 +255,7 @@ namespace RockWeb.Blocks.Checkin
                             .Where( a =>
                                 a.PersonAlias != null &&
                                 a.PersonAlias.PersonId == _person.Id )
-                            .Select( a => a.GroupId )
+                            .Select( a => a.Occurrence.GroupId )
                             .Distinct()
                             .ToList();
 
@@ -265,7 +264,7 @@ namespace RockWeb.Blocks.Checkin
                             .Where( g => groupIdsAttended.Contains( g.Id ) )
                             .OrderBy( g => g.Name )
                             .Select( g => new { g.Name, g.Id } ).ToList() )
-                        { 
+                        {
                             ddlAttendanceGroup.Items.Add( new ListItem( group.Name, group.Id.ToString() ) );
                         }
 
@@ -300,7 +299,6 @@ namespace RockWeb.Blocks.Checkin
                 rFilter.SaveUserPreference( "Attended", filterValue );
             }
 
-
             ddlDidAttend.SetValue( filterValue );
         }
 
@@ -334,14 +332,14 @@ namespace RockWeb.Blocks.Checkin
 
                 if ( _group != null )
                 {
-                    qryAttendance = qryAttendance.Where( a => a.GroupId == _group.Id );
+                    qryAttendance = qryAttendance.Where( a => a.Occurrence.GroupId == _group.Id );
                 }
                 else
                 {
                     int? groupId = ddlAttendanceGroup.SelectedValueAsInt();
                     if ( groupId.HasValue )
                     {
-                        qryAttendance = qryAttendance.Where( a => a.GroupId == groupId.Value );
+                        qryAttendance = qryAttendance.Where( a => a.Occurrence.GroupId == groupId.Value );
                     }
                 }
             }
@@ -369,7 +367,7 @@ namespace RockWeb.Blocks.Checkin
             int? scheduleId = spSchedule.SelectedValue.AsIntegerOrNull();
             if ( scheduleId.HasValue && scheduleId.Value > 0 )
             {
-                qryAttendance = qryAttendance.Where( h => h.ScheduleId == scheduleId.Value );
+                qryAttendance = qryAttendance.Where( h => h.Occurrence.ScheduleId == scheduleId.Value );
             }
 
             // Filter by DidAttend
@@ -389,14 +387,14 @@ namespace RockWeb.Blocks.Checkin
             var qry = qryAttendance
                 .Select( a => new
                 {
-                    LocationId = a.LocationId,
-                    LocationName = a.Location.Name,
+                    LocationId = a.Occurrence.LocationId,
+                    LocationName = a.Occurrence.Location != null ? a.Occurrence.Location.Name : string.Empty,
                     CampusId = a.CampusId,
-                    CampusName = a.Campus.Name,
-                    ScheduleName = a.Schedule.Name,
+                    CampusName = a.Campus != null ? a.Campus.Name : string.Empty,
+                    ScheduleName = a.Occurrence.Schedule != null ? a.Occurrence.Schedule.Name : string.Empty,
                     Person = a.PersonAlias.Person,
-                    GroupName = a.Group.Name,
-                    GroupTypeId = a.Group.GroupTypeId,
+                    GroupName = a.Occurrence.Group != null ? a.Occurrence.Group.Name : string.Empty,
+                    GroupTypeId = a.Occurrence.Group != null ? a.Occurrence.Group.GroupTypeId : (int?)null,
                     StartDateTime = a.StartDateTime,
                     EndDateTime = a.EndDateTime,
                     DidAttend = a.DidAttend
@@ -418,11 +416,11 @@ namespace RockWeb.Blocks.Checkin
             // build a lookup for _locationpaths for OnRowDatabound
             _locationPaths = new Dictionary<int, string>();
             var qryLocations = new LocationService( rockContext ).Queryable().Where( a => qry.Any( b => b.LocationId == a.Id ) );
-            foreach (var location in qryLocations)
+            foreach ( var location in qryLocations )
             {
                 var parentLocation = location.ParentLocation;
                 var locationNames = new List<string>();
-                while (parentLocation != null)
+                while ( parentLocation != null )
                 {
                     locationNames.Add( parentLocation.Name );
                     parentLocation = parentLocation.ParentLocation;
@@ -438,7 +436,7 @@ namespace RockWeb.Blocks.Checkin
                 _locationPaths.AddOrIgnore( location.Id, locationPath );
             }
 
-            gHistory.EntityTypeId = EntityTypeCache.Read<Attendance>().Id;
+            gHistory.EntityTypeId = EntityTypeCache.Get<Attendance>().Id;
             gHistory.DataSource = qry.ToList();
             gHistory.DataBind();
         }
@@ -486,8 +484,6 @@ namespace RockWeb.Blocks.Checkin
                     lLocationName.Text = string.Format( "{0}<br /><small>{1}</small>", dataItem.GetPropertyValue( "LocationName" ), locationPath );
                 }
             }
-
-
         }
 
         #endregion

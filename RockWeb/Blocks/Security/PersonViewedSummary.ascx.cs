@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,7 @@ namespace RockWeb.Blocks.Security
     /// </summary>
     [DisplayName( "Person Viewed" )]
     [Category( "Security" )]
-    [Description( "Block for displaying people who have viewed this person's profile and whose profile's this person has viewed. A block level attribute determines which view is displayed." )]
+    [Description( "Block for displaying people who have viewed this person's profile and whose profiles this person has viewed. A block level attribute determines which view is displayed." )]
 
     [BooleanField( "See Profiles Viewed", "Flag indicating whether this block will show you a list of people this person has viewed or a list of people who have viewed this person (this is the default).", false )]
     [ContextAware( typeof( Person ) )]
@@ -190,7 +190,7 @@ namespace RockWeb.Blocks.Security
                         qry = qry.OrderByDescending( q => q.LastViewedDate );
                     }
 
-                    gViewed.EntityTypeId = EntityTypeCache.Read<PersonViewed>().Id;
+                    gViewed.EntityTypeId = EntityTypeCache.Get<PersonViewed>().Id;
                     gViewed.DataSource = qry.ToList();
                     gViewed.DataBind();
                 }
@@ -238,7 +238,7 @@ namespace RockWeb.Blocks.Security
                         qry = qry.OrderByDescending( q => q.LastViewedDate );
                     }
 
-                    gViewedBy.EntityTypeId = EntityTypeCache.Read<Person>().Id;
+                    gViewedBy.EntityTypeId = EntityTypeCache.Get<Person>().Id;
                     gViewedBy.DataSource = qry.ToList();
                     gViewedBy.DataBind();
                 }

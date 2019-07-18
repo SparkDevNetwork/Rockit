@@ -42,7 +42,7 @@ namespace RockWeb.Blocks.WorkFlow
     [LinkedPage( "Entry Page", "Page used to launch a new workflow of the selected type." )]
     [LinkedPage( "Detail Page", "Page used to display details about a workflow." )]
     [WorkflowTypeField("Default WorkflowType", "The default workflow type to use. If provided the query string will be ignored.")]
-    public partial class WorkflowList : RockBlock
+    public partial class WorkflowList : RockBlock, ICustomGridColumns
     {
         #region Fields
 
@@ -90,7 +90,7 @@ namespace RockWeb.Blocks.WorkFlow
             if ( _workflowType != null )
             {
                 _canEdit = UserCanEdit || _workflowType.IsAuthorized( Authorization.EDIT, CurrentPerson );
-                _canView = _canEdit || _workflowType.IsAuthorized( Authorization.VIEW, CurrentPerson );
+                _canView = _canEdit || ( _workflowType.IsAuthorized( Authorization.VIEW, CurrentPerson ) && _workflowType.IsAuthorized( "ViewList", CurrentPerson ) );
 
                 gfWorkflows.ApplyFilterClick += gfWorkflows_ApplyFilterClick;
                 gfWorkflows.DisplayFilterValue += gfWorkflows_DisplayFilterValue;
@@ -457,7 +457,7 @@ namespace RockWeb.Blocks.WorkFlow
                     .ThenBy( a => a.Order )
                     .ThenBy( a => a.Name ) )
                 {
-                    AvailableAttributes.Add( AttributeCache.Read( attributeModel ) );
+                    AvailableAttributes.Add( AttributeCache.Get( attributeModel ) );
                 }
             }
         }
@@ -521,7 +521,7 @@ namespace RockWeb.Blocks.WorkFlow
                         boundField.HeaderText = attribute.Name;
                         boundField.Condensed = false;
 
-                        var attributeCache = Rock.Web.Cache.AttributeCache.Read( attribute.Id );
+                        var attributeCache = Rock.Web.Cache.AttributeCache.Get( attribute.Id );
                         if ( attributeCache != null )
                         {
                             boundField.ItemStyle.HorizontalAlign = attributeCache.FieldType.Field.AlignValue;
@@ -666,21 +666,7 @@ namespace RockWeb.Blocks.WorkFlow
                     foreach ( var attribute in AvailableAttributes )
                     {
                         var filterControl = phAttributeFilters.FindControl( "filter_" + attribute.Id.ToString() );
-                        if ( filterControl != null )
-                        {
-                            var filterValues = attribute.FieldType.Field.GetFilterValues( filterControl, attribute.QualifierValues, Rock.Reporting.FilterMode.SimpleFilter );
-                            var expression = attribute.FieldType.Field.AttributeFilterExpression( attribute.QualifierValues, filterValues, parameterExpression );
-                            if ( expression != null )
-                            {
-                                var attributeValues = attributeValueService
-                                    .Queryable()
-                                    .Where( v => v.Attribute.Id == attribute.Id );
-
-                                attributeValues = attributeValues.Where( parameterExpression, expression, null );
-
-                                qry = qry.Where( w => attributeValues.Select( v => v.EntityId ).Contains( w.Id ) );
-                            }
-                        }
+                        qry = attribute.FieldType.Field.ApplyAttributeQueryFilter( qry, filterControl, attribute, workflowService, Rock.Reporting.FilterMode.SimpleFilter );
                     }
                 }
 
@@ -724,7 +710,7 @@ namespace RockWeb.Blocks.WorkFlow
 
                 gWorkflows.ObjectList = workflowObjectQry.ToList().ToDictionary( k => k.Id.ToString(), v => v as object );
 
-                gWorkflows.EntityTypeId = EntityTypeCache.Read<Workflow>().Id;
+                gWorkflows.EntityTypeId = EntityTypeCache.Get<Workflow>().Id;
                 var qryGrid = workflows.Select( w => new
                 {
                     w.Id,

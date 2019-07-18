@@ -1,4 +1,4 @@
-{% if AllowedActions.View == true || AllowedActions.Edit == true || AllowedActions.Administrate == true %}
+{% if AllowedActions.View == true or AllowedActions.Edit == true or AllowedActions.Administrate == true %}
 
 	{% assign countActive = -1 %}
 	{% assign countInactive = -1 %}
@@ -20,7 +20,7 @@
 		{% if groupLocation.Location.GeoPoint != '' %}
 
 		<div class="packagesummary-image"
-			 style="background: url('https://maps.googleapis.com/maps/api/staticmap?size=1400x400&zoom=13&maptype=roadmap&markers={{ groupLocation.Location.GeoPoint }}&scale=2') no-repeat center;
+			 style="background: url('https://maps.googleapis.com/maps/api/staticmap?size=1400x400&zoom=13&maptype=roadmap&markers={{ groupLocation.Location.GeoPoint }}&scale=2&key={{ 'Global' | Attribute:'GoogleAPIKey' }}') no-repeat center;
 					width: 100%;
 					height: 200px;">
 		</div>
@@ -41,7 +41,7 @@
 			{% assign warningLevel = 'danger' %}
 		{% endif %}
 
-		{% assign activeMemberCount = countActive | Plus:1 %} {% comment %}the couter is zero based{% endcomment %}
+		{% assign activeMemberCount = countActive | Plus:1 %} {% comment %}the counter is zero based{% endcomment %}
 		{% assign overageAmount = activeMemberCount | Minus:Group.GroupCapacity %}
 
 		{% if overageAmount > 0 %}
@@ -64,7 +64,7 @@
 
 			{% if member.GroupRole.IsLeader %}
 			<li>
-			{{ member.Person.FullName }} <small>({{ member.GroupRole.Name}})</small>
+			{{ member.Person.FullName }} <small>({{ member.GroupRole.Name }})</small>
 			</li>
 			{% endif %}
 			{% endfor %}
@@ -103,7 +103,8 @@
 		{% if countPending > -1 %}
 			{% assign icountPending = 0 %}
 
-			
+			<div class="well">
+				<h4>Pending Members</h4>
 
 			{% for member in Group.Members %}
 
@@ -112,8 +113,6 @@
 					{% assign loopcycle = icountPending | Modulo:2 %}
 
 					{% if loopcycle == 0 %}
-					<div class="well">
-						<h4>Pending Members</h4>
 						<div class="row">
 					{% endif %}
 
@@ -121,13 +120,13 @@
 						{% if LinkedPages.PersonDetailPage %}
 							<a href="{{ LinkedPages.PersonDetailPage }}?PersonId={{ member.PersonId }}">
 						{% endif %}
-						<img src="{{ member.Person.PhotoUrl }}&height=60&width=60&mode=crop&scale=both" height="60" class="pull-left margin-r-sm" />
+						<img src="{{ member.Person.PhotoUrl }}&height=60&width=60&mode=crop&scale=both" height="60" class="pull-left margin-r-sm" alt="">
 						<div class="pull-left">
 							<strong>{{ member.Person.FullName }}</strong>
-							<small>({{ member.GroupRole.Name}})</small>
+							<small>({{ member.GroupRole.Name }})</small>
 
 							{% for phone in member.Person.PhoneNumbers %}
-							<br />{{ phone.NumberFormatted }} <small>({{ phone.NumberTypeValue.Value }})</small>
+							<br />{% if phone.IsUnlisted != true %}<a href="tel:{{ phone.NumberFormatted }}">{{ phone.NumberFormatted }}</a>{% else %}Unlisted{% endif %}  <small>({{ phone.NumberTypeValue.Value }})</small>
 							{% endfor %}
 
 							{% assign memberAddress =  member.Person | Address:'Home' %}
@@ -139,7 +138,7 @@
 							<a href="mailto:{{ member.Person.Email }}">{{ member.Person.Email }}</a>
 						</div>
 
-						{% if AllowedActions.Edit == true %}
+						{% if AllowedActions.Edit == true or AllowedActions.ManageMembers == true %}
 						<div class="pull-left rollover-item" style="position: absolute; right:0; top:0;">
 							<a href="#" onclick="{{ member.Id | Postback:'DeleteGroupMember' }}" >
 							<i class="fa fa-times"></i>
@@ -150,13 +149,12 @@
 						</div>
 						{% endif %}
 
-						{% if LinkedPages.PersonDetailPage  %}
+						{% if LinkedPages.PersonDetailPage %}
 							</a>
 						{% endif %}
 					</div>
 
 					{% if loopcycle != 0 or icountPending == countPending %}
-						</div>
 						</div>
 					{% endif %}
 
@@ -165,7 +163,7 @@
 				{% endif %}
 
 			{% endfor %}
-
+				</div>
 		{% endif %}
 
 
@@ -189,13 +187,13 @@
 						{% if LinkedPages.PersonDetailPage %}
 							<a href="{{ LinkedPages.PersonDetailPage }}?PersonId={{ member.PersonId }}">
 						{% endif %}
-						<img src="{{ member.Person.PhotoUrl }}&height=60&width=60&mode=crop&scale=both" height="60" class="pull-left margin-r-sm" />
+						<img src="{{ member.Person.PhotoUrl }}&height=60&width=60&mode=crop&scale=both" height="60" class="pull-left margin-r-sm" alt="">
 						<div class="pull-left">
 							<strong>{{ member.Person.FullName }}</strong>
-							<small>({{ member.GroupRole.Name}})</small>
+							<small>({{ member.GroupRole.Name }})</small>
 
 							{% for phone in member.Person.PhoneNumbers %}
-							<br />{{ phone.NumberFormatted }} <small>({{ phone.NumberTypeValue.Value }})</small>
+							<br />{% if phone.IsUnlisted != true %}<a href="tel:{{ phone.NumberFormatted }}">{{ phone.NumberFormatted }}</a>{% else %}Unlisted{% endif %}  <small>({{ phone.NumberTypeValue.Value }})</small>
 							{% endfor %}
 
 							{% assign memberAddress =  member.Person | Address:'Home' %}
@@ -207,7 +205,7 @@
 							<a href="mailto:{{ member.Person.Email }}">{{ member.Person.Email }}</a>
 						</div>
 
-						{% if AllowedActions.Edit == true %}
+						{% if AllowedActions.Edit == true or AllowedActions.ManageMembers == true %}
 						<div class="pull-left rollover-item" style="position: absolute; right:0; top:0;">
 							<a href="#" onclick="{{ member.Id | Postback:'DeleteGroupMember' }}" >
 							<i class="fa fa-times"></i>
@@ -256,13 +254,13 @@
 						{% if LinkedPages.PersonDetailPage %}
 							<a href="{{ LinkedPages.PersonDetailPage }}?PersonId={{ member.PersonId }}">
 						{% endif %}
-						<img src="{{ member.Person.PhotoUrl }}&height=60&width=60&mode=crop&scale=both" height="60" class="pull-left margin-r-sm" />
+						<img src="{{ member.Person.PhotoUrl }}&height=60&width=60&mode=crop&scale=both" height="60" class="pull-left margin-r-sm" alt="">
 						<div class="pull-left">
 							<strong>{{ member.Person.FullName }}</strong>
-							<small>({{ member.GroupRole.Name}})</small>
+							<small>({{ member.GroupRole.Name }})</small>
 
 							{% for phone in member.Person.PhoneNumbers %}
-							<br />{{ phone.NumberFormatted }} <small>({{ phone.NumberTypeValue.Value }})</small>
+							<br />{% if phone.IsUnlisted != true %}<a href="tel:{{ phone.NumberFormatted }}">{{ phone.NumberFormatted }}</a>{% else %}Unlisted{% endif %}  <small>({{ phone.NumberTypeValue.Value }})</small>
 							{% endfor %}
 
 							{% assign memberAddress =  member.Person | Address:'Home' %}
@@ -274,7 +272,7 @@
 							<a href="mailto:{{ member.Person.Email }}">{{ member.Person.Email }}</a>
 						</div>
 
-						{% if AllowedActions.Edit == true %}
+						{% if AllowedActions.Edit == true or AllowedActions.ManageMembers == true %}
 						<div class="pull-left rollover-item" style="position: absolute; right:0; top:0;">
 							<a href="#" onclick="{{ member.Id | Postback:'DeleteGroupMember' }}" >
 							<i class="fa fa-times"></i>
@@ -303,15 +301,17 @@
 		{% endif %}
 
 		<div class="pull-right margin-b-md">
-			{% if AllowedActions.Edit == true %}
+			{% if AllowedActions.Edit == true or AllowedActions.ManageMembers == true %}
 				<a href="#" onclick="{{ '' | Postback:'AddGroupMember' }}" class="btn btn-default btn-xs">
 					<i class="fa fa-plus"></i> Add Member
 				</a>
 			{% endif %}
-			{% if LinkedPages.CommunicationPage != '' and AllowedActions.Edit == true %}
-				<a href="#" onclick="{{ '' | Postback:'SendCommunication' }}" class="btn btn-default btn-xs">
-					<i class="fa fa-envelope-o"></i> Email Roster
-				</a>
+			{% if LinkedPages.CommunicationPage != '' %}
+				{% if AllowedActions.Edit == true or AllowedActions.ManageMembers == true %}
+					<a href="#" onclick="{{ '' | Postback:'SendCommunication' }}" class="btn btn-default btn-xs">
+						<i class="fa fa-envelope-o"></i> Email Roster
+					</a>
+				{% endif %}
 			{% endif %}
 		</div>
 		</p>
@@ -319,7 +319,6 @@
 
 {% else %}
 	{% if Group.Id %}
-		<div class='alert alert-warning'>You do not have persmission to view this group.</div>
+		<div class='alert alert-warning'>You do not have permission to view this group.</div>
 	{% endif %}
 {% endif %}
-

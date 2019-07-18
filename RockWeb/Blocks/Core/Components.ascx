@@ -38,7 +38,7 @@
                                 <HeaderStyle CssClass="span1" />
                                 <ItemStyle HorizontalAlign="Center" />
                                 <ItemTemplate>
-                                    <a id="aSecure" runat="server" class="btn btn-sm btn-security" height="500px"><i class="fa fa-lock"></i></a>
+                                    <a id="aSecure" runat="server" class="btn btn-sm btn-security"><i class="fa fa-lock"></i></a>
                                 </ItemTemplate>
                             </Rock:RockTemplateFieldUnselected>
                         </Columns>
@@ -53,10 +53,10 @@
         <Rock:ModalDialog ID="mdEditComponent" runat="server" Title="Attribute" OnCancelScript="clearActiveDialog();">
             <Content>
 
-                <asp:ValidationSummary runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                <asp:ValidationSummary runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
                 <Rock:NotificationBox ID="nbValidationError" runat="server" Title="There is a problem with one or more of the values you entered" NotificationBoxType="Danger" Visible="false" />
                 <fieldset>
-                    <asp:PlaceHolder ID="phProperties" runat="server" EnableViewState="false" ></asp:PlaceHolder>
+                    <Rock:DynamicPlaceHolder ID="phProperties" runat="server" />
                 </fieldset>
 
             </Content>

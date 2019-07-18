@@ -15,6 +15,7 @@
 // </copyright>
 //
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
@@ -26,6 +27,7 @@ using Rock.Data;
 using Rock.Model;
 using Rock.Security;
 using Rock.Web;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -37,9 +39,11 @@ namespace RockWeb.Blocks.Prayer
 
     [IntegerField( "Expires After (Days)", "Default number of days until the request will expire.", false, 14, "", 0, "ExpireDays" )]
     [CategoryField( "Default Category", "If a category is not selected, choose a default category to use for all new prayer requests.", false, "Rock.Model.PrayerRequest", "", "", false, "4B2D88F5-6E45-4B4B-8776-11118C8E8269", "", 1, "DefaultCategory" )]
-    [BooleanField( "Set Current Person To Requester", "Will set the current person as the requester. This is useful in self-entry situiations.", false, order: 2 )]
-
+    [BooleanField( "Set Current Person To Requester", "Will set the current person as the requester. This is useful in self-entry situations.", false, order: 2 )]
     [BooleanField( "Require Last Name", "Require that a last name be entered", true, "", 3 )]
+    [BooleanField( "Default To Public", "If enabled, all prayers will be set to public by default", false, "", 4)]
+    [BooleanField( "Default Allow Comments Checked", "If true, the Allow Comments checkbox will be pre-checked for all new requests by default.", true, order: 5 )]
+    [BooleanField("Require Campus", "Require that a campus be selected", false, "", 6 )]
     public partial class PrayerRequestDetail : RockBlock, IDetailBlock
     {
         #region Properties
@@ -94,6 +98,8 @@ namespace RockWeb.Blocks.Prayer
         {
             base.OnInit( e );
 
+            lbDelete.Attributes["onclick"] = "javascript: return Rock.dialogs.confirmDelete(event, 'prayer request');";
+
             string scriptFormat = @"
     $('#{0} .btn-toggle').click(function (e) {{
 
@@ -120,6 +126,8 @@ namespace RockWeb.Blocks.Prayer
             ScriptManager.RegisterStartupScript( pnlStatus, pnlStatus.GetType(), "status-script-" + this.BlockId.ToString(), script, true );
 
             tbLastName.Required = GetAttributeValue( "RequireLastName" ).AsBooleanOrNull() ?? true;
+            cpCampus.Required = GetAttributeValue("RequireCampus").AsBooleanOrNull() ?? false;
+            cpCampus.Campuses = CampusCache.All( false );
         }
 
         /// <summary>
@@ -130,7 +138,29 @@ namespace RockWeb.Blocks.Prayer
         {
             if ( !Page.IsPostBack )
             {
-                ShowDetail( PageParameter( "prayerRequestId" ).AsInteger() );
+                ShowDetail( PageParameter( "PrayerRequestId" ).AsInteger() );
+            }
+            else
+            {
+                if ( pnlEditDetails.Visible )
+                {
+                    var rockContext = new RockContext();
+                    PrayerRequest prayerRequest;
+                    int? prayerRequestId = PageParameter( "PrayerRequestId" ).AsIntegerOrNull();
+                    if ( prayerRequestId.HasValue && prayerRequestId.Value > 0 )
+                    {
+                        prayerRequest = new PrayerRequestService( rockContext ).Get( prayerRequestId.Value );
+                    }
+                    else
+                    {
+                        prayerRequest = new PrayerRequest { Id = 0 };
+                    }
+
+                    prayerRequest.LoadAttributes();
+                    phAttributes.Controls.Clear();
+                    var excludeForEdit = prayerRequest.Attributes.Where( a => !a.Value.IsAuthorized( Authorization.EDIT, this.CurrentPerson ) ).Select( a => a.Key ).ToList();
+                    Rock.Attribute.Helper.AddEditControls( prayerRequest, phAttributes, false, BlockValidationGroup, excludeForEdit );
+                }
             }
 
             base.OnLoad( e );
@@ -170,7 +200,55 @@ namespace RockWeb.Blocks.Prayer
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
         protected void lbCancel_Click( object sender, EventArgs e )
         {
-            NavigateToParentPage();
+            var queryParms = new Dictionary<string, string>();
+            if ( !string.IsNullOrWhiteSpace( PageParameter( "PersonId" ) ) )
+            {
+                queryParms.Add( "PersonId", PageParameter( "PersonId" ) );
+            }
+
+            NavigateToParentPage( queryParms );
+        }
+
+        /// <summary>
+        /// Handles the Click event of the lbDelete control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
+        protected void lbDelete_Click( object sender, EventArgs e )
+        {
+            int prayerRequestId = hfPrayerRequestId.ValueAsInt();
+
+            if ( !IsUserAuthorized( Authorization.EDIT ) )
+            {
+                maWarning.Show( "You are not authorized to delete this request.", ModalAlertType.Information );
+                return;
+            }
+
+            var rockContext = new RockContext();
+            PrayerRequestService prayerRequestService = new PrayerRequestService( rockContext );
+            PrayerRequest prayerRequest = prayerRequestService.Get( prayerRequestId );
+
+            if ( prayerRequest != null )
+            {
+                DeleteAllRelatedNotes( prayerRequest, rockContext );
+
+                string errorMessage;
+                if ( !prayerRequestService.CanDelete( prayerRequest, out errorMessage ) )
+                {
+                    maWarning.Show( errorMessage, ModalAlertType.Information );
+                    return;
+                }
+
+                prayerRequestService.Delete( prayerRequest );
+                rockContext.SaveChanges();
+
+                var queryParms = new Dictionary<string, string>();
+                if ( !string.IsNullOrWhiteSpace( PageParameter( "PersonId" ) ) )
+                {
+                    queryParms.Add( "PersonId", PageParameter( "PersonId" ) );
+                }
+                NavigateToParentPage( queryParms );
+            }
         }
 
         /// <summary>
@@ -190,11 +268,13 @@ namespace RockWeb.Blocks.Prayer
                         .Select( p => new
                         {
                             FirstName = p.NickName,
-                            LastName = p.LastName
+                            LastName = p.LastName,
+                            Email = p.Email
                         } ).FirstOrDefault();
 
                     tbFirstName.Text = requester.FirstName;
                     tbLastName.Text = requester.LastName;
+                    tbEmail.Text = requester.Email;
                 }
             }
         }
@@ -221,7 +301,8 @@ namespace RockWeb.Blocks.Prayer
 
             if ( prayerRequest == null )
             {
-                prayerRequest = new PrayerRequest { Id = 0, IsActive = true, IsApproved = true, AllowComments = true };
+                bool isPublic = GetAttributeValue( "DefaultToPublic" ).AsBoolean();
+                prayerRequest = new PrayerRequest { Id = 0, IsPublic = isPublic, IsActive = true, IsApproved = true, AllowComments = GetAttributeValue( "DefaultAllowCommentsChecked" ).AsBooleanOrNull() ?? true };
                 // hide the panel drawer that show created and last modified dates
                 pdAuditDetails.Visible = false;
             }
@@ -244,6 +325,7 @@ namespace RockWeb.Blocks.Prayer
             if ( readOnly )
             {
                 lbEdit.Visible = false;
+                lbDelete.Visible = false;
                 ShowReadonlyDetails( prayerRequest );
             }
             else
@@ -257,6 +339,7 @@ namespace RockWeb.Blocks.Prayer
                     ShowEditDetails( prayerRequest );
                 }
             }
+
         }
 
         /// <summary>
@@ -275,9 +358,33 @@ namespace RockWeb.Blocks.Prayer
             }
 
             descriptionList.Add( "Name", prayerRequest.FullName );
+            string email = null;
+            if ( !string.IsNullOrWhiteSpace( prayerRequest.Email ) )
+            {
+                email = prayerRequest.Email;
+            }
+            else if ( prayerRequest.RequestedByPersonAlias != null )
+            {
+                email = prayerRequest.RequestedByPersonAlias.Person.Email;
+            }
+
+            if ( !string.IsNullOrEmpty( email ) )
+            {
+                descriptionList.Add( "Email", String.Format( "<a href='mailto:{0}'>{0}</a>", email ) );
+            }
+            descriptionList.Add( "Campus", prayerRequest.Campus );
             descriptionList.Add( "Request", prayerRequest.Text.ScrubHtmlAndConvertCrLfToBr() );
             descriptionList.Add( "Answer", prayerRequest.Answer.ScrubHtmlAndConvertCrLfToBr() );
             lMainDetails.Text = descriptionList.Html;
+
+            prayerRequest.LoadAttributes();
+            var attributes = prayerRequest.Attributes.Select( a => a.Value ).OrderBy( a => a.Order ).ThenBy( a => a.Name ).ToList();
+
+            var attributeCategories = Helper.GetAttributeCategories( attributes );
+
+            // Filter to only show attribute / attribute values that the person is authorized to view.
+            var excludeForView = prayerRequest.Attributes.Where( a => !a.Value.IsAuthorized( Authorization.VIEW, this.CurrentPerson ) ).Select( a => a.Key ).ToList();
+            Rock.Attribute.Helper.AddDisplayControls( prayerRequest, attributeCategories, phDisplayAttributes, excludeForView, false );
 
             ShowStatus( prayerRequest, this.CurrentPerson, hlblFlaggedMessageRO );
             ShowPrayerCount( prayerRequest );
@@ -308,12 +415,25 @@ namespace RockWeb.Blocks.Prayer
                 }
             }
 
+            cpCampus.SelectedCampusId = prayerRequest.CampusId;
+
             pnlDetails.Visible = true;
 
-            catpCategory.SetValue( prayerRequest.Category );
+            var prayRequestCategory = prayerRequest.Category;
+            if ( prayRequestCategory == null )
+            {
+                var defaultCategoryGuid = GetAttributeValue( "DefaultCategory" ).AsGuidOrNull();
+                if ( defaultCategoryGuid.HasValue )
+                {
+                    prayRequestCategory = new CategoryService( new RockContext() ).Get( defaultCategoryGuid.Value );
+
+                }
+            }
+            catpCategory.SetValue( prayRequestCategory );
 
             tbFirstName.Text = prayerRequest.FirstName;
             tbLastName.Text = prayerRequest.LastName;
+            tbEmail.Text = prayerRequest.Email;
             dtbText.Text = prayerRequest.Text;
             dtbAnswer.Text = prayerRequest.Answer;
 
@@ -323,7 +443,18 @@ namespace RockWeb.Blocks.Prayer
             }
             else
             {
-                ppRequestor.SetValue( null );
+                if ( !string.IsNullOrWhiteSpace( PageParameter( "PersonId" ) ) )
+                {
+                    var requestor = new PersonService( new RockContext() ).Get( PageParameter( "PersonId" ).AsInteger() );
+                    ppRequestor.SetValue( requestor );
+                    tbFirstName.Text = requestor.NickName;
+                    tbLastName.Text = requestor.LastName;
+                    tbEmail.Text = requestor.Email;
+                }
+                else
+                {
+                    ppRequestor.SetValue( null );
+                }
             }
 
             // If no expiration date is set, then use the default setting.
@@ -343,6 +474,28 @@ namespace RockWeb.Blocks.Prayer
             cbIsUrgent.Checked = prayerRequest.IsUrgent ?? false;
             cbIsActive.Checked = prayerRequest.IsActive ?? false;
             cbAllowComments.Checked = prayerRequest.AllowComments ?? false;
+
+            prayerRequest.LoadAttributes();
+            phAttributes.Controls.Clear();
+            // Filter to only include attribute / attribute values that the person is authorized to edit.
+            var excludeForEdit = prayerRequest.Attributes.Where( a => !a.Value.IsAuthorized( Authorization.EDIT, this.CurrentPerson ) ).Select( a => a.Key ).ToList();
+            Rock.Attribute.Helper.AddEditControls( prayerRequest, phAttributes, true, BlockValidationGroup, excludeForEdit );
+        }
+
+        /// <summary>
+        /// Deletes all related notes.
+        /// </summary>
+        /// <param name="prayerRequest">The prayer request.</param>
+        private void DeleteAllRelatedNotes( PrayerRequest prayerRequest, RockContext rockContext )
+        {
+            var noteTypeService = new NoteTypeService( rockContext );
+            var noteType = noteTypeService.Get( Rock.SystemGuid.NoteType.PRAYER_COMMENT.AsGuid() );
+            var noteService = new NoteService( rockContext );
+            var prayerComments = noteService.Get( noteType.Id, prayerRequest.Id );
+            foreach ( Note prayerComment in prayerComments )
+            {
+                noteService.Delete( prayerComment );
+            }
         }
 
         /// <summary>
@@ -485,16 +638,8 @@ namespace RockWeb.Blocks.Prayer
                 prayerRequest.ExpirationDate = dpExpirationDate.SelectedDate;
             }
 
-            // If no category was selected, then use the default category if there is one.
-            int? categoryId = catpCategory.SelectedValueAsInt();
-            Guid defaultCategoryGuid = GetAttributeValue( "DefaultCategory" ).AsGuid();
-            if ( categoryId == null && !defaultCategoryGuid.IsEmpty() )
-            {
-                var category = new CategoryService( rockContext ).Get( defaultCategoryGuid );
-                categoryId = category.Id;
-            }
-
-            prayerRequest.CategoryId = categoryId;
+            prayerRequest.CampusId = cpCampus.SelectedCampusId;
+            prayerRequest.CategoryId = catpCategory.SelectedValueAsInt();
 
             // Now record all the bits...
             prayerRequest.IsApproved = hfApprovedStatus.Value.AsBoolean();
@@ -504,8 +649,12 @@ namespace RockWeb.Blocks.Prayer
             prayerRequest.IsPublic = cbIsPublic.Checked;
             prayerRequest.FirstName = tbFirstName.Text;
             prayerRequest.LastName = tbLastName.Text;
+            prayerRequest.Email = tbEmail.Text;
             prayerRequest.Text = dtbText.Text.Trim();
             prayerRequest.Answer = dtbAnswer.Text.Trim();
+
+            prayerRequest.LoadAttributes( rockContext );
+            Rock.Attribute.Helper.GetEditValues( phAttributes, prayerRequest );
 
             if ( !Page.IsValid )
             {
@@ -519,8 +668,15 @@ namespace RockWeb.Blocks.Prayer
             }
 
             rockContext.SaveChanges();
+            prayerRequest.SaveAttributeValues( rockContext );
 
-            NavigateToParentPage();
+            var queryParms = new Dictionary<string, string>();
+            if ( !string.IsNullOrWhiteSpace( PageParameter( "PersonId" ) ) )
+            {
+                queryParms.Add( "PersonId", PageParameter( "PersonId" ) );
+            }
+
+            NavigateToParentPage( queryParms );
         }
 
         #endregion

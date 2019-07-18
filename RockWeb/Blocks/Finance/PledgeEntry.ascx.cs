@@ -17,12 +17,14 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.Web.UI.WebControls;
 using Rock;
 using Rock.Attribute;
+using Rock.Communication;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
@@ -59,7 +61,6 @@ namespace RockWeb.Blocks.Finance
 " )]
 
     [SystemEmailField( "Confirmation Email Template", "Email template to use after submitting a new pledge. Leave blank to not send an email.", false, "", Order = 10 )]
-    [BooleanField( "Enable Debug", "Outputs the object graph to help create your liquid syntax.", false, Order = 11 )]
     [GroupTypeField( "Select Group Type", "Optional Group Type that if selected will display a selection of groups that current user belongs to that can then be associated with the pledge", false, "", "", 12 )]
     public partial class PledgeEntry : RockBlock
     {
@@ -83,6 +84,8 @@ namespace RockWeb.Blocks.Finance
         protected override void OnLoad( EventArgs e )
         {
             base.OnLoad( e );
+
+            nbInvalid.Visible = false;
 
             if ( !IsPostBack )
             {
@@ -127,7 +130,7 @@ namespace RockWeb.Blocks.Finance
 
             financialPledge.TotalAmount = tbTotalAmount.Text.AsDecimal();
 
-            var pledgeFrequencySelection = DefinedValueCache.Read( ddlFrequency.SelectedValue.AsInteger() );
+            var pledgeFrequencySelection = DefinedValueCache.Get( ddlFrequency.SelectedValue.AsInteger() );
             if ( pledgeFrequencySelection != null )
             {
                 financialPledge.PledgeFrequencyValueId = pledgeFrequencySelection.Id;
@@ -161,48 +164,48 @@ namespace RockWeb.Blocks.Finance
                 }
             }
 
-            financialPledgeService.Add( financialPledge );
-
-            rockContext.SaveChanges();
-
-            // populate account so that Liquid can access it
-            financialPledge.Account = financialAccount;
-
-            // populate PledgeFrequencyValue so that Liquid can access it
-            financialPledge.PledgeFrequencyValue = definedValueService.Get( financialPledge.PledgeFrequencyValueId ?? 0 );
-
-            var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
-            mergeFields.Add( "Person", person );
-            mergeFields.Add( "FinancialPledge", financialPledge );
-            mergeFields.Add( "PledgeFrequency", pledgeFrequencySelection );
-            mergeFields.Add( "Account", financialAccount );
-            lReceipt.Text = GetAttributeValue( "ReceiptText" ).ResolveMergeFields( mergeFields );
-
-            // Resolve any dynamic url references
-            string appRoot = ResolveRockUrl( "~/" );
-            string themeRoot = ResolveRockUrl( "~~/" );
-            lReceipt.Text = lReceipt.Text.Replace( "~~/", themeRoot ).Replace( "~/", appRoot );
-
-            // show liquid help for debug
-            if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
+            if ( financialPledge.IsValid )
             {
-                lReceipt.Text += mergeFields.lavaDebugInfo();
+                financialPledgeService.Add( financialPledge );
+
+                rockContext.SaveChanges();
+
+                // populate account so that Liquid can access it
+                financialPledge.Account = financialAccount;
+
+                // populate PledgeFrequencyValue so that Liquid can access it
+                financialPledge.PledgeFrequencyValue = definedValueService.Get( financialPledge.PledgeFrequencyValueId ?? 0 );
+
+                var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
+                mergeFields.Add( "Person", person );
+                mergeFields.Add( "FinancialPledge", financialPledge );
+                mergeFields.Add( "PledgeFrequency", pledgeFrequencySelection );
+                mergeFields.Add( "Account", financialAccount );
+                lReceipt.Text = GetAttributeValue( "ReceiptText" ).ResolveMergeFields( mergeFields );
+
+                // Resolve any dynamic url references
+                string appRoot = ResolveRockUrl( "~/" );
+                string themeRoot = ResolveRockUrl( "~~/" );
+                lReceipt.Text = lReceipt.Text.Replace( "~~/", themeRoot ).Replace( "~/", appRoot );
+
+                lReceipt.Visible = true;
+                pnlAddPledge.Visible = false;
+                pnlConfirm.Visible = false;
+
+                // if a ConfirmationEmailTemplate is configured, send an email
+                var confirmationEmailTemplateGuid = GetAttributeValue( "ConfirmationEmailTemplate" ).AsGuidOrNull();
+                if ( confirmationEmailTemplateGuid.HasValue )
+                {
+                    var emailMessage = new RockEmailMessage( confirmationEmailTemplateGuid.Value );
+                    emailMessage.AddRecipient( new RecipientData( person.Email, mergeFields ) );
+                    emailMessage.AppRoot = ResolveRockUrl( "~/" );
+                    emailMessage.ThemeRoot = ResolveRockUrl( "~~/" );
+                    emailMessage.Send();
+                }
             }
-
-            lReceipt.Visible = true;
-            pnlAddPledge.Visible = false;
-            pnlConfirm.Visible = false;
-
-            // if a ConfirmationEmailTemplate is configured, send an email
-            var confirmationEmailTemplateGuid = GetAttributeValue( "ConfirmationEmailTemplate" ).AsGuidOrNull();
-            if ( confirmationEmailTemplateGuid.HasValue )
+            else
             {
-                var recipients = new List<Rock.Communication.RecipientData>();
-
-                // add person and the mergeObjects (same mergeobjects as receipt)
-                recipients.Add( new Rock.Communication.RecipientData( person.Email, mergeFields ) );
-
-                Rock.Communication.Email.Send( confirmationEmailTemplateGuid.Value, recipients, ResolveRockUrl( "~/" ), ResolveRockUrl( "~~/" ) );
+                ShowInvalidResults( financialPledge.ValidationResults );
             }
         }
 
@@ -234,7 +237,7 @@ namespace RockWeb.Blocks.Finance
                                 m.Group.GroupType.Guid == groupTypeGuid.Value &&
                                 m.PersonId == CurrentPerson.Id &&
                                 m.GroupMemberStatus == GroupMemberStatus.Active &&
-                                m.Group.IsActive )
+                                m.Group.IsActive && !m.Group.IsArchived )
                             .Select( m => new
                             {
                                 m.GroupId,
@@ -295,7 +298,7 @@ namespace RockWeb.Blocks.Finance
             drpDateRange.Visible = drpDateRange.LowerValue == null || drpDateRange.UpperValue == null;
 
             ddlFrequency.Items.Clear();
-            var frequencies = DefinedTypeCache.Read( Rock.SystemGuid.DefinedType.FINANCIAL_FREQUENCY.AsGuid() ).DefinedValues.OrderBy( a => a.Order ).ThenBy( a => a.Value );
+            var frequencies = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.FINANCIAL_FREQUENCY.AsGuid() ).DefinedValues.OrderBy( a => a.Order ).ThenBy( a => a.Value );
             foreach ( var frequency in frequencies )
             {
                 ddlFrequency.Items.Add( new ListItem( frequency.Value, frequency.Id.ToString() ) );
@@ -347,21 +350,14 @@ namespace RockWeb.Blocks.Finance
                     }
                 }
 
-                // Same logic as AddTransaction.ascx.cs
-                var personMatches = personService.GetByMatch( firstName, tbLastName.Text, tbEmail.Text );
-                if ( personMatches.Count() == 1 )
-                {
-                    person = personMatches.FirstOrDefault();
-                }
-                else
-                {
-                    person = null;
-                }
+                // Same logic as TransactionEntry.ascx.cs
+                var personQuery = new PersonService.PersonMatchQuery( firstName, tbLastName.Text, tbEmail.Text, string.Empty);
+                person = personService.FindPerson( personQuery, true );
             }
 
             if ( person == null )
             {
-                var definedValue = DefinedValueCache.Read( GetAttributeValue( "NewConnectionStatus" ).AsGuidOrNull() ?? Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_PARTICIPANT.AsGuid() );
+                var definedValue = DefinedValueCache.Get( GetAttributeValue( "NewConnectionStatus" ).AsGuidOrNull() ?? Rock.SystemGuid.DefinedValue.PERSON_CONNECTION_STATUS_PARTICIPANT.AsGuid() );
                 person = new Person
                 {
                     FirstName = tbFirstName.Text,
@@ -372,13 +368,23 @@ namespace RockWeb.Blocks.Finance
                 };
 
                 person.IsSystem = false;
-                person.RecordTypeValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
-                person.RecordStatusValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid() ).Id;
+                person.RecordTypeValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
+                person.RecordStatusValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid() ).Id;
 
                 PersonService.SaveNewPerson( person, rockContext, null, false );
             }
 
             return person;
+        }
+
+        /// <summary>
+        /// Shows the invalid results.
+        /// </summary>
+        /// <param name="validationResults">The validation results.</param>
+        private void ShowInvalidResults( List<ValidationResult> validationResults )
+        {
+            nbInvalid.Text = string.Format( "Please correct the following:<ul><li>{0}</li></ul>", validationResults.AsDelimited( "</li><li>" ) );
+            nbInvalid.Visible = true;
         }
 
         /// <summary>

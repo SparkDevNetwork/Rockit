@@ -6,8 +6,8 @@
         var availabilityMessageRow = $('#availabilityMessageRow');
         var usernameUnavailable = $('#availabilityMessage');
         var usernameTextbox = $('#<%= tbUserName.ClientID %>');
-        var usernameRegExp = new RegExp("<%= Rock.Web.Cache.GlobalAttributesCache.Read().GetValue( "core.ValidUsernameRegularExpression" ) %>");
-        var usernameValidCaption = "<%= Rock.Web.Cache.GlobalAttributesCache.Read().GetValue( "core.ValidUsernameCaption" ) %>";
+        var usernameRegExp = new RegExp("<%= Rock.Web.Cache.GlobalAttributesCache.Get().GetValue( "core.ValidUsernameRegularExpression" ) %>");
+        var usernameValidCaption = "<%= Rock.Web.Cache.GlobalAttributesCache.Get().GetValue( "core.ValidUsernameCaption" ) %>";
 
         availabilityMessageRow.hide();
 
@@ -59,8 +59,8 @@
 <asp:UpdatePanel ID="upnlNewAccount" runat="server">
 <ContentTemplate>
 
-    <asp:Panel ID="pnlMessage" runat="server" Visible="false" CssClass="alert alert-danger"/>
-    <asp:ValidationSummary ID="valSummaryTop" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger"/>
+    <asp:Panel ID="pnlMessage" runat="server" Visible="false" CssClass="alert alert-validation"/>
+    <asp:ValidationSummary ID="valSummaryTop" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation"/>
 
     <asp:PlaceHolder ID="phUserInfo" runat="server" Visible="true">
 
@@ -76,7 +76,7 @@
                         <dd><div id="availabilityMessage" class="alert"/></dd>
                     </dl>
                     <Rock:RockTextBox ID="tbPassword" runat="server" Label="Password" Required="true" TextMode="Password" ValidateRequestMode="Disabled" ></Rock:RockTextBox>
-                    <Rock:RockTextBox ID="tbPasswordConfirm" runat="server" Label="Confirmation" Required="true" TextMode="Password" ValidateRequestMode="Disabled" ></Rock:RockTextBox>
+                    <Rock:RockTextBox ID="tbPasswordConfirm" runat="server" Label="Confirm Password" Required="true" TextMode="Password" ValidateRequestMode="Disabled" ></Rock:RockTextBox>
                     <asp:CompareValidator ID="covalPassword" runat="server" ControlToCompare="tbPassword" ControlToValidate="tbPasswordConfirm" ErrorMessage="Password and Confirmation do not match" Display="Dynamic" CssClass="validation-error"></asp:CompareValidator>
 
                 </fieldset>
@@ -86,7 +86,7 @@
             <div class="col-md-6">
 
                 <fieldset>
-                    <legend>Your Information</legend> 
+                    <legend>Your Information</legend>
                     <Rock:RockTextBox ID="tbFirstName" runat="server" Label="First Name" Required="true" />
                     <Rock:RockTextBox ID="tbLastName" runat="server" Label="Last Name" Required="true" />
                     <Rock:EmailBox ID="tbEmail" runat="server" Label="Email" Required="true" />
@@ -103,15 +103,15 @@
                         <legend>Phone Numbers</legend>
                         <asp:Repeater ID="rPhoneNumbers" runat="server">
                                     <ItemTemplate>
-                                        <div class="form-group phonegroup">
+                                        <div runat="server" id="PhoneGroup" class="form-group phonegroup clearfix">
                                             <div class="control-label col-sm-1 phonegroup-label"><%# Eval("NumberTypeValue.Value")  %>&nbsp;</div>
                                             <div class="controls col-sm-11 phonegroup-number">
-                                                <div class="row">
+                                                <div class="row margin-l-sm">
                                                     <div class="col-sm-7">
                                                         <asp:HiddenField ID="hfPhoneType" runat="server" Value='<%# Eval("NumberTypeValueId")  %>' />
-                                                        <Rock:PhoneNumberBox ID="pnbPhone" runat="server" CountryCode='<%# Eval("CountryCode") %>' 
+                                                        <Rock:PhoneNumberBox ID="pnbPhone" runat="server" CountryCode='<%# Eval("CountryCode") %>'
                                                             Number='<%# Eval("NumberFormatted")  %>'  />
-                                                    </div>    
+                                                    </div>
                                                     <div class="col-sm-5 margin-t-sm">
                                                         <div class="row">
                                                             <div class="col-xs-6">
@@ -130,15 +130,17 @@
                                 </asp:Repeater>
                         </fieldset>
                    </asp:Panel>
-                    
+
                     <asp:Panel ID="pnlAddress" runat="server">
                         <fieldset>
                             <legend>Address</legend>
                             <Rock:AddressControl ID="acAddress" runat="server" RequiredErrorMessage="Your Address is Required" />
                         </fieldset>
                     </asp:Panel>
+
+                <Rock:CampusPicker ID="cpCampus" runat="server" Label="Campus" />
             </div>
-        
+
         </div>
 
         <div class="actions">
@@ -171,8 +173,8 @@
 
         <div class="inputs-list not-me">
             <label>
-                <input type="radio" value="0" name="DuplicatePerson" />        
-                <span>None of these are me</span>    
+                <input type="radio" value="0" name="DuplicatePerson" />
+                <span>None of these are me</span>
             </label>
         </div>
 
@@ -223,7 +225,7 @@
 
         <div class="actions">
             <asp:Button ID="btnContinue" runat="server" Text="Continue" CssClass="btn btn-primary" OnClick="btnContinue_Click" Visible="false" />
-        <div class="actions">
+        </div>
 
     </asp:PlaceHolder>
 

@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,16 +17,17 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data.Entity;
 using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
 using Rock;
 using Rock.Attribute;
+using Rock.Web.Cache;
 using Rock.Constants;
 using Rock.Data;
 using Rock.Model;
-using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -40,7 +41,8 @@ namespace RockWeb.Blocks.Core
     [Description( "Block for displaying the history of changes to a particular entity." )]
 
     [ContextAware]
-    public partial class HistoryLog : RockBlock
+    [TextField( "Heading", "The Lava template to use for the heading. <span class='tip tip-lava'></span>", false, "{{ Entity.EntityStringValue }} (ID:{{ Entity.Id }})", "", 0 )]
+    public partial class HistoryLog : RockBlock, ISecondaryBlock
     {
 
         #region Fields
@@ -63,8 +65,12 @@ namespace RockWeb.Blocks.Core
             gfSettings.ApplyFilterClick += gfSettings_ApplyFilterClick;
             gfSettings.DisplayFilterValue += gfSettings_DisplayFilterValue;
 
-            gHistory.DataKeyNames = new string[] { "Id" };
             gHistory.GridRebind += gHistory_GridRebind;
+            gHistory.DataKeyNames = new string[] { "FirstHistoryId" };
+
+            // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
+            this.BlockUpdated += Block_BlockUpdated;
+            this.AddConfigurationUpdateTrigger( upnlContent );
         }
 
         /// <summary>
@@ -78,14 +84,16 @@ namespace RockWeb.Blocks.Core
             _entity = this.ContextEntity();
             if ( _entity != null )
             {
-                lHeading.Text = string.Format( "{0} (ID:{1})", _entity.ToString(), _entity.Id );
-
-                IModel model = _entity as IModel;
                 if ( !Page.IsPostBack )
                 {
+                    var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
+                    mergeFields.Add( "Entity", _entity );
+                    lHeading.Text = GetAttributeValue( "Heading" ).ResolveMergeFields( mergeFields );
+
                     BindFilter();
                     BindGrid();
 
+                    IModel model = _entity as IModel;
                     if ( model != null && model.CreatedDateTime.HasValue )
                     {
                         hlDateAdded.Text = String.Format( "Date Created: {0}", model.CreatedDateTime.Value.ToShortDateString() );
@@ -103,6 +111,20 @@ namespace RockWeb.Blocks.Core
         #region Events
 
         /// <summary>
+        /// Handles the BlockUpdated event of the Block control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void Block_BlockUpdated( object sender, EventArgs e )
+        {
+            var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
+            mergeFields.Add( "Entity", _entity );
+            lHeading.Text = GetAttributeValue( "Heading" ).ResolveMergeFields( mergeFields );
+
+            BindGrid();
+        }
+
+        /// <summary>
         /// Handles the ApplyFilterClick event of the gfSettings control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
@@ -111,12 +133,12 @@ namespace RockWeb.Blocks.Core
         {
             int? categoryId = cpCategory.SelectedValueAsInt();
             gfSettings.SaveUserPreference( "Category", categoryId.HasValue ? categoryId.Value.ToString() : "" );
-            
+
             gfSettings.SaveUserPreference( "Summary Contains", tbSummary.Text );
 
             int? personId = ppWhoFilter.PersonId;
             gfSettings.SaveUserPreference( "Who", personId.HasValue ? personId.ToString() : string.Empty );
-            
+
             gfSettings.SaveUserPreference( "Date Range", drpDates.DelimitedValues );
 
             BindGrid();
@@ -136,7 +158,7 @@ namespace RockWeb.Blocks.Core
                         int? categoryId = e.Value.AsIntegerOrNull();
                         if ( categoryId.HasValue )
                         {
-                            var category = Rock.Web.Cache.CategoryCache.Read( categoryId.Value );
+                            var category = CategoryCache.Get( categoryId.Value );
                             if ( category != null )
                             {
                                 e.Value = category.Name;
@@ -158,7 +180,7 @@ namespace RockWeb.Blocks.Core
                         int personId = int.MinValue;
                         if ( int.TryParse( e.Value, out personId ) )
                         {
-                            var person = new PersonService( new RockContext() ).Get( personId );
+                            var person = new PersonService( new RockContext() ).GetNoTracking( personId );
                             if ( person != null )
                             {
                                 e.Value = person.FullName;
@@ -184,7 +206,7 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        void gHistory_GridRebind( object sender, EventArgs e )
+        public void gHistory_GridRebind( object sender, EventArgs e )
         {
             BindGrid();
         }
@@ -215,8 +237,8 @@ namespace RockWeb.Blocks.Core
                     gfSettings.SaveUserPreference( "Who", string.Empty );
                 }
             }
-            drpDates.DelimitedValues = gfSettings.GetUserPreference( "Date Range" );
 
+            drpDates.DelimitedValues = gfSettings.GetUserPreference( "Date Range" );
         }
 
         /// <summary>
@@ -226,12 +248,41 @@ namespace RockWeb.Blocks.Core
         {
             if ( _entity != null )
             {
-                var entityTypeCache = EntityTypeCache.Read( _entity.GetType(), false );
+                var entityTypeCache = EntityTypeCache.Get( _entity.GetType(), false );
                 if ( entityTypeCache != null )
                 {
-                    var qry = new HistoryService( new RockContext() ).Queryable( "CreatedByPersonAlias.Person" )
+                    var rockContext = new RockContext();
+                    var historyService = new HistoryService( rockContext );
+                    IQueryable<History> qry;
+
+                    if ( entityTypeCache.Id == EntityTypeCache.GetId<Rock.Model.Person>() )
+                    {
+                        // If this is History for a Person, also include any History for any of their Families
+                        int? groupEntityTypeId = EntityTypeCache.GetId<Rock.Model.Group>();
+                        List<int> familyIds = ( _entity as Person ).GetFamilies().Select( a => a.Id ).ToList();
+
+                        qry = historyService.Queryable().Include( a => a.CreatedByPersonAlias.Person )
+                        .Where( h =>
+                            ( h.EntityTypeId == entityTypeCache.Id && h.EntityId == _entity.Id )
+                            || ( h.EntityTypeId == groupEntityTypeId && familyIds.Contains( h.EntityId ) ) );
+
+                        // as per issue #1594, if relatedEntityType is an Attribute then check View Authorization
+                        var attributeEntity = EntityTypeCache.Get( Rock.SystemGuid.EntityType.ATTRIBUTE.AsGuid() );
+                        var personAttributes = new AttributeService( rockContext ).GetByEntityTypeId( entityTypeCache.Id ).ToList().Select( a => AttributeCache.Get( a ) );
+                        var allowedAttributeIds = personAttributes.Where( a => a.IsAuthorized( Rock.Security.Authorization.VIEW, CurrentPerson ) ).Select( a => a.Id ).ToList();
+                        qry = qry.Where( a => ( a.RelatedEntityTypeId == attributeEntity.Id ) ? allowedAttributeIds.Contains( a.RelatedEntityId.Value ) : true );                            
+                    }
+                    else
+                    {
+                        qry = historyService.Queryable().Include( a => a.CreatedByPersonAlias.Person )
                         .Where( h =>
                             ( h.EntityTypeId == entityTypeCache.Id && h.EntityId == _entity.Id ) );
+                    }
+
+                    var historyCategories = new CategoryService( rockContext ).GetByEntityTypeId( EntityTypeCache.GetId<Rock.Model.History>() ).ToList().Select( a => CategoryCache.Get( a ) );
+                    var allowedCategoryIds = historyCategories.Where( a => a.IsAuthorized( Rock.Security.Authorization.VIEW, CurrentPerson ) ).Select( a => a.Id ).ToList();
+
+                    qry = qry.Where( a => allowedCategoryIds.Contains( a.CategoryId ) );
 
                     int? categoryId = gfSettings.GetUserPreference( "Category" ).AsIntegerOrNull();
                     if ( categoryId.HasValue )
@@ -239,16 +290,10 @@ namespace RockWeb.Blocks.Core
                         qry = qry.Where( a => a.CategoryId == categoryId.Value );
                     }
 
-                    string summary = gfSettings.GetUserPreference( "Summary Contains" );
-                    if ( !string.IsNullOrWhiteSpace( summary ) )
+                    int? personId = gfSettings.GetUserPreference( "Who" ).AsIntegerOrNull();
+                    if ( personId.HasValue )
                     {
-                        qry = qry.Where( h => h.Summary.Contains( summary ) );
-                    }
-
-                    int personId = int.MinValue;
-                    if ( int.TryParse( gfSettings.GetUserPreference( "Who" ), out personId ) )
-                    {
-                        qry = qry.Where( h => h.CreatedByPersonAlias.PersonId == personId );
+                        qry = qry.Where( h => h.CreatedByPersonAlias.PersonId == personId.Value );
                     }
 
                     var drp = new DateRangePicker();
@@ -263,89 +308,39 @@ namespace RockWeb.Blocks.Core
                         qry = qry.Where( h => h.CreatedDateTime < upperDate );
                     }
 
+                    // Combine history records that were saved at the same time
+                    var historySummaryList = historyService.GetHistorySummary( qry );
+
+                    string summary = gfSettings.GetUserPreference( "Summary Contains" );
+                    if ( !string.IsNullOrWhiteSpace( summary ) )
+                    {
+                        historySummaryList = historySummaryList.Where( h => h.HistoryList.Any( x => x.SummaryHtml.IndexOf( summary, StringComparison.OrdinalIgnoreCase ) >= 0 ) ).ToList();
+                    }
+
                     SortProperty sortProperty = gHistory.SortProperty;
                     if ( sortProperty != null )
                     {
-                        qry = qry.Sort( sortProperty );
+                        historySummaryList = historySummaryList.AsQueryable().Sort( sortProperty ).ToList();
                     }
                     else
                     {
-                        qry = qry.OrderByDescending( t => t.CreatedDateTime );
+                        historySummaryList = historySummaryList.OrderByDescending( t => t.CreatedDateTime ).ToList();
                     }
 
-                    // Combine history records that were saved at the same time
-                    var histories = new List<History>();
-                    foreach ( var history in qry )
-                    {
-                        var existingHistory = histories
-                            .Where( h =>
-                                h.CreatedByPersonAliasId == history.CreatedByPersonAliasId &&
-                                h.CreatedDateTime == history.CreatedDateTime &&
-                                h.EntityTypeId == history.EntityTypeId &&
-                                h.EntityId == history.EntityId &&
-                                h.CategoryId == history.CategoryId &&
-                                h.RelatedEntityTypeId == history.RelatedEntityTypeId &&
-                                h.RelatedEntityId == history.RelatedEntityId ).FirstOrDefault();
-                        if ( existingHistory != null )
-                        {
-                            existingHistory.Summary += "<br/>" + history.Summary;
-                        }
-                        else
-                        {
-                            histories.Add( history );
-                        }
-                    }
-
-                    gHistory.DataSource = histories.Select( h => new
-                    {
-                        Id = h.Id,
-                        CategoryId = h.CategoryId,
-                        Category = h.Category != null ? h.Category.Name : "",
-                        EntityTypeId = h.EntityTypeId,
-                        EntityId = h.EntityId,
-                        Caption = h.Caption ?? string.Empty,
-                        Summary = h.Summary,
-                        RelatedEntityTypeId = h.RelatedEntityTypeId ?? 0,
-                        RelatedEntityId = h.RelatedEntityId ?? 0,
-                        CreatedByPersonId = h.CreatedByPersonAlias != null ? h.CreatedByPersonAlias.PersonId : 0,
-                        PersonName = h.CreatedByPersonAlias != null && h.CreatedByPersonAlias.Person != null ? h.CreatedByPersonAlias.Person.NickName + " " + h.CreatedByPersonAlias.Person.LastName : "",
-                        CreatedDateTime = h.CreatedDateTime
-                    } ).ToList();
-
-                    gHistory.EntityTypeId = EntityTypeCache.Read<History>().Id;
+                    gHistory.DataSource = historySummaryList;
+                    gHistory.EntityTypeId = EntityTypeCache.Get<History>().Id;
                     gHistory.DataBind();
                 }
             }
-
         }
 
         /// <summary>
-        /// Formats the caption.
+        /// Hook so that other blocks can set the visibility of all ISecondaryBlocks on its page
         /// </summary>
-        /// <param name="categoryId">The category identifier.</param>
-        /// <param name="caption">The caption.</param>
-        /// <param name="relatedEntityId">The related entity identifier.</param>
-        /// <param name="entityId">The entity identifier.</param>
-        /// <returns></returns>
-        protected string FormatCaption( int categoryId, string caption, int? relatedEntityId, int? entityId = null )
+        /// <param name="visible">if set to <c>true</c> [visible].</param>
+        public void SetVisible( bool visible )
         {
-            var category = CategoryCache.Read( categoryId );
-            if (category != null)
-            {
-                string urlMask = category.GetAttributeValue( "UrlMask" );
-                if (!string.IsNullOrWhiteSpace(urlMask))
-                {
-                    if (urlMask.Contains("{0}"))
-                    {
-                        string p1 = relatedEntityId.HasValue ? relatedEntityId.Value.ToString() : "";
-                        string p2 = entityId.HasValue ? entityId.Value.ToString() : "";
-                        urlMask = string.Format( urlMask, p1, p2 );
-                    }
-                    return string.Format( "<a href='{0}'>{1}</a>", ResolveRockUrl( urlMask ), caption );
-                }
-            }
-
-            return caption;
+            pnlList.Visible = visible;
         }
 
         #endregion

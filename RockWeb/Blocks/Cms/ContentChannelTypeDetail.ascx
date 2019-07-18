@@ -22,7 +22,7 @@
             <div class="panel-body">
 
                 <Rock:NotificationBox ID="nbWarningMessage" runat="server" NotificationBoxType="Warning" />
-                <asp:ValidationSummary ID="ValidationSummary1" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                <asp:ValidationSummary ID="ValidationSummary1" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
 
                 <div class="row">
                     <div class="col-md-6">
@@ -31,15 +31,39 @@
                     <div class="col-md-6">
                         <div class="row">
                             <div class="col-xs-6">
-                                <Rock:RockDropDownList ID="ddlDateRangeType" runat="server" Label="Date Range Type" />
+                                <Rock:RockDropDownList ID="ddlDateRangeType" runat="server" Label="Date Range Type" AutoPostBack="true" OnSelectedIndexChanged="ddlDateRangeType_SelectedIndexChanged" />
                             </div>
                             <div class="col-xs-6">
                                 <Rock:RockCheckBox ID="cbIncludeTime" runat="server" Label="Include Time" Text="Yes"
                                     Help="Should the Date Range include the time of day along with the date?" />
                             </div>
                         </div>
-                        <Rock:RockCheckBox ID="cbDisablePriority" runat="server" Label="Disable Priority" 
-                            Help="Should channels of this type disable the use of priorities?" Text="Yes" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <Rock:RockCheckBox ID="cbDisablePriority" runat="server" Label="Disable Priority" 
+                                    Help="Should channels of this type disable the use of priorities?" Text="Yes" />
+                            </div>
+                            <div class="col-sm-6">
+                                <Rock:RockCheckBox ID="cbDisableContentField" runat="server" Label="Disable Content Field" 
+                                    Help="Should channels of this type disable the use of the content field?" Text="Yes" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <Rock:RockCheckBox ID="cbDisableStatus" runat="server" Label="Disable Status"  
+                                    Help="Should channels of this type disable the use of the status and all be treated as 'Approved'?" Text="Yes" />
+                            </div>
+                            <div class="col-sm-6">
+                                <Rock:RockCheckBox ID="cbShowInChannelList" runat="server" Label="Show in Channel Lists" Text="Yes"
+                                    Help="Unchecking this option means any channel block's 'Channel Types Include' settings MUST specifically include the type in order to show it." />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -74,8 +98,8 @@
                 </Rock:PanelWidget>
 
                 <div class="actions">
-                    <asp:LinkButton ID="lbSave" runat="server" Text="Save" CssClass="btn btn-primary" OnClick="lbSave_Click" />
-                    <asp:LinkButton ID="lbCancel" runat="server" Text="Cancel" CssClass="btn btn-link" CausesValidation="false" OnClick="lbCancel_Click" />
+                    <asp:LinkButton ID="lbSave" runat="server" AccessKey="s" ToolTip="Alt+s" Text="Save" CssClass="btn btn-primary" OnClick="lbSave_Click" />
+                    <asp:LinkButton ID="lbCancel" runat="server" AccessKey="c" ToolTip="Alt+c" Text="Cancel" CssClass="btn btn-link" CausesValidation="false" OnClick="lbCancel_Click" />
                 </div>
 
             </div>

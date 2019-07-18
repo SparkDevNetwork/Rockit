@@ -76,12 +76,12 @@ namespace RockWeb.Blocks.Core
             Guid entityTypeGuid = Guid.Empty;
             if ( Guid.TryParse( GetAttributeValue( "EntityType" ), out entityTypeGuid ) )
             {
-                entityTypeId = EntityTypeCache.Read( entityTypeGuid ).Id;
+                entityTypeId = EntityTypeCache.Get( entityTypeGuid ).Id;
             }
             entityTypeQualifierProperty = GetAttributeValue( "EntityTypeQualifierProperty" );
             entityTypeQualifierValue = GetAttributeValue( "EntityTypeQualifierValue" );
 
-            btnSecurity.EntityTypeId = EntityTypeCache.Read( typeof( Rock.Model.Category ) ).Id;
+            btnSecurity.EntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.Category ) ).Id;
 
             // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
             this.BlockUpdated += Block_BlockUpdated;
@@ -136,18 +136,11 @@ namespace RockWeb.Blocks.Core
             if ( hfCategoryId.Value.Equals( "0" ) )
             {
                 int? parentCategoryId = PageParameter( "ParentCategoryId" ).AsIntegerOrNull();
-                if ( parentCategoryId.HasValue )
-                {
-                    // Cancelling on Add, and we know the parentCategoryId, so we are probably in treeview mode, so navigate to the current page
-                    var qryParams = new Dictionary<string, string>();
-                    qryParams["CategoryId"] = parentCategoryId.ToString();
-                    NavigateToPage( RockPage.Guid, qryParams );
-                }
-                else
-                {
-                    // Cancelling on Add.  Return to Grid
-                    NavigateToParentPage();
-                }
+                // Cancelling on Add, and we know the parentCategoryId, so we are probably in treeview mode, so navigate to the current page
+                var qryParams = new Dictionary<string, string>();
+                qryParams["CategoryId"] = parentCategoryId.ToString();
+                qryParams["ExpandedIds"] = PageParameter( "ExpandedIds" );
+                NavigateToPage( RockPage.Guid, qryParams );
             }
             else
             {
@@ -195,8 +188,6 @@ namespace RockWeb.Blocks.Core
                 {
                     parentCategoryId = category.ParentCategoryId;
 
-                    CategoryCache.Flush( category.Id );
-
                     categoryService.Delete( category );
                     rockContext.SaveChanges();
 
@@ -206,6 +197,8 @@ namespace RockWeb.Blocks.Core
                     {
                         qryParams["CategoryId"] = parentCategoryId.ToString();
                     }
+
+                    qryParams["ExpandedIds"] = PageParameter( "ExpandedIds" );
 
                     NavigateToPage( RockPage.Guid, qryParams );
                 }
@@ -220,6 +213,7 @@ namespace RockWeb.Blocks.Core
         {
             pnlEditDetails.Visible = editable;
             fieldsetViewDetails.Visible = !editable;
+            this.HideSecondaryBlocks( editable );
         }
 
         /// <summary>
@@ -252,6 +246,7 @@ namespace RockWeb.Blocks.Core
             }
 
             category.Name = tbName.Text;
+            category.Description = tbDescription.Text;
             category.ParentCategoryId = cpParentCategory.SelectedValueAsInt();
             category.IconCssClass = tbIconCssClass.Text;
             category.HighlightColor = tbHighlightColor.Text;
@@ -285,10 +280,10 @@ namespace RockWeb.Blocks.Core
             }
 
             rockContext.SaveChanges();
-            CategoryCache.Flush( category.Id );
 
             var qryParams = new Dictionary<string, string>();
             qryParams["CategoryId"] = category.Id.ToString();
+            qryParams["ExpandedIds"] = PageParameter( "ExpandedIds" );
             NavigateToPage( RockPage.Guid, qryParams );
         }
 
@@ -426,16 +421,7 @@ namespace RockWeb.Blocks.Core
             SetEditMode( true );
 
             tbName.Text = category.Name;
-
-            if ( category.EntityTypeId != 0 )
-            {
-                var entityType = EntityTypeCache.Read( category.EntityTypeId );
-                lblEntityTypeName.Text = entityType.Name;
-            }
-            else
-            {
-                lblEntityTypeName.Text = string.Empty;
-            }
+            tbDescription.Text = category.Description;
 
             var excludeCategoriesGuids = this.GetAttributeValue( "ExcludeCategories" ).SplitDelimitedValues().AsGuidList();
             List<int> excludedCategoriesIds = new List<int>();
@@ -443,7 +429,7 @@ namespace RockWeb.Blocks.Core
             {
                 foreach ( var excludeCategoryGuid in excludeCategoriesGuids )
                 {
-                    var excludedCategory = CategoryCache.Read( excludeCategoryGuid );
+                    var excludedCategory = CategoryCache.Get( excludeCategoryGuid );
                     if ( excludedCategory != null )
                     {
                         excludedCategoriesIds.Add( excludedCategory.Id );
@@ -455,15 +441,11 @@ namespace RockWeb.Blocks.Core
             cpParentCategory.EntityTypeQualifierColumn = category.EntityTypeQualifierColumn;
             cpParentCategory.EntityTypeQualifierValue = category.EntityTypeQualifierValue;
             cpParentCategory.ExcludedCategoryIds = excludedCategoriesIds.AsDelimited( "," );
-            var rootCategory = CategoryCache.Read( this.GetAttributeValue( "RootCategory" ).AsGuid() );
+            var rootCategory = CategoryCache.Get( this.GetAttributeValue( "RootCategory" ).AsGuid() );
 
             cpParentCategory.RootCategoryId = rootCategory != null ? rootCategory.Id : (int?)null;
             cpParentCategory.SetValue( category.ParentCategoryId );
 
-            lblEntityTypeQualifierColumn.Visible = !string.IsNullOrWhiteSpace( category.EntityTypeQualifierColumn );
-            lblEntityTypeQualifierColumn.Text = category.EntityTypeQualifierColumn;
-            lblEntityTypeQualifierValue.Visible = !string.IsNullOrWhiteSpace( category.EntityTypeQualifierValue );
-            lblEntityTypeQualifierValue.Text = category.EntityTypeQualifierValue;
             tbIconCssClass.Text = category.IconCssClass;
             tbHighlightColor.Text = category.HighlightColor;
         }
@@ -491,7 +473,7 @@ namespace RockWeb.Blocks.Core
             }
 
             lblMainDetails.Text = new DescriptionList()
-                .Add( "Entity Type", category.EntityType.Name )
+                .Add( "Description", category.Description )
                 .Html;
 
         }
@@ -501,7 +483,7 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         protected override void ShowSettings()
         {
-            var entityType = EntityTypeCache.Read( this.GetAttributeValue( "EntityType" ).AsGuid() );
+            var entityType = EntityTypeCache.Get( this.GetAttributeValue( "EntityType" ).AsGuid() );
             var rootCategory = new CategoryService( new RockContext() ).Get( this.GetAttributeValue( "RootCategory" ).AsGuid() );
 
             cpRootCategoryDetail.EntityTypeId = entityType != null ? entityType.Id : 0;
@@ -543,14 +525,14 @@ namespace RockWeb.Blocks.Core
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void mdCategoryDetailConfig_SaveClick( object sender, EventArgs e )
         {
-            var selectedCategory = CategoryCache.Read( cpRootCategoryDetail.SelectedValue.AsInteger() );
+            var selectedCategory = CategoryCache.Get( cpRootCategoryDetail.SelectedValue.AsInteger() );
             this.SetAttributeValue( "RootCategory", selectedCategory != null ? selectedCategory.Guid.ToString() : string.Empty );
 
             var excludedCategoryIds = cpExcludeCategoriesDetail.SelectedValuesAsInt();
             var excludedCategoryGuids = new List<Guid>();
             foreach ( int excludedCategoryId in excludedCategoryIds )
             {
-                var excludedCategory = CategoryCache.Read( excludedCategoryId );
+                var excludedCategory = CategoryCache.Get( excludedCategoryId );
                 if ( excludedCategory != null )
                 {
                     excludedCategoryGuids.Add( excludedCategory.Guid );

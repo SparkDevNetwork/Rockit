@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,8 +46,9 @@ namespace RockWeb.Blocks.Groups
     [CodeEditorField( "Already In Group Message", "Lava template to display when person is already in the group with that role.", CodeEditorMode.Lava, CodeEditorTheme.Rock, 300, true, @"<div class='alert alert-warning'>
     {{ Person.NickName }} is already in the group '{{ Group.Name }}' with the role of {{ Role.Name }}.
 </div>" )]
-    [BooleanField("Enable Debug", "Shows the Lava variables availabled for this block")]
     [EnumField("Group Member Status", "The status to use when adding a person to the group.", typeof(GroupMemberStatus), true, "Active")]
+    [GroupTypesField( "Limit Group Type", "To ensure that people cannot modify the URL and try adding themselves to standard Rock security groups with known Id numbers you can limit which Group Type that are considered valid during add.", false )]
+    [BooleanField( "Enable Passing Group Id", "If enabled, allows the ability to pass in a group's Id (GroupId=) instead of the Guid.", true, "" )]
     public partial class GroupMemberAddFromUrl : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -90,25 +91,34 @@ namespace RockWeb.Blocks.Groups
             if ( !Page.IsPostBack )
             {
                 RockContext rockContext = new RockContext();
+                var groupService = new GroupService( rockContext );
                 
                 Group group = null;
                 Guid personGuid = Guid.Empty;
                 GroupTypeRole groupMemberRole = null;
-                
+
                 // get group id from url
-                if ( Request["GroupId"] != null )
+                Guid? groupGuid = PageParameter( "GroupGuid" ).AsGuidOrNull();
+                if ( groupGuid.HasValue )
                 {
-                    int groupId = 0;
-                    if ( Int32.TryParse( Request["GroupId"], out groupId ) )
+                    group = groupService.Queryable( "GroupType,GroupType.Roles" ).Where( g => g.Guid == groupGuid.Value ).FirstOrDefault();
+                }
+
+                if ( group == null && GetAttributeValue( "EnablePassingGroupId" ).AsBoolean( true ) )
+                {
+                    int? groupId = PageParameter( "GroupId" ).AsIntegerOrNull();
+                    if ( groupId.HasValue )
                     {
-                        group = new GroupService( rockContext ).Queryable("GroupType,GroupType.Roles").Where(g => g.Id == groupId ).FirstOrDefault();
+                        group = groupService.Queryable( "GroupType,GroupType.Roles" ).Where( g => g.Id == groupId ).FirstOrDefault();
                     }
                 }
-                else
+
+                if ( group == null )
                 {
-                    Guid groupGuid = Guid.Empty;
-                    if ( Guid.TryParse( GetAttributeValue( "DefaultGroup" ), out groupGuid ) ) {
-                        group = new GroupService( rockContext ).Queryable( "GroupType,GroupType.Roles" ).Where( g => g.Guid == groupGuid ).FirstOrDefault(); ;
+                    groupGuid = GetAttributeValue( "DefaultGroup" ).AsGuidOrNull();
+                    if ( groupGuid.HasValue )
+                    {
+                        group = groupService.Queryable( "GroupType,GroupType.Roles" ).Where( g => g.Guid == groupGuid.Value ).FirstOrDefault();
                     }
                 }
 
@@ -118,22 +128,40 @@ namespace RockWeb.Blocks.Groups
                     return;
                 }
 
+                // Validate the group type.
+                if ( !string.IsNullOrEmpty( GetAttributeValue( "LimitGroupType" ) ) )
+                {
+                    bool groupTypeMatch = GetAttributeValue( "LimitGroupType" )
+                        .Split( ',' )
+                        .Contains( group.GroupType.Guid.ToString(), StringComparer.CurrentCultureIgnoreCase );
+
+                    if ( !groupTypeMatch )
+                    {
+                        lAlerts.Text = "Invalid group specified.";
+                        return;
+                    }
+                }
+
                 // get group role id from url
-                if ( Request["GroupMemberRoleId"] != null )
+                if ( !string.IsNullOrWhiteSpace( PageParameter( "GroupMemberRoleId" ) ) )
                 {
                     int groupMemberRoleId = 0;
-                    if ( Int32.TryParse( Request["GroupMemberRoleId"], out groupMemberRoleId ) )
+                    if ( Int32.TryParse( PageParameter( "GroupMemberRoleId" ), out groupMemberRoleId ) )
                     {
                         groupMemberRole = new GroupTypeRoleService( rockContext ).Get( groupMemberRoleId );
                     }
                 }
-                else
+                else if ( !string.IsNullOrWhiteSpace( GetAttributeValue( "DefaultGroupMemberRole" ) ) )
                 {
                     Guid groupMemberRoleGuid = Guid.Empty;
                     if ( Guid.TryParse( GetAttributeValue( "DefaultGroupMemberRole" ), out groupMemberRoleGuid ) )
                     {
                         groupMemberRole = new GroupTypeRoleService( rockContext ).Get( groupMemberRoleGuid );
                     }
+                }
+                else
+                {
+                    groupMemberRole = group.GroupType.DefaultGroupRole;
                 }
 
                 if ( groupMemberRole == null )
@@ -143,9 +171,9 @@ namespace RockWeb.Blocks.Groups
                 }
 
                 // get person
-                if ( Request["PersonGuid"] != null )
+                if ( !string.IsNullOrWhiteSpace( PageParameter( "PersonGuid" ) ) )
                 {
-                    Guid.TryParse( Request["PersonGuid"], out personGuid );
+                    Guid.TryParse( PageParameter( "PersonGuid" ), out personGuid );
                 }
 
                 if ( personGuid == Guid.Empty )
@@ -183,14 +211,6 @@ namespace RockWeb.Blocks.Groups
                 mergeFields.Add( "Person", person );
                 mergeFields.Add( "Role", groupMemberRole );
                 mergeFields.Add( "CurrentPerson", CurrentPerson );
-
-                // show debug info?
-                bool enableDebug = GetAttributeValue( "EnableDebug" ).AsBoolean();
-                if ( enableDebug && IsUserAuthorized( Authorization.EDIT ) )
-                {
-                    lDebug.Visible = true;
-                    lDebug.Text = mergeFields.lavaDebugInfo();
-                }
 
                 // ensure that the person is not already in the group
                 if ( group.Members.Where( m => m.PersonId == person.Id && m.GroupRoleId == groupMemberRole.Id ).Count() != 0 )

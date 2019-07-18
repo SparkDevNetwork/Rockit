@@ -10,7 +10,9 @@
             </div>
             <div class="panel-body">
 
-                <asp:ValidationSummary ID="valSummaryTop" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                <asp:ValidationSummary ID="valSummaryTop" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
+                <asp:CustomValidator ID="cvGroupMember" runat="server" Display="None" />
+                <Rock:NotificationBox ID="nbValidation" runat="server" Heading="Please correct the following:" NotificationBoxType="Danger" />
 
                 <asp:Panel ID="pnlGroupData" runat="server">
 
@@ -37,12 +39,13 @@
                     <div class="row">
                         <div class="col-md-4">
                             <Rock:CampusPicker ID="cpCampus" runat="server" Required="true" />
-                            <Rock:RockDropDownList ID="ddlMaritalStatus" runat="server" Label="Marital Status of Adults" 
+                            <Rock:DefinedValuePicker ID="dvpMaritalStatus" runat="server" Label="Marital Status of Adults" 
                                 Help="The marital status to use for the adults in this family." />
                         </div>
 
                         <div class="col-md-8">
                             <Rock:AddressControl ID="acAddress" Label="Address" runat="server" UseStateAbbreviation="false" UseCountryAbbreviation="false" />
+                            <Rock:RockCheckBox ID="cbHomeless" runat="server" Text="Family is Homeless" Visible="false" />
                         </div>
                     </div>
 
@@ -52,14 +55,22 @@
                     <Rock:NewGroupContactInfo ID="nfciContactInfo" runat="server" />
                 </asp:Panel>
 
+                <asp:Panel ID="pnlAdvanceInfo" runat="server" Visible="false">
+                    <Rock:NewGroupAdvanceInfo ID="nfaiAdvanceInfo" runat="server" />
+                </asp:Panel>
+
                 <asp:Panel ID="pnlAttributes" runat="server" Visible="false">
                 </asp:Panel>
 
                 <asp:Panel ID="pnlDuplicateWarning" runat="server" Visible="false">
-                    <Rock:NotificationBox ID="nbDuplicateWarning" runat="server" NotificationBoxType="Warning" Title="Possible Duplicates!"
-                        Text="<p>One ore more of the people you are adding may already exist! Please confirm that none of the existing people below are the same person as someone that you are adding." />
-                    <asp:PlaceHolder ID="phDuplicates" runat="server" />
+                    <Rock:NotificationBox ID="nbDuplicateWarning" runat="server" NotificationBoxType="Warning" Title="Possible Duplicates"
+                        Text="<p>One or more of the people you are adding may already exist. Please confirm that none of the existing people below are the same person as someone that you are adding." />
+                    <div>
+                        <asp:PlaceHolder ID="phDuplicates" runat="server" />
+                    </div>
                 </asp:Panel>
+
+                <Rock:NotificationBox ID="nbMessages" runat="server"></Rock:NotificationBox>
 
                 <div class="actions">
                     <asp:LinkButton ID="btnPrevious" runat="server" Text="Previous" CssClass="btn btn-link" OnClick="btnPrevious_Click" Visible="false" CausesValidation="false" />

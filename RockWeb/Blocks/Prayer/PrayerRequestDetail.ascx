@@ -2,6 +2,9 @@
 
 <asp:UpdatePanel ID="upPrayerRequests" runat="server">
     <ContentTemplate>
+
+       <Rock:ModalAlert ID="maWarning" runat="server" />
+
         <asp:Panel ID="pnlDetails" runat="server">
 
             <div class="panel panel-block">
@@ -18,7 +21,7 @@
                 <div class="panel-body">
                     <asp:HiddenField ID="hfPrayerRequestId" runat="server" />
 
-                    <asp:ValidationSummary ID="valValidation" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                    <asp:ValidationSummary ID="valValidation" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
 
                     <!-- Edit -->
                     <div id="pnlEditDetails" runat="server">
@@ -30,7 +33,9 @@
                                     <Rock:PersonPicker ID="ppRequestor" runat="server" Label="Requested By" EnableSelfSelection="true" OnSelectPerson="ppRequestor_SelectPerson" />
                                     <Rock:RockTextBox ID="tbFirstName" runat="server" Label="First Name" Required="true" />
                                     <Rock:RockTextBox ID="tbLastName" runat="server" Label="Last Name" />
+                                    <Rock:EmailBox ID="tbEmail" runat="server" Label="Email" />
                                     <Rock:DatePicker ID="dpExpirationDate" Text="Expires On" runat="server" SourceTypeName="Rock.Model.PrayerRequest, Rock" PropertyName="ExpirationDate" />
+                                    <Rock:CampusPicker ID="cpCampus" runat="server" />
                                 </div>
 
                                 <div class="col-md-3">
@@ -69,6 +74,14 @@
                                 </div>
                             </div>
 
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="attributes">
+                                        <asp:PlaceHolder ID="phAttributes" runat="server" />
+                                    </div>
+                                </div>
+                            </div>
+
                         </fieldset>
 
                         <div class="actions">
@@ -92,12 +105,15 @@
                         <div class="row">
                             <div class="col-md-12">
                                 <asp:Literal ID="lMainDetails" runat="server" />
+
+                                <asp:PlaceHolder ID="phDisplayAttributes" runat="server" />
                             </div>
                         </div>
 
                         <div class="actions">
                             <asp:LinkButton ID="lbEdit" runat="server" Text="Edit" CssClass="btn btn-primary" OnClick="lbEdit_Click" />
                             <asp:LinkButton ID="lbCancelView" runat="server" Text="Back" CssClass="btn btn-link" CausesValidation="false" OnClick="lbCancel_Click" />
+                            <asp:LinkButton ID="lbDelete" runat="server" Text="Delete" CssClass="btn btn-link" CausesValidation="false" OnClick="lbDelete_Click" />
                         </div>
 
                     </fieldset>

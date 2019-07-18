@@ -5,7 +5,7 @@
 <!DOCTYPE html>
 
 <script runat="server">
-    
+
     /// <summary>
     /// An optional subtitle
     /// </summary>
@@ -29,7 +29,7 @@
     /// </summary>
     /// <value>
     /// The close message.
-    /// </value>    
+    /// </value>
     public override string CloseMessage
     {
         get
@@ -71,21 +71,19 @@
         {
             btnCancel.AddCssClass( "btn-primary" );
         }
-    }    
-    
+    }
+
 </script>
 
 <html class="no-js">
 <head runat="server">
-    <meta http-equiv="X-UA-Compatible" content="IE=10" />
     <title></title>
 
     <script src="<%# ResolveRockUrl("~/Scripts/modernizr.js", true) %>"></script>
-    <script src="<%# ResolveRockUrl("~/Scripts/jquery-1.12.4.min.js", true) %>"></script>
+    <script src="<%# System.Web.Optimization.Scripts.Url("~/Scripts/Bundles/RockJQueryLatest") %>"></script>
 
     <link rel="stylesheet" href="<%# ResolveRockUrl("~~/Styles/bootstrap.css", true) %>" />
     <link rel="stylesheet" href="<%# ResolveRockUrl("~~/Styles/theme.css", true) %>" />
-    <link rel="stylesheet" href="<%# ResolveRockUrl("~/Styles/developer.css", true) %>" />
 
     <style>
         html, body {
@@ -117,7 +115,7 @@
                     <div class="modal-body">
 
                         <!-- Ajax Error -->
-                        <div class="alert alert-danger ajax-error" style="display:none">
+                        <div class="alert alert-danger ajax-error no-index" style="display:none">
                             <p><strong>Error</strong></p>
                             <span class="ajax-error-message"></span>
                         </div>

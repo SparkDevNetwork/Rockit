@@ -43,7 +43,7 @@ namespace RockWeb.Blocks.Groups
     [LinkedPage( "Confirmation Page", "The page that user should be directed to to confirm their registration" )]
     [DefinedValueField( "2E6540EA-63F0-40FE-BE50-F2A84735E600", "Connection Status", "The connection status to use for new individuals (default: 'Web Prospect'.)", true, false, "368DD475-242C-49C4-A42C-7278BE690CC2" )]
     [DefinedValueField( "8522BADD-2871-45A5-81DD-C76DA07E2E7E", "Record Status", "The record status to use for new individuals (default: 'Pending'.)", true, false, "283999EC-7346-42E3-B807-BCE9B2BABB49" )]
-    [BooleanField( "Load Current Person from Page", "If set to true the form will autopopulate fields fro mthe person profile", false, key: "LoadPerson" )]
+    [BooleanField( "Load Current Person from Page", "If set to true the form will autopopulate fields from the person profile", false, key: "LoadPerson" )]
     public partial class GroupSimpleRegister : RockBlock
     {
         #region overridden control methods
@@ -150,9 +150,11 @@ namespace RockWeb.Blocks.Groups
                                         var pageReference = new Rock.Web.PageReference( linkedPage, pageParams );
                                         mergeFields.Add( "ConfirmationPage", pageReference.BuildUrl() );
 
-                                        var recipients = new List<RecipientData>();
-                                        recipients.Add( new RecipientData( person.Email, mergeFields ) );
-                                        Email.Send( confirmationEmailTemplateGuid, recipients, ResolveRockUrl( "~/" ), ResolveRockUrl( "~~/" ) );
+                                        var emailMessage = new RockEmailMessage( confirmationEmailTemplateGuid );
+                                        emailMessage.AddRecipient( new RecipientData( person.Email, mergeFields ) );
+                                        emailMessage.AppRoot = ResolveRockUrl( "~/" );
+                                        emailMessage.ThemeRoot = ResolveRockUrl( "~~/" );
+                                        emailMessage.Send();
                                     }
 
                                     ShowSuccess( GetAttributeValue( "SuccessMessage" ) );
@@ -172,7 +174,7 @@ namespace RockWeb.Blocks.Groups
                         }
                         else
                         {
-                            ShowError( "Configuration Error", "The configured group does not exist, or it's group type does not have a default role configured." );
+                            ShowError( "Configuration Error", "The configured group does not exist, or its group type does not have a default role configured." );
                         }
                     }
                     else
@@ -204,8 +206,8 @@ namespace RockWeb.Blocks.Groups
             }
             else
             {
-                DefinedValueCache dvcConnectionStatus = DefinedValueCache.Read( GetAttributeValue( "ConnectionStatus" ).AsGuid() );
-                DefinedValueCache dvcRecordStatus = DefinedValueCache.Read( GetAttributeValue( "RecordStatus" ).AsGuid() );
+                DefinedValueCache dvcConnectionStatus = DefinedValueCache.Get( GetAttributeValue( "ConnectionStatus" ).AsGuid() );
+                DefinedValueCache dvcRecordStatus = DefinedValueCache.Get( GetAttributeValue( "RecordStatus" ).AsGuid() );
 
                 Person person = new Person();
                 person.FirstName = txtFirstName.Text;
@@ -213,7 +215,7 @@ namespace RockWeb.Blocks.Groups
                 person.Email = txtEmail.Text;
                 person.IsEmailActive = true;
                 person.EmailPreference = EmailPreference.EmailAllowed;
-                person.RecordTypeValueId = DefinedValueCache.Read( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
+                person.RecordTypeValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
                 if ( dvcConnectionStatus != null )
                 {
                     person.ConnectionStatusValueId = dvcConnectionStatus.Id;

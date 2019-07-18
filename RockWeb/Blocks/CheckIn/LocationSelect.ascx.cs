@@ -33,6 +33,17 @@ namespace RockWeb.Blocks.CheckIn
     [Category("Check-in")]
     [Description("Displays a list of locations a person is able to check into.")]
 
+    [TextField( "Title", "Title to display. Use {0} for person/schedule.", false, "{0}", "Text", 8 )]
+    [TextField( "Sub Title", "Sub-Title to display. Use {0} for selected group name.", false, "{0}", "Text", 9 )]
+    [TextField( "Caption", "", false, "Select Location", "Text", 10 )]
+
+    [TextField( "No Option Message", "Message to display when there are not any options available. Use {0} for person's name, and {1} for schedule name.", false,
+        "Sorry, there are currently not any available locations that {0} can check into at {1}.", "Text", 11 )]
+    [TextField( "No Option After Select Message", "Message to display when there are not any options available after location is selected. Use {0} for person's name", false,
+        "Sorry, based on your selection, there are currently not any available times that {0} can check into.", "Text", 12 )]
+
+    [CustomDropdownListField( "Sort By", "", "0^Location Name,1^Check-In Group Location Order", false, "0", order: 13 )]
+
     public partial class LocationSelect : CheckInBlockMultiPerson
     {
         /// <summary>
@@ -129,7 +140,6 @@ namespace RockWeb.Blocks.CheckIn
         {
             base.OnLoad( e );
 
-            RockPage.AddScriptLink( "~/Scripts/iscroll.js" );
             RockPage.AddScriptLink( "~/Scripts/CheckinClient/checkin-core.js" );
 
             var bodyTag = this.Page.Master.FindControl( "bodyTag" ) as HtmlGenericControl;
@@ -168,8 +178,9 @@ namespace RockWeb.Blocks.CheckIn
                         GoBack();
                     }
 
-                    lTitle.Text = GetPersonScheduleSubTitle();
-                    lSubTitle.Text = group.ToString();
+                    lTitle.Text = string.Format( GetAttributeValue( "Title"),  GetPersonScheduleSubTitle() );
+                    lSubTitle.Text = string.Format( GetAttributeValue( "SubTitle" ), group.ToString() );
+                    lCaption.Text = GetAttributeValue( "Caption" );
 
                     var availLocations = group.GetAvailableLocations( schedule );
                     if ( availLocations.Any() )
@@ -197,9 +208,21 @@ namespace RockWeb.Blocks.CheckIn
                         }
                         else
                         {
-                            rSelection.DataSource = availLocations
-                                .OrderBy( l => l.Location.Name )
-                                .ToList();
+                            var locations = new List<CheckInLocation>();
+                            int sortBy = GetAttributeValue( "SortBy" ).AsInteger();
+                            switch ( sortBy )
+                            {
+                                case 0: locations = availLocations.OrderBy( l => l.Location.Name ).ToList();
+                                    break;
+
+                                case 1: locations = availLocations.OrderBy( l => l.Order ).ToList();
+                                    break;
+
+                                default: locations = availLocations.OrderBy( l => l.Location.Name ).ToList();
+                                    break;
+                            }
+
+                            rSelection.DataSource = locations;
 
                             rSelection.DataBind();
                         }
@@ -214,8 +237,9 @@ namespace RockWeb.Blocks.CheckIn
                         {
                             pnlNoOptions.Visible = true;
                             rSelection.Visible = false;
-                            lNoOptionName.Text = person.Person.NickName;
-                            lNoOptionSchedule.Text = person.CurrentSchedule != null ? person.CurrentSchedule.ToString() : "this time";
+                            lNoOptions.Text = string.Format( GetAttributeValue( "NoOptionMessage" ), 
+                                person.Person.NickName,
+                                person.CurrentSchedule != null ? person.CurrentSchedule.ToString() : "this time" );
                         }
                     }
                 }
@@ -336,7 +360,7 @@ namespace RockWeb.Blocks.CheckIn
         {
             if ( CurrentCheckInType != null && CurrentCheckInType.DisplayLocationCount )
             { 
-                return string.Format( " <span class='checkin-sub-title'> Count: {0}</span>", KioskLocationAttendance.Read( locationId ).CurrentCount );
+                return string.Format( " <span class='checkin-sub-title'> Count: {0}</span>", KioskLocationAttendance.Get( locationId ).CurrentCount );
             }
 
             return string.Empty;
@@ -352,6 +376,7 @@ namespace RockWeb.Blocks.CheckIn
         {
             if ( person != null )
             {
+                string msg = string.Format( GetAttributeValue( "NoOptionAfterSelectMessage" ), person.Person.FullName );
                 if ( !ProcessSelection(
                     maWarning,
                     () => person.SelectedGroupTypes( schedule )
@@ -359,7 +384,7 @@ namespace RockWeb.Blocks.CheckIn
                             .SelectMany( g => g.SelectedLocations( schedule )
                                 .SelectMany( l => l.ValidSchedules( schedule ) ) ) )
                         .Count() <= 0,
-                    string.Format( "<p>Sorry, based on your selection, there are currently not any available times that {0} can check into.</p>", person.Person.FullName ),
+                    string.Format( "<p>{0}</p>", msg ),
                     CurrentCheckInState.CheckInType.TypeOfCheckin == TypeOfCheckin.Family ) )
                 {
                     ClearSelection();

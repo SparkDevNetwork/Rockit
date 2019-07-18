@@ -107,7 +107,7 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         protected void LoadCampusDropdowns()
         {
-            var campusEntityType = EntityTypeCache.Read( typeof( Campus ) );
+            var campusEntityType = EntityTypeCache.Get( typeof( Campus ) );
             var currentCampus = RockPage.GetCurrentContext( campusEntityType ) as Campus;
 
             var campusIdString = Request.QueryString["campusId"];
@@ -115,15 +115,14 @@ namespace RockWeb.Blocks.Core
             {
                 var campusId = campusIdString.AsInteger();
 
-                if ( currentCampus == null || currentCampus.Id != campusId )
-                {
-                    currentCampus = SetCampusContext( campusId, false );
-                }
+                // if there is a query parameter, ensure that the Campus Context cookie is set (and has an updated expiration)
+                // note, the Campus Context might already match due to the query parameter, but has a different cookie context, so we still need to ensure the cookie context is updated
+                currentCampus = SetCampusContext( campusId, false );
             }
 
             if ( currentCampus == null && GetAttributeValue( "DefaultToCurrentUser" ).AsBoolean() && CurrentPerson != null )
             {
-                currentCampus = CurrentPerson.GetFamilies().First().Campus;
+                currentCampus = CurrentPerson.GetFamily().Campus;
             }
 
             if ( currentCampus != null )
@@ -176,7 +175,7 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         private void LoadScheduleDropdowns()
         {
-            var scheduleEntityType = EntityTypeCache.Read( typeof( Schedule ) );
+            var scheduleEntityType = EntityTypeCache.Get( typeof( Schedule ) );
             var currentSchedule = RockPage.GetCurrentContext( scheduleEntityType ) as Schedule;
 
             var scheduleIdString = Request.QueryString["scheduleId"];
@@ -184,10 +183,9 @@ namespace RockWeb.Blocks.Core
             {
                 var scheduleId = scheduleIdString.AsInteger();
 
-                if ( currentSchedule == null || currentSchedule.Id != scheduleId )
-                {
-                    currentSchedule = SetScheduleContext( scheduleId, false );
-                }
+                // if there is a query parameter, ensure that the Schedule Context cookie is set (and has an updated expiration)
+                // note, the Schedule Context might already match due to the query parameter, but has a different cookie context, so we still need to ensure the cookie context is updated
+                currentSchedule = SetScheduleContext( scheduleId, false );
             }
 
             if ( currentSchedule != null )

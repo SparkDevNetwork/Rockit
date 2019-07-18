@@ -15,10 +15,9 @@
 // </copyright>
 //
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Web.UI;
+
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -48,8 +47,12 @@ namespace RockWeb.Blocks.Core
     [BooleanField( "Allow Anonymous", "", false, "", 9 )]
     [BooleanField( "Add Always Visible", "Should the add entry screen always be visible (vs. having to click Add button to display the entry screen).", false, "", 10 )]
     [CustomDropdownListField( "Display Order", "Descending will render with entry field at top and most recent note at top.  Ascending will render with entry field at bottom and most recent note at the end.  Ascending will also disable the more option", "Ascending,Descending", true, "Descending", "", 11 )]
-    [BooleanField("Allow Backdated Notes", "", false, "", 12)]
-    [NoteTypeField("Note Types", "Optional list of note types to limit display to", true, "", "", "", false, "", "", 12)]
+    [BooleanField( "Allow Backdated Notes", "", false, "", 12 )]
+    [NoteTypeField( "Note Types", "Optional list of note types to limit display to", true, "", "", "", false, "", "", 12 )]
+    [BooleanField( "Display Note Type Heading", "Should each note's Note Type be displayed as a heading above each note?", false, "", 13 )]
+    [BooleanField( "Expand Replies", "Should replies to automatically expanded?", false, "", 14 )]
+    [CodeEditorField( "Note View Lava Template", "The Lava Template to use when rendering the readonly view of all the notes.", CodeEditorMode.Lava, CodeEditorTheme.Rock, 100, false, @"{% include '~~/Assets/Lava/NoteViewList.lava' %}", order: 15 )]
+    //[BooleanField("Delete Me too")]
     public partial class Notes : RockBlock, ISecondaryBlock
     {
         #region Base Control Methods
@@ -62,7 +65,26 @@ namespace RockWeb.Blocks.Core
         {
             base.OnInit( e );
 
-            var contextEntity = this.ContextEntity();
+            this.BlockUpdated += Notes_BlockUpdated;
+
+            ShowNotes();
+        }
+
+        /// <summary>
+        /// Renders the notes.
+        /// </summary>
+        private void ShowNotes()
+        {
+            IEntity contextEntity;
+            if ( ContextTypesRequired.Count == 1 )
+            {
+                contextEntity = this.ContextEntity( ContextTypesRequired.First().Name );
+            }
+            else
+            {
+                contextEntity = this.ContextEntity();
+            }
+
             if ( contextEntity != null )
             {
                 upNotes.Visible = true;
@@ -71,7 +93,7 @@ namespace RockWeb.Blocks.Core
 
                 using ( var rockContext = new RockContext() )
                 {
-                    var noteTypes = NoteTypeCache.GetByEntity( contextEntity.TypeId, string.Empty, string.Empty, true );
+                    var noteTypes = NoteTypeCache.GetByEntity(contextEntity.TypeId, string.Empty, string.Empty, true);
 
                     // If block is configured to only allow certain note types, limit notes to those types.
                     var configuredNoteTypes = GetAttributeValue( "NoteTypes" ).SplitDelimitedValues().AsGuidList();
@@ -80,20 +102,28 @@ namespace RockWeb.Blocks.Core
                         noteTypes = noteTypes.Where( n => configuredNoteTypes.Contains( n.Guid ) ).ToList();
                     }
 
-                    notesTimeline.EntityId = contextEntity.Id;
-                    notesTimeline.NoteTypes = noteTypes;
+                    NoteOptions noteOptions = new NoteOptions( notesTimeline )
+                    {
+                        EntityId = contextEntity.Id,
+                        NoteTypes = noteTypes.ToArray(),
+                        NoteLabel = GetAttributeValue( "NoteTerm" ),
+                        DisplayType = GetAttributeValue( "DisplayType" ) == "Light" ? NoteDisplayType.Light : NoteDisplayType.Full,
+                        ShowAlertCheckBox = GetAttributeValue( "ShowAlertCheckbox" ).AsBoolean(),
+                        ShowPrivateCheckBox = GetAttributeValue( "ShowPrivateCheckbox" ).AsBoolean(),
+                        ShowSecurityButton = GetAttributeValue( "ShowSecurityButton" ).AsBoolean(),
+                        AddAlwaysVisible = GetAttributeValue( "AddAlwaysVisible" ).AsBoolean(),
+                        ShowCreateDateInput = GetAttributeValue( "AllowBackdatedNotes" ).AsBoolean(),
+                        NoteViewLavaTemplate = GetAttributeValue( "NoteViewLavaTemplate" ),
+                        DisplayNoteTypeHeading = GetAttributeValue( "DisplayNoteTypeHeading" ).AsBoolean(),
+                        UsePersonIcon = GetAttributeValue( "UsePersonIcon" ).AsBoolean(),
+                        ExpandReplies = GetAttributeValue( "ExpandReplies" ).AsBoolean()
+                    };
+
+                    notesTimeline.NoteOptions = noteOptions;
                     notesTimeline.Title = GetAttributeValue( "Heading" );
                     notesTimeline.TitleIconCssClass = GetAttributeValue( "HeadingIcon" );
-                    notesTimeline.Term = GetAttributeValue( "NoteTerm" );
-                    notesTimeline.DisplayType = GetAttributeValue( "DisplayType" ) == "Light" ? NoteDisplayType.Light : NoteDisplayType.Full;
-                    notesTimeline.UsePersonIcon = GetAttributeValue( "UsePersonIcon" ).AsBoolean();
-                    notesTimeline.ShowAlertCheckBox = GetAttributeValue( "ShowAlertCheckbox" ).AsBoolean();
-                    notesTimeline.ShowPrivateCheckBox = GetAttributeValue( "ShowPrivateCheckbox" ).AsBoolean();
-                    notesTimeline.ShowSecurityButton = GetAttributeValue( "ShowSecurityButton" ).AsBoolean();
                     notesTimeline.AllowAnonymousEntry = GetAttributeValue( "Allow Anonymous" ).AsBoolean();
-                    notesTimeline.AddAlwaysVisible = GetAttributeValue( "AddAlwaysVisible" ).AsBoolean();
                     notesTimeline.SortDirection = GetAttributeValue( "DisplayOrder" ) == "Ascending" ? ListSortDirection.Ascending : ListSortDirection.Descending;
-                    notesTimeline.ShowCreateDateInput = GetAttributeValue("AllowBackdatedNotes").AsBoolean();
                 }
             }
             else
@@ -102,16 +132,29 @@ namespace RockWeb.Blocks.Core
             }
         }
 
+        /// <summary>
+        /// Handles the BlockUpdated event of the Notes control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        private void Notes_BlockUpdated( object sender, EventArgs e )
+        {
+            ShowNotes();
+        }
+
         #endregion
 
         #region Methods
 
+        /// <summary>
+        /// Hook so that other blocks can set the visibility of all ISecondaryBlocks on its page
+        /// </summary>
+        /// <param name="visible">if set to <c>true</c> [visible].</param>
         public void SetVisible( bool visible )
         {
             notesTimeline.Visible = visible;
         }
 
         #endregion
-
     }
 }

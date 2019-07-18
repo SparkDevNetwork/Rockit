@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@ using Rock.Model;
 using Rock.Web.Cache;
 using Rock.Web.UI.Controls;
 using Rock.Attribute;
+using Rock.Web.UI;
 
 namespace RockWeb.Blocks.Reporting
 {
@@ -39,7 +40,7 @@ namespace RockWeb.Blocks.Reporting
     [Description( "Lists all reports under a specified report category." )]
     [CategoryField( "Report Category", "Category to use to list reports for.", false, "Rock.Model.Report", "", "", true, "89e54497-5e98-4f1b-b83a-95bfb685da91", "" )]
     [LinkedPage("Detail Page", "Detail page to show report.", true, "", "", 1)]
-    public partial class ReportList : Rock.Web.UI.RockBlock
+    public partial class ReportList : RockBlock, ICustomGridColumns
     {
         #region Fields
 

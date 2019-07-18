@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -160,8 +160,8 @@ namespace RockWeb.Blocks.Store
 
         private void SetOrganization(Organization organization)
         {
-            GlobalAttributesCache globalCache = GlobalAttributesCache.Read();
-            globalCache.SetValue( "StoreOrganizationKey", organization.Key, true );
+            StoreService.SetOrganizationKey( organization.Key );
+            
             pnlAuthenicate.Visible = false;
             pnlSelectOrganization.Visible = false;
             pnlComplete.Visible = true;
@@ -180,13 +180,13 @@ namespace RockWeb.Blocks.Store
             {
                 lMessages.Text = @"<div class='alert alert-warning margin-t-md'>It appears that no organizations have been configured for this account. You can 
                                 set up an organization on the Rock RMS website. Simply login and then select 'My Account' from the dropdown in the top right
-                                corner.</div>";
+                                corner or see the <a href='https://www.rockrms.com/RockShopHelp'>Rock Shop Help Page</a>.</div>";
             }
             else
             {
                 lMessages.Text = @"<div class='alert alert-warning margin-t-md'>The username/password provided did not match a user on the Rock RMS website. Be sure
                     you provide a valid account from this site. If you would like to create an account or retrieve your password please <a href='https://www.rockrms.com/Rock/Login'>
-                    vistit the Rock RMS website</a>.</div>";
+                    visit the Rock RMS website</a> or see the <a href='https://www.rockrms.com/RockShopHelp'>Rock Shop Help Page</a>.</div>";
             }
 
         }

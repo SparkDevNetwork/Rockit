@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,7 @@
 // </copyright>
 //
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Web.UI;
@@ -24,6 +25,7 @@ using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
@@ -36,10 +38,13 @@ namespace RockWeb.Blocks.Core
     [Category( "Core" )]
     [Description( "Lists all the defined types and allows for managing them and their values." )]
 
-    [LinkedPage("Detail Page")]
-    public partial class DefinedTypeList : RockBlock
+    [LinkedPage( "Detail Page", order: 0 )]
+    [CategoryField( "Categories", "If block should only display Defined Types from specific categories, select the categories here.", true, "Rock.Model.DefinedType", order: 1, required: false )]
+    public partial class DefinedTypeList : RockBlock, ICustomGridColumns
     {
         #region Control Methods
+
+        private List<Guid> _categoryGuids = null;
 
         /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Init" /> event.
@@ -49,9 +54,19 @@ namespace RockWeb.Blocks.Core
         {
             base.OnInit( e );
 
-            BindFilter();
-            tFilter.ApplyFilterClick += tFilter_ApplyFilterClick;
-            tFilter.DisplayFilterValue += tFilter_DisplayFilterValue;
+            _categoryGuids = GetAttributeValue( "Categories" ).SplitDelimitedValues().AsGuidList();
+            if ( _categoryGuids.Any() )
+            {
+                tFilter.Visible = false;
+                gDefinedType.ColumnsOfType<RockBoundField>().Where( c => c.DataField == "Category" ).First().Visible = _categoryGuids.Count > 1;
+            }
+            else
+            {
+                BindFilter();
+                tFilter.ApplyFilterClick += tFilter_ApplyFilterClick;
+                tFilter.DisplayFilterValue += tFilter_DisplayFilterValue;
+                tFilter.Visible = true;
+            }
 
             gDefinedType.DataKeyNames = new string[] { "Id" };
             gDefinedType.Actions.ShowAdd = true;
@@ -90,19 +105,24 @@ namespace RockWeb.Blocks.Core
         protected void tFilter_ApplyFilterClick( object sender, EventArgs e )
         {
             int? categoryId = cpCategory.SelectedValueAsInt();
-            tFilter.SaveUserPreference( "Category", categoryId.HasValue ? categoryId.Value.ToString() : "" );
+            tFilter.SaveUserPreference( "Category", categoryId.HasValue ? categoryId.Value.ToString() : string.Empty );
 
             gDefinedType_Bind();
         }
 
-        void tFilter_DisplayFilterValue( object sender, GridFilter.DisplayFilterValueArgs e )
+        /// <summary>
+        /// ts the filter display filter value.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        protected void tFilter_DisplayFilterValue( object sender, GridFilter.DisplayFilterValueArgs e )
         {
             if ( e.Key == "Category" )
             {
                 int? categoryId = e.Value.AsIntegerOrNull();
                 if ( categoryId.HasValue )
                 {
-                    var category = Rock.Web.Cache.CategoryCache.Read( categoryId.Value );
+                    var category = CategoryCache.Get( categoryId.Value );
                     if ( category != null )
                     {
                         e.Value = category.Name;
@@ -220,10 +240,17 @@ namespace RockWeb.Blocks.Core
         {
             var queryable = new DefinedTypeService( new RockContext() ).Queryable();
 
-            int? categoryId = tFilter.GetUserPreference( "Category" ).AsIntegerOrNull();
-            if ( categoryId.HasValue )
+            if ( _categoryGuids.Any() )
             {
-                queryable = queryable.Where( a => a.CategoryId.HasValue && a.CategoryId.Value == categoryId.Value );
+                queryable = queryable.Where( a => a.Category != null && _categoryGuids.Contains( a.Category.Guid ) );
+            }
+            else
+            {
+                int? categoryId = tFilter.GetUserPreference( "Category" ).AsIntegerOrNull();
+                if ( categoryId.HasValue )
+                {
+                    queryable = queryable.Where( a => a.CategoryId.HasValue && a.CategoryId.Value == categoryId.Value );
+                }
             }
 
             SortProperty sortProperty = gDefinedType.SortProperty;
@@ -238,16 +265,30 @@ namespace RockWeb.Blocks.Core
 
             gDefinedType.DataSource = queryable
                 .Select( a =>
-                new
-                {
-                    a.Id,
-                    Category = a.Category.Name,
-                    a.Name,
-                    a.Description,
-                    a.IsSystem,
-                    FieldTypeName = a.FieldType.Name
-                } )
+                    new
+                    {
+                        a.Id,
+                        Category = a.Category.Name,
+                        a.Name,
+                        a.Description,
+                        a.IsSystem,
+                        FieldTypeName = a.FieldType.Name
+                    } )
                 .ToList();
+
+            // SanitizeHtml can't be compiled into a SQL query so we have to ToList() the data and then sanitize the field in the List<T>
+            //gDefinedType.DataSource = dataSource
+            //    .Select( a =>
+            //        new
+            //        {
+            //            a.Id,
+            //            a.Category,
+            //            a.Name,
+            //            Description = a.Description.ScrubHtmlForGridDisplay(),
+            //            a.IsSystem,
+            //            a.FieldTypeName
+            //        } )
+            //    .ToList();
             gDefinedType.DataBind();
         }
 

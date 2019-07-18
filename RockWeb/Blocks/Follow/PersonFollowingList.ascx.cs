@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,7 +39,7 @@ namespace RockWeb.Blocks.Follow
     [Category( "Follow" )]
     [Description( "Block for displaying people that current person follows." )]
 
-    public partial class PersonFollowingList : Rock.Web.UI.RockBlock
+    public partial class PersonFollowingList : RockBlock, ICustomGridColumns
     {
 
         #region Base Control Methods
@@ -109,8 +109,8 @@ namespace RockWeb.Blocks.Follow
         {
             if ( e.Row.RowType == DataControlRowType.Header )
             {
-                e.Row.Cells[4].Text = DefinedValueCache.Read( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_HOME ) ).Value;
-                e.Row.Cells[5].Text = DefinedValueCache.Read( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_MOBILE ) ).Value;
+                e.Row.Cells[4].Text = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_HOME ) ).Value;
+                e.Row.Cells[5].Text = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_MOBILE ) ).Value;
             }
         }
 
@@ -134,7 +134,7 @@ namespace RockWeb.Blocks.Follow
                     .Where( p => itemsSelected.Contains( p.PersonId ) )
                     .Select( p => p.Id );
 
-                int personAliasEntityTypeId = EntityTypeCache.Read( "Rock.Model.PersonAlias" ).Id;
+                int personAliasEntityTypeId = EntityTypeCache.Get( "Rock.Model.PersonAlias" ).Id;
                 foreach ( var following in followingService.Queryable()
                     .Where( f =>
                         f.EntityTypeId == personAliasEntityTypeId &&
@@ -183,7 +183,7 @@ namespace RockWeb.Blocks.Follow
             {
                 var rockContext = new RockContext();
 
-                int personAliasEntityTypeId = EntityTypeCache.Read( "Rock.Model.PersonAlias" ).Id;
+                int personAliasEntityTypeId = EntityTypeCache.Get( "Rock.Model.PersonAlias" ).Id;
                 var personAliasIds = new FollowingService( rockContext ).Queryable()
                     .Where( f =>
                         f.EntityTypeId == personAliasEntityTypeId &&

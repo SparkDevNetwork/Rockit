@@ -9,13 +9,19 @@
         base.OnLoad( e );
         Master.ShowPageTitle = false;
     }
-    
+
 </script>
 
 
 <asp:Content ID="ctMain" ContentPlaceHolderID="main" runat="server">
-    
+
     <div class="personprofile">
+
+        <!-- Ajax Error -->
+        <div class="alert alert-danger ajax-error no-index" style="display:none">
+            <p><strong>Error</strong></p>
+            <span class="ajax-error-message"></span>
+        </div>
 
         <div class="personprofilebar-bio">
                 <Rock:Zone Name="Individual Detail" runat="server" />
@@ -44,7 +50,7 @@
                 <div class="col-md-12">
                     <Rock:Zone Name="Sub Navigation" runat="server" />
                 </div>
-            </div> 
+            </div>
 		</div>
 
         <div class="person-content">
@@ -86,5 +92,5 @@
         </div>
 
 	</div>
-    
+
 </asp:Content>

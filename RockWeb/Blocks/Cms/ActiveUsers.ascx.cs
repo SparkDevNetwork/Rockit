@@ -37,7 +37,7 @@ namespace RockWeb.Blocks.Cms
     [Category( "CMS" )]
     [Description( "Displays a list of active users of a website." )]
     [SiteField( "Site", "Site to show current active users for.", true )]
-    [BooleanField( "Show Site Name As Title", "Detmine whether to show the name of the site as a title above the list.", true )]
+    [BooleanField( "Show Site Name As Title", "Determine whether to show the name of the site as a title above the list.", true )]
     [BooleanField( "Show Guest Visitors", "Displays the number of guests visiting the site. (Guests are considered users not logged in.)", true )]
     [LinkedPage( "Person Profile Page", "Page reference to the person profile page you would like to use as a link. Not providing a reference will suppress the creation of a link.", false )]
     [IntegerField( "Page View Count", "The number of past page views to show on roll-over. A value of 0 will disable the roll-over.", true, 5 )]
@@ -93,7 +93,7 @@ namespace RockWeb.Blocks.Cms
         private void ShowActiveUsers()
         {
             int? siteId = GetAttributeValue( "Site" ).AsIntegerOrNull();
-            if ( !siteId.HasValue || SiteCache.Read(siteId.Value) == null )
+            if ( !siteId.HasValue || SiteCache.Get(siteId.Value) == null )
             {
                 lMessages.Text = "<div class='alert alert-warning'>No site is currently configured.</div>";
                 return;
@@ -104,7 +104,7 @@ namespace RockWeb.Blocks.Cms
 
                 StringBuilder sbUsers = new StringBuilder();
 
-                var site = SiteCache.Read( siteId.Value );
+                var site = SiteCache.Get( siteId.Value );
                 lSiteName.Text = "<h4>" + site.Name + "</h4>";
                 lSiteName.Visible = GetAttributeValue( "ShowSiteNameAsTitle" ).AsBoolean();
 
@@ -119,7 +119,8 @@ namespace RockWeb.Blocks.Cms
 
                 using ( var rockContext = new RockContext() )
                 {
-                    var qryPageViews = new PageViewService( rockContext ).Queryable();
+                    var qryPageViews = new InteractionService( rockContext ).Queryable();
+
                     var qryPersonAlias = new PersonAliasService( rockContext ).Queryable();
                     var pageViewQry = qryPageViews.Join(
                         qryPersonAlias,
@@ -129,10 +130,10 @@ namespace RockWeb.Blocks.Cms
                         new
                         {
                             PersonAliasPersonId = pa.PersonId,
-                            pv.DateTimeViewed,
-                            pv.SiteId,
-                            pv.PageViewSessionId,
-                            PagePageTitle = pv.PageTitle
+                            pv.InteractionDateTime,
+                            pv.InteractionComponent.Channel.ChannelEntityId,
+                            pv.InteractionSessionId,
+                            PagePageTitle = pv.InteractionComponent.Name
                         } );
 
                     var last24Hours = RockDateTime.Now.AddDays( -1 );
@@ -165,8 +166,8 @@ namespace RockWeb.Blocks.Cms
                             },
                             pageViews = pageViewQry
                                 .Where( v => v.PersonAliasPersonId == l.PersonId )
-                                .Where( v => v.DateTimeViewed > last24Hours )
-                                .OrderByDescending( v => v.DateTimeViewed )
+                                .Where( v => v.InteractionDateTime > last24Hours )
+                                .OrderByDescending( v => v.InteractionDateTime )
                                 .Take( pageViewTakeCount )
                         } )
                         .Select( a => new
@@ -184,13 +185,13 @@ namespace RockWeb.Blocks.Cms
                     {
                         var login = activeLogin.login;
 
-                        if ( !activeLogin.pageViews.Any() || activeLogin.pageViews.FirstOrDefault().SiteId != site.Id )
+                        if ( !activeLogin.pageViews.Any() || activeLogin.pageViews.FirstOrDefault().ChannelEntityId != site.Id )
                         {
                             // only show active logins with PageViews and the most recent pageview is for the specified site
                             continue;
                         }
 
-                        var latestPageViewSessionId = activeLogin.pageViews.FirstOrDefault().PageViewSessionId;
+                        var latestPageViewSessionId = activeLogin.pageViews.FirstOrDefault().InteractionSessionId;
 
                         TimeSpan tsLastActivity = login.LastActivityDateTime.HasValue ? RockDateTime.Now.Subtract( login.LastActivityDateTime.Value ) : TimeSpan.MaxValue;
                         string className = tsLastActivity.Minutes <= 5 ? "recent" : "not-recent";
@@ -219,7 +220,7 @@ namespace RockWeb.Blocks.Cms
                             if ( activeLogin.pageViews != null )
                             {
                                 string pageViewsHtml = activeLogin.pageViews
-                                                    .Where( v => v.PageViewSessionId == latestPageViewSessionId )
+                                                    .Where( v => v.InteractionSessionId == latestPageViewSessionId )
                                                     .Select( v => HttpUtility.HtmlEncode( v.PagePageTitle ) ).ToList().AsDelimited( "<br> " );
 
                                 sbUsers.Append( string.Format( activeLoginFormat, className, personLink, pageViewsHtml ) );
@@ -245,20 +246,20 @@ namespace RockWeb.Blocks.Cms
                         var last5Minutes = RockDateTime.Now.AddMinutes( -5 );
                         var last15Minutes = RockDateTime.Now.AddMinutes( -15 );
 
-                        var qryGuests = new PageViewService( rockContext ).Queryable().AsNoTracking()
-                                          .Where( 
-                                                p => p.SiteId == site.Id 
-                                                && p.DateTimeViewed > last15Minutes 
-                                                && p.PersonAliasId == null 
-                                                && p.PageViewSession.PageViewUserAgent.Browser != "Other" 
-                                                && p.PageViewSession.PageViewUserAgent.ClientType != "Crawler" )
-                                          .GroupBy( p => p.PageViewSessionId )
-                                          .Select( g => new
-                                          {
-                                              SessionId = g.Key,
-                                              LastVisit = g.Max( p => p.DateTimeViewed )
-                                          } )
-                                          .ToList();
+                        var qryGuests = new InteractionService( rockContext ).Queryable().AsNoTracking()
+                                        .Where(
+                                            i => i.InteractionComponent.Channel.ChannelEntityId == site.Id
+                                            && i.InteractionDateTime > last15Minutes
+                                            && i.PersonAliasId == null
+                                            && i.InteractionSession.DeviceType.ClientType != "Other"
+                                            && i.InteractionSession.DeviceType.ClientType != "Crawler" )
+                                        .GroupBy( i => i.InteractionSessionId )
+                                        .Select( g => new
+                                        {
+                                            SessionId = g.Key,
+                                            LastVisit = g.Max( i => i.InteractionDateTime )
+                                        } )
+                                        .ToList();
 
                         var numRecentGuests = qryGuests.Where( g => g.LastVisit >= last5Minutes ).Count();
                         var numInactiveGuests = qryGuests.Where( g => g.LastVisit < last5Minutes ).Count();
@@ -269,12 +270,12 @@ namespace RockWeb.Blocks.Cms
                             guestVisitorsStr = "Current Guests:";
                             if ( numRecentGuests > 0 )
                             {
-                                guestVisitorsStr += string.Format( " <span class=\"badge badge-success\">{0}</span>", numRecentGuests );
+                                guestVisitorsStr += string.Format( " <span class=\"badge badge-success\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Users active in the past 5 minutes.\">{0}</span>", numRecentGuests );
                             }
 
                             if ( numInactiveGuests > 0 )
                             {
-                                guestVisitorsStr += string.Format( " <span class=\"badge badge-warning\">{0}</span>", numInactiveGuests );
+                                guestVisitorsStr += string.Format( " <span class=\"badge badge-warning\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Users active in the past 15 minutes.\">{0}</span>", numInactiveGuests );
                             }
                         }
                     }
@@ -283,7 +284,7 @@ namespace RockWeb.Blocks.Cms
                 if ( sbUsers.Length > 0 )
                 {
                     lUsers.Text = string.Format( @"<ul class='activeusers fa-ul'>{0}</ul>", sbUsers.ToString() );
-                    lUsers.Text += string.Format( @"<p class='margin-l-sm'>{0}</p>", guestVisitorsStr );
+                    lUsers.Text += string.Format( @"<p class='margin-l-sm js-current-guests'>{0}</p>", guestVisitorsStr );
                 }
                 else
                 {

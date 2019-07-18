@@ -6,7 +6,7 @@
     }
 </script>
 
-<asp:UpdatePanel ID="upMarketingCampaigns" runat="server">
+<asp:UpdatePanel ID="upPanel" runat="server">
     <ContentTemplate>
 
         <div class="panel panel-block">
@@ -17,7 +17,7 @@
 
                 <div class="grid grid-panel">
                     <Rock:GridFilter ID="gfSettings" runat="server">
-                        <Rock:RockTextBox ID="tbSearch" runat="server" Label="EntityType or Name Contains" />
+                        <Rock:RockTextBox ID="tbSearch" runat="server" Label="Entity Type or Name Contains" />
                     </Rock:GridFilter>
                     <Rock:Grid ID="gEntityTypes" runat="server" AllowSorting="true">
                         <Columns>
@@ -28,7 +28,7 @@
                                 <HeaderStyle CssClass="span1" />
                                 <ItemStyle HorizontalAlign="Center"/>
                                 <ItemTemplate>
-                                    <a id="aSecure" runat="server" class="btn btn-security btn-sm" height="500px"><i class="fa fa-lock"></i></a>
+                                    <a id="aSecure" runat="server" class="btn btn-security btn-sm"><i class="fa fa-lock"></i></a>
                                 </ItemTemplate>
                             </Rock:RockTemplateFieldUnselected>
                         </Columns>
@@ -38,17 +38,23 @@
             </div>
         </div>
 
-        
+
 
         <asp:HiddenField ID="hfActiveDialog" runat="server" />
 
         <Rock:ModalDialog ID="mdEdit" runat="server" Title="Entity" OnCancelScript="clearActiveDialog();">
             <Content>
                 <asp:HiddenField ID="hfEntityTypeId" runat="server" />
-                <asp:ValidationSummary ID="ValidationSummary1" runat="server" HeaderText="Please Correct the Following" CssClass="alert alert-danger" />
+                <asp:ValidationSummary ID="ValidationSummary1" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
                 <Rock:DataTextBox ID="tbName" runat="server" SourceTypeName="Rock.Model.EntityType, Rock" PropertyName="Name" Label="Entity Type Name" />
                 <Rock:DataTextBox ID="tbFriendlyName" runat="server" SourceTypeName="Rock.Model.EntityType, Rock" PropertyName="FriendlyName" Label="Friendly Name" />
                 <Rock:RockCheckBox ID="cbCommon" runat="server" Label="Common" Text="Yes" Help="There are various places that a user is prompted for an entity type.  'Common' entities will be listed first for the user to easily find them" />
+                <Rock:CodeEditor ID="ceIndexResultsTemplate" runat="server" Label="Index Results Template" EditorTheme="Rock" EditorMode="Lava" EditorHeight="200"
+                    Help="The Lava used by the Universal Search feature to display results. Available merge fields include CurrentPerson, IndexDocument and DisplayOptions." />
+                <Rock:CodeEditor ID="ceIndexDocumentUrl" runat="server" Label="Index Document URL Pattern" EditorTheme="Rock" EditorMode="Lava" EditorHeight="200"
+                    Help="The Lava used by the Universal Search feature to determine the Rock URL of the document. Available merge fields include CurrentPerson, IndexDocument and DisplayOptions." />
+                <Rock:CodeEditor ID="ceLinkUrl" runat="server" Label="Link Url Pattern" EditorTheme="Rock" EditorMode="Lava" EditorHeight="80"
+                    Help="The Lava used when Rock needs to create a url to an entity based just on the entity type (ie. Tag Report). Available merge field is Entity." />
             </Content>
         </Rock:ModalDialog>
 

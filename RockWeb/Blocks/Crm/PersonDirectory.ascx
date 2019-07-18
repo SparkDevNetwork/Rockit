@@ -18,7 +18,7 @@
             </div>
             <div class="panel-body">
 
-                <Rock:NotificationBox ID="nbValidation" runat="server" NotificationBoxType="Danger" />
+                <Rock:NotificationBox ID="nbValidation" runat="server" NotificationBoxType="Warning" />
 
                 <div class="row">
                     <div class="col-md-4">
@@ -50,7 +50,7 @@
                                 <asp:Literal ID="lPerson" runat="server" />
                                 <asp:Literal ID="lAddress" runat="server" />
                                 <asp:Literal ID="lPhones" runat="server" />
-                                <asp:Literal ID="lBirthdateGender" runat="server" />
+                                <asp:Literal ID="lEverythingElse" runat="server" />
                             </div>
                         </ItemTemplate>
                     </asp:Repeater>
@@ -67,7 +67,7 @@
                                             <div class="row margin-b-md">
                                                 <asp:Literal ID="lPerson" runat="server" />
                                                 <asp:Literal ID="lPhones" runat="server" />
-                                                <asp:Literal ID="lBirthdateGender" runat="server" />
+                                                <asp:Literal ID="lEverythingElse" runat="server" />
                                             </div>
                                         </ItemTemplate>
                                     </asp:Repeater>

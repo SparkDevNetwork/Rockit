@@ -6,7 +6,7 @@
         <asp:Panel ID="pnlSend" runat="server" CssClass="panel panel-block">
         
             <div class="panel-heading">
-                <h1 class="panel-title"><i class="fa fa-bell-o"></i> Send Payment Reminder</h1>
+                <h1 class="panel-title"><i class="fa fa-bell-o"></i> Send Payment Reminders</h1>
             </div>
             <div class="panel-body">
                 <asp:Panel ID="pnlPreview" runat="server">
@@ -36,7 +36,7 @@
                                     <%# Eval("LastName") %>, <%# Eval("FirstName") %>
                                 </ItemTemplate>
                             </Rock:RockTemplateField>
-                            <Rock:RockTemplateField HeaderText="Date Regsitered" SortExpression="CreatedDateTime">
+                            <Rock:RockTemplateField HeaderText="Date Registered" SortExpression="CreatedDateTime">
                                 <ItemTemplate>
                                     <%# ((DateTime)Eval("CreatedDateTime")).ToShortDateString() %>
                                 </ItemTemplate>

@@ -34,20 +34,19 @@ using Rock.Security;
 namespace RockWeb.Blocks.Event
 {
     /// <summary>
-    /// Template block for developers to use to start a new block.
+    /// 
     /// </summary>
     [DisplayName( "Event Item Occurrence List Lava" )]
     [Category( "Event" )]
     [Description( "Block that takes a calendar item and displays occurrences for it using Lava." )]
     
     [EventItemField("Event Item", "The event item to use to display occurrences for.", order: 0)]
-    [CampusesField("Campuses", "List of which campuses to show occurrences for. This setting will be ignored in the 'Use Campus Context' is enabled.", order:1, includeInactive:true)]
+    [CampusesField("Campuses", "List of which campuses to show occurrences for. This setting will be ignored if 'Use Campus Context' is enabled.", required: false, order:1, includeInactive:true)]
     [BooleanField("Use Campus Context", "Determine if the campus should be read from the campus context of the page.", order: 2)]
     [SlidingDateRangeField("Date Range", "Optional date range to filter the occurrences on.", false, enabledSlidingDateRangeTypes: "Next,Upcoming,Current", order:3)]
     [IntegerField("Max Occurrences", "The maximum number of occurrences to show.", false, 100, order: 4)]
     [LinkedPage( "Registration Page", "The page to use for registrations.", order: 5 )]
     [CodeEditorField("Lava Template", "The lava template to use for the results", CodeEditorMode.Lava, CodeEditorTheme.Rock, defaultValue:"{% include '~~/Assets/Lava/EventItemOccurrenceList.lava' %}", order:6)]
-    [BooleanField("Enable Debug", "Show the lava merge fields.", order: 7)]
     public partial class EventItemOccurrenceListLava : Rock.Web.UI.RockBlock
     {
         #region Fields
@@ -129,20 +128,24 @@ namespace RockWeb.Blocks.Event
                 // filter occurrences for campus
                 if ( GetAttributeValue( "UseCampusContext" ).AsBoolean() )
                 {
-                    var campusEntityType = EntityTypeCache.Read( "Rock.Model.Campus" );
+                    var campusEntityType = EntityTypeCache.Get( "Rock.Model.Campus" );
                     var contextCampus = RockPage.GetCurrentContext( campusEntityType ) as Campus;
 
                     if ( contextCampus != null )
                     {
-                        qry = qry.Where( e => e.CampusId == contextCampus.Id );
+                        // If an EventItemOccurrence's CampusId is null, then the occurrence is an 'All Campuses' event occurrence, so include those
+                        qry = qry.Where( e => e.CampusId == null || e.CampusId == contextCampus.Id );
                     }
                 }
                 else
                 {
                     if ( !string.IsNullOrWhiteSpace( GetAttributeValue( "Campuses" ) ) )
                     {
-                        var selectedCampuses = Array.ConvertAll( GetAttributeValue( "Campuses" ).Split( ',' ), s => new Guid( s ) ).ToList();
-                        qry = qry.Where( e => selectedCampuses.Contains( e.Campus.Guid ) );
+                        var selectedCampusGuids = GetAttributeValue( "Campuses" ).Split( ',' ).AsGuidList();
+                        var selectedCampusIds = selectedCampusGuids.Select( a => CampusCache.Get( a ) ).Where( a => a != null ).Select( a => a.Id );
+
+                        // If an EventItemOccurrence's CampusId is null, then the occurrence is an 'All Campuses' event occurrence, so include those
+                        qry = qry.Where( e => e.CampusId == null || selectedCampusIds.Contains( e.CampusId.Value) );
                     }
                 }
 
@@ -188,25 +191,6 @@ namespace RockWeb.Blocks.Event
 
                 lContent.Text = GetAttributeValue( "LavaTemplate" ).ResolveMergeFields( mergeFields );
 
-                // show debug info
-                if ( GetAttributeValue( "EnableDebug" ).AsBoolean() && IsUserAuthorized( Authorization.EDIT ) )
-                {
-                    lDebug.Visible = true;
-                    lDebug.Text = @"<div class='alert alert-info'>Due to the size of the lava members the debug info for this block has been supressed. Below are high-level details of
-                                    the merge objects available.
-                                    <ul>
-                                        <li>EventItemOccurrences - A list of EventItemOccurrences. View the EvenItemOccurrence model for these properties.</li>
-                                        <li>EventItem - The EventItem that was selected. View the EvenItem model for these properties.</li>
-                                        <li>RegistrationPage  - String that contains the relative path to the registration page.</li>
-                                        <li>Global Attribute  - Access to the Global Attributes.</li>
-                                    </ul>
-                                    </div>";
-                }
-                else
-                {
-                    lDebug.Visible = false;
-                    lDebug.Text = string.Empty;
-                }
             }
             else
             {

@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -77,7 +77,7 @@ namespace RockWeb.Blocks.Core
         /// <returns>unordered list of query string values</returns>
         private string BuildQueryStringList( string queryString )
         {
-            string[] queryStringVariables = queryString.Split( "&".ToCharArray() );
+            string[] queryStringVariables = queryString.TrimStart('?').Split( '&' );
 
             StringBuilder qsList = new StringBuilder();
             qsList.Append("<ul type=\"disc\">");
@@ -88,11 +88,11 @@ namespace RockWeb.Blocks.Core
 
                 if (queryStringValue.Length > 1)
                 {
-                    qsList.AppendFormat( "<li>{0}: {1}</li>", queryStringValue[0], queryStringValue[1] );
+                    qsList.AppendFormat( "<li>{0}: {1}</li>", queryStringValue[0].EncodeHtml(), queryStringValue[1].EncodeHtml() );
                 }
                 else
                 {
-                    qsList.AppendFormat( "<li>{0}</li>", queryStringValue[0] );
+                    qsList.AppendFormat( "<li>{0}</li>", queryStringValue[0].EncodeHtml() );
                 }
             }
 
@@ -178,7 +178,7 @@ namespace RockWeb.Blocks.Core
             //If query string is not empty build query string list
             if ( !String.IsNullOrWhiteSpace( baseException.QueryString ) )
             {
-                dl.Add( "Query String", BuildQueryStringList( baseException.QueryString.EncodeHtml() ) );
+                dl.Add( "Query String", BuildQueryStringList( baseException.QueryString ) );
             }
 
             if (baseException.CreatedByPersonAlias != null &&  baseException.CreatedByPersonAlias.Person != null)

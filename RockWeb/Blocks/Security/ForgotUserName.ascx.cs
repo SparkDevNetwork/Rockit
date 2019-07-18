@@ -37,11 +37,11 @@ namespace RockWeb.Blocks.Security
     [Category( "Security" )]
     [Description( "Allows a user to get their forgotten username information emailed to them." )]
 
-    [CodeEditorField( "Heading Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "<div class='alert alert-info'>Enter your email address below and we'll send your account information to you right away.</div>", "Captions", 0 )]
-    [CodeEditorField( "Invalid Email Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "Sorry, we could not find an account for the email address you entered.", "Captions", 1 )]
-    [CodeEditorField( "Success Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "Your user name has been sent with instructions on how to change your password if needed.", "Captions", 2 )]
+    [CodeEditorField( "Heading Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "<h5 class='text-center'>Can’t log in?</h5>", "Captions", 0 )]
+    [CodeEditorField( "Invalid Email Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "Sorry, we didn’t recognize that email address. Want to try another?", "Captions", 1 )]
+    [CodeEditorField( "Success Caption", "", Rock.Web.UI.Controls.CodeEditorMode.Html, Rock.Web.UI.Controls.CodeEditorTheme.Rock, 200, false, "We’ve emailed you instructions for logging in", "Captions", 2 )]
 
-    
+
     [LinkedPage( "Confirmation Page", "Page for user to confirm their account (if blank will use 'ConfirmAccount' page route)", true, "", "", 3 )]
     [SystemEmailField( "Forgot Username Email Template", "Email Template to send", false, Rock.SystemGuid.SystemEmail.SECURITY_FORGOT_USERNAME, "", 4, "EmailTemplate" )]
     public partial class ForgotUserName : Rock.Web.UI.RockBlock
@@ -106,7 +106,7 @@ namespace RockWeb.Blocks.Security
                     if ( user.EntityType != null )
                     {
                         var component = AuthenticationContainer.GetComponent( user.EntityType.Name );
-                        if ( !component.RequiresRemoteAuthentication )
+                        if ( component != null && !component.RequiresRemoteAuthentication )
                         {
                             users.Add( user );
                             hasAccountWithPasswordResetAbility = true;
@@ -125,10 +125,13 @@ namespace RockWeb.Blocks.Security
             if ( results.Count > 0 && hasAccountWithPasswordResetAbility )
             {
                 mergeFields.Add( "Results", results.ToArray() );
-                var recipients = new List<RecipientData>();
-                recipients.Add( new RecipientData( tbEmail.Text, mergeFields ) );
 
-                Email.Send( GetAttributeValue( "EmailTemplate" ).AsGuid(), recipients, ResolveRockUrlIncludeRoot( "~/" ), ResolveRockUrlIncludeRoot( "~~/" ), false );
+                var emailMessage = new RockEmailMessage( GetAttributeValue( "EmailTemplate" ).AsGuid() );
+                emailMessage.AddRecipient( new RecipientData( tbEmail.Text, mergeFields ) );
+                emailMessage.AppRoot = ResolveRockUrlIncludeRoot( "~/" );
+                emailMessage.ThemeRoot = ResolveRockUrlIncludeRoot( "~~/" );
+                emailMessage.CreateCommunicationRecord = false;
+                emailMessage.Send();
 
                 pnlEntry.Visible = false;
                 pnlSuccess.Visible = true;
@@ -136,8 +139,8 @@ namespace RockWeb.Blocks.Security
             else if (results.Count > 0 )
             {
                 // the person has user accounts but none of them are allowed to have their passwords reset (Facebook/Google/etc)
-                
-                lWarning.Text = string.Format( @"<p>We were able to find the following accounts for this email, but 
+
+                lWarning.Text = string.Format( @"<p>We were able to find the following accounts for this email, but
                                                 none of them are able to be reset from this website.</p> <p>Accounts:<br /> {0}</p>
                                                 <p>To create a new account with a username and password please see our <a href='{1}'>New Account</a>
                                                 page.</p>"

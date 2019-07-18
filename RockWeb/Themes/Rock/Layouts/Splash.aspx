@@ -1,8 +1,8 @@
 ﻿<%@ Page Language="C#" AutoEventWireup="true" Inherits="Rock.Web.UI.RockPage" %>
-<!DOCTYPE html> 
+<!DOCTYPE html>
 
 <script runat="server">
-    
+
     // keep code below to call base class init method
 
     /// <summary>
@@ -13,14 +13,13 @@
     {
         base.OnInit( e );
 
-        lLogoSvg.Text = System.IO.File.ReadAllText( HttpContext.Current.Request.MapPath("~/Assets/Images/rock-logo-sm.svg") );
-    }    
-    
+        lLogoSvg.Text = System.IO.File.ReadAllText( HttpContext.Current.Request.MapPath("~/Assets/Images/rock-logo-circle.svg") );
+    }
+
 </script>
 
 <html>
 <head runat="server">
-    <meta http-equiv="X-UA-Compatible" content="IE=10" />
     <meta charset="utf-8">
     <title></title>
 
@@ -28,14 +27,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <script src="<%# ResolveRockUrl("~/Scripts/modernizr.js", true) %>" ></script>
-    <script src="<%# ResolveRockUrl("~/Scripts/jquery-1.12.4.min.js", true) %>"></script>
+    <script src="<%# System.Web.Optimization.Scripts.Url("~/Scripts/Bundles/RockJQueryLatest") %>"></script>
 
     <!-- Included CSS Files -->
     <link rel="stylesheet" href="<%# ResolveRockUrl("~/Themes/Rock/Styles/bootstrap.css", true) %>"/>
 	<link rel="stylesheet" href="<%# ResolveRockUrl("~/Themes/Rock/Styles/theme.css", true) %>"/>
-	<link rel="stylesheet" href="<%# ResolveRockUrl("~/Styles/developer.css", true) %>"/>
-
-    <script src="<%# ResolveRockUrl("~/Scripts/bootstrap.min.js", true) %>" ></script>
 
 </head>
 <body id="splash">
@@ -46,19 +42,11 @@
             <div id="logo">
                 <asp:Literal ID="lLogoSvg" runat="server" />
             </div>
-                
+
             <div id="content-box" class="clearfix">
                 <Rock:Zone Name="Main" runat="server" />
             </div>
         </div>
-        
-        <script>
-
-            // add quick fade-in effect to the page
-            $(document).ready(function () {
-                $("#content").rockFadeIn();
-            });
-        </script>
 
     </form>
 </body>

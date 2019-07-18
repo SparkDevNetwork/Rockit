@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,19 +15,10 @@
 // </copyright>
 //
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
-using System.Linq;
 using System.Web.UI;
-using System.Web.UI.WebControls;
-
-using Rock;
-using Rock.Data;
-using Rock.Model;
-using Rock.Web.Cache;
-using Rock.Web.UI.Controls;
 using Rock.Attribute;
+using Rock.Model;
 
 namespace RockWeb.Blocks.Utility
 {
@@ -37,9 +28,59 @@ namespace RockWeb.Blocks.Utility
     [DisplayName( "Stark Detail" )]
     [Category( "Utility" )]
     [Description( "Template block for developers to use to start a new detail block." )]
-    [EmailField("Email")]
+
+    #region Block Attributes
+
+    [BooleanField(
+        "Show Email Address",
+        Key = AttributeKey.ShowEmailAddress,
+        Description = "Should the email address be shown?",
+        DefaultBooleanValue = true,
+        Order = 1 )]
+
+    [EmailField(
+        "Email",
+        Key = AttributeKey.Email,
+        Description = "The Email address to show.",
+        DefaultValue = "ted@rocksolidchurchdemo.com",
+        Order = 2 )]
+
+    #endregion Block Attributes
     public partial class StarkDetail : Rock.Web.UI.RockBlock
     {
+
+        #region Attribute Keys
+
+        /// <summary>
+        /// Keys to use for Block Attributes
+        /// </summary>
+        protected static class AttributeKey
+        {
+            /// <summary>
+            /// AttributeKey for Show Email Address
+            /// </summary>
+            public const string ShowEmailAddress = "ShowEmailAddress";
+
+            /// AttributeKey for Email
+            /// The email
+            /// </summary>
+            public const string Email = "Email";
+        }
+
+        #endregion Attribute Keys
+
+        #region PageParameterKeys
+
+        /// <summary>
+        /// Keys to use for Page Parameters
+        /// </summary>
+        protected static class PageParameterKey
+        {
+            public const string StarkId = "StarkId";
+        }
+
+        #endregion PageParameterKeys
+
         #region Fields
 
         // used for private variables
@@ -77,9 +118,13 @@ namespace RockWeb.Blocks.Utility
         {
             base.OnLoad( e );
 
+
             if ( !Page.IsPostBack )
             {
                 // added for your convenience
+
+                // to show the created/modified by date time details in the PanelDrawer do something like this:
+                // pdAuditDetails.SetEntity( <YOUROBJECT>, ResolveRockUrl( "~" ) );
             }
         }
 

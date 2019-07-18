@@ -1,0 +1,101 @@
+//
+// Wizard
+// --------------------------------------------------
+
+.wizard {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-align: start;
+  -webkit-align-items: flex-start;
+  align-items: flex-start;
+  padding: 8px 0;
+  background-color: @wizard-bg;
+
+  .clearfix();
+
+  @media only screen and (max-width: 480px) {
+    display: none;
+  }
+
+  .wizard-item {
+    position: relative; /* Because we are absolutely positioning the connector */
+    width: 100%;
+    min-width: 75px;
+    color: @wizard-item-label-color;
+    text-align: center;
+    word-break: break-word;
+    cursor: default;
+
+    a {
+      color: @wizard-item-label-color;
+    }
+
+    .wizard-item-icon {
+      min-width: 75px;
+
+      i {
+        display: inline-block;
+        width: 36px;
+        height: 36px;
+        padding: 9px 7px;
+        color: @wizard-item-bar-color;
+        background: @wizard-item-icon-bg;
+        border: 1px solid @wizard-item-bar-color;
+        border-radius: 60px;
+      }
+    }
+    .wizard-item-label {
+      padding-top: 5px;
+    }
+
+    &::before {
+      position: absolute;
+      top: 18px; /* Same as above */
+      left: -50%;
+      width: ~"calc(100% - 36px)"; /* 22px = icon width */
+      height: 1px;
+      margin-left: 18px; /* 11px = 1/2 icon width */
+      content: "";
+      background-color: @wizard-item-bar-color;
+    }
+
+    &.active {
+      font-weight: bold;
+      color: @wizard-item-icon-active-bg;
+
+      &::before {
+        background-color: @wizard-item-bar-complete-color;
+      }
+
+      .wizard-item-icon i {
+        color: @wizard-item-icon-active-color;
+        background-color: @wizard-item-icon-active-bg;
+        border-color: @wizard-item-icon-active-bg;
+      }
+    }
+
+    &.complete {
+      color: @wizard-item-icon-active-bg;
+
+      a {
+        color: @wizard-item-icon-active-bg;
+      }
+
+      &::before {
+        background-color: @wizard-item-bar-complete-color;
+      }
+
+      .wizard-item-icon i {
+        color: @wizard-item-icon-complete-color;
+        background-color: @wizard-item-icon-complete-bg;
+        border-color: @wizard-item-icon-complete-color;
+      }
+    }
+
+    &:first-of-type::before {
+      display: none;
+    }
+  }
+}
+

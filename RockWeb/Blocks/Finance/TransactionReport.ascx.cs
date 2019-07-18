@@ -27,6 +27,7 @@ using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
+using Rock.Web.UI;
 
 namespace RockWeb.Blocks.Finance
 {
@@ -39,10 +40,27 @@ namespace RockWeb.Blocks.Finance
     [TextField( "Transaction Label", "The label to use to describe the transactions (e.g. 'Gifts', 'Donations', etc.)", true, "Gifts", "", 1 )]
     [TextField( "Account Label", "The label to use to describe accounts.", true, "Accounts", "", 2 )]
     [AccountsField( "Accounts", "List of accounts to allow the person to view", false, "", "", 3 )]
+    [BooleanField( "Show Transaction Code", "Show the transaction code column in the table.", true, "", 4, "ShowTransactionCode" )]
+    [BooleanField( "Show Foreign Key", "Show the transaction foreign key column in the table.", false, "", 4, "ShowForeignKey" )]
+    [DefinedValueField( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE, "Transaction Types", "Optional list of transaction types to limit the list to (if none are selected all types will be included).", false, true, "", "", 5 )]
+    [BooleanField( "Use Person Context", "Determines if the person context should be used instead of the CurrentPerson.", false, order: 5 )]
 
-    [DefinedValueField( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE, "Transaction Types", "Optional list of transation types to limit the list to (if none are selected all types will be included).", false, true, "", "", 4 )]
+    [ContextAware]
     public partial class TransactionReport : Rock.Web.UI.RockBlock
     {
+        #region Properties
+
+        /// <summary>
+        /// Gets the target person.
+        /// </summary>
+        /// <value>
+        /// The target person.
+        /// </value>
+        protected Person TargetPerson { get; private set; }
+
+        #endregion
+
+
         #region Base Control Methods
 
         /// <summary>
@@ -52,6 +70,15 @@ namespace RockWeb.Blocks.Finance
         protected override void OnInit( EventArgs e )
         {
             base.OnInit( e );
+
+            if ( GetAttributeValue( "UsePersonContext" ).AsBoolean() )
+            {
+                TargetPerson = ContextEntity<Person>();
+            }
+            else
+            {
+                TargetPerson = CurrentPerson;
+            }
 
             // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
             this.BlockUpdated += Block_BlockUpdated;
@@ -76,8 +103,8 @@ namespace RockWeb.Blocks.Finance
             if ( !Page.IsPostBack )
             {
                 // set default date range
-                drpFilterDates.LowerValue = new DateTime( DateTime.Now.Year, 1, 1 );
-                drpFilterDates.UpperValue = DateTime.Now;
+                drpFilterDates.LowerValue = new DateTime( RockDateTime.Now.Year, 1, 1 );
+                drpFilterDates.UpperValue = RockDateTime.Now;
 
                 // load account list
                 LoadAccounts();
@@ -178,13 +205,20 @@ namespace RockWeb.Blocks.Finance
             FinancialTransactionService transService = new FinancialTransactionService( rockContext );
             var qry = transService.Queryable( "TransactionDetails.Account,FinancialPaymentDetail" );
 
-            string currentPersonGivingId = CurrentPerson.GivingId;
+            List<int> personAliasIds;
 
-            qry = qry.Where( t => t.AuthorizedPersonAlias != null &&
-                            t.AuthorizedPersonAlias.Person != null &&
-                            t.AuthorizedPersonAlias.Person.GivingId == currentPersonGivingId );
+            if ( TargetPerson != null )
+            {
+                personAliasIds = new PersonAliasService( rockContext ).Queryable().Where( a => a.Person.GivingId == TargetPerson.GivingId ).Select( a => a.Id ).ToList();
+            }
+            else
+            {
+                personAliasIds = new List<int>();
+            }
 
-            
+            qry = qry.Where( t => t.AuthorizedPersonAliasId.HasValue && personAliasIds.Contains( t.AuthorizedPersonAliasId.Value ) );
+
+
             // if the Account Checkboxlist is visible, filter to what was selected.  Otherwise, show all the accounts that the person contributed to
             if ( cblAccounts.Visible )
             {
@@ -207,7 +241,7 @@ namespace RockWeb.Blocks.Finance
             }
 
             // Transaction Types
-            var transactionTypeValueIdList = GetAttributeValue( "TransactionTypes" ).SplitDelimitedValues().AsGuidList().Select( a => DefinedValueCache.Read( a ) ).Where( a => a != null ).Select( a => a.Id ).ToList();
+            var transactionTypeValueIdList = GetAttributeValue( "TransactionTypes" ).SplitDelimitedValues().AsGuidList().Select( a => DefinedValueCache.Get( a ) ).Where( a => a != null ).Select( a => a.Id ).ToList();
 
             if ( transactionTypeValueIdList.Any() )
             {
@@ -225,13 +259,13 @@ namespace RockWeb.Blocks.Finance
             {
                 foreach ( var transactionDetail in transaction.TransactionDetails )
                 {
-                    if ( accountTotals.Keys.Contains( transactionDetail.Account.Name ) )
+                    if ( accountTotals.Keys.Contains( transactionDetail.Account.PublicName ) )
                     {
-                        accountTotals[transactionDetail.Account.Name] += transactionDetail.Amount;
+                        accountTotals[transactionDetail.Account.PublicName] += transactionDetail.Amount;
                     }
                     else
                     {
-                        accountTotals.Add( transactionDetail.Account.Name, transactionDetail.Amount );
+                        accountTotals.Add( transactionDetail.Account.PublicName, transactionDetail.Amount );
                     }
                 }
             }
@@ -250,15 +284,23 @@ namespace RockWeb.Blocks.Finance
                 pnlSummary.Visible = false;
             }
 
-            gTransactions.EntityTypeId = EntityTypeCache.Read<FinancialTransaction>().Id;
+            gTransactions.EntityTypeId = EntityTypeCache.Get<FinancialTransaction>().Id;
             gTransactions.DataSource = txns.Select( t => new
             {
                 t.Id,
                 t.TransactionDateTime,
                 CurrencyType = FormatCurrencyType( t ),
+                t.TransactionCode,
+                t.ForeignKey,
                 Summary = FormatSummary( t ),
                 t.TotalAmount
             } ).ToList();
+
+            gTransactions.ColumnsOfType<Rock.Web.UI.Controls.RockBoundField>().First( c => c.HeaderText == "Transaction Code" ).Visible =
+                GetAttributeValue( "ShowTransactionCode" ).AsBoolean();
+
+            gTransactions.ColumnsOfType<Rock.Web.UI.Controls.RockBoundField>().First( c => c.HeaderText == "Foreign Key" ).Visible =
+                GetAttributeValue( "ShowForeignKey" ).AsBoolean();
 
             gTransactions.DataBind();
         }
@@ -277,13 +319,13 @@ namespace RockWeb.Blocks.Finance
             {
                 int currencyTypeId = txn.FinancialPaymentDetail.CurrencyTypeValueId.Value;
 
-                var currencyTypeValue = DefinedValueCache.Read( currencyTypeId );
+                var currencyTypeValue = DefinedValueCache.Get( currencyTypeId );
                 currencyType = currencyTypeValue != null ? currencyTypeValue.Value : string.Empty;
 
                 if ( txn.FinancialPaymentDetail.CreditCardTypeValueId.HasValue )
                 {
                     int creditCardTypeId = txn.FinancialPaymentDetail.CreditCardTypeValueId.Value;
-                    var creditCardTypeValue = DefinedValueCache.Read( creditCardTypeId );
+                    var creditCardTypeValue = DefinedValueCache.Get( creditCardTypeId );
                     creditCardType = creditCardTypeValue != null ? creditCardTypeValue.Value : string.Empty;
 
                     return string.Format( "{0} - {1}", currencyType, creditCardType );
