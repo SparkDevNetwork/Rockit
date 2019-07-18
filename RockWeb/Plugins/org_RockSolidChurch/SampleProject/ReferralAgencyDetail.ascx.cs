@@ -48,11 +48,8 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
 
-            var definedType = DefinedTypeCache.Read( org.rocksolidchurch.SampleProject.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() );
-            if (definedType != null)
-            {
-                ddlAgencyType.BindToDefinedType( definedType, true );
-            }
+            dvpAgencyType.DefinedTypeId = DefinedTypeCache.Get( org.rocksolidchurch.SampleProject.SystemGuid.DefinedType.REFERRAL_AGENCY_TYPE.AsGuid() ).Id;
+            dvpAgencyType.DisplayDescriptions = true;
         }
 
         /// <summary>
@@ -144,7 +141,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             referralAgency.Name = tbName.Text;
             referralAgency.Description = tbDescription.Text;
             referralAgency.CampusId = cpCampus.SelectedCampusId;
-            referralAgency.AgencyTypeValueId = ddlAgencyType.SelectedValueAsId();
+            referralAgency.AgencyTypeValueId = dvpAgencyType.SelectedValueAsId();
             referralAgency.ContactName = tbContactName.Text;
             referralAgency.PhoneNumber = tbPhoneNumber.Text;
             referralAgency.Website = tbWebsite.Text;
@@ -195,7 +192,7 @@ namespace RockWeb.Plugins.org_rocksolidchurch.SampleProject
             tbName.Text = referralAgency.Name;
             tbDescription.Text = referralAgency.Description;
             cpCampus.SelectedCampusId = referralAgency.CampusId;
-            ddlAgencyType.SetValue( referralAgency.AgencyTypeValueId );
+            dvpAgencyType.SetValue( referralAgency.AgencyTypeValueId );
             tbContactName.Text = referralAgency.ContactName;
             tbPhoneNumber.Text = referralAgency.PhoneNumber;
             tbWebsite.Text = referralAgency.Website;
