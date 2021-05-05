@@ -57,7 +57,7 @@ namespace RockWeb
             if ( !context.User.Identity.IsAuthenticated )
             {
                 // If not, see if there's a valid token
-                string authToken = context.Request.Headers["Authorization-Token"];
+                string authToken = context.Request.Headers[Rock.Rest.HeaderTokens.AuthorizationToken];
                 if ( string.IsNullOrWhiteSpace( authToken ) )
                 {
                     authToken = context.Request.Params["apikey"];
@@ -186,9 +186,17 @@ namespace RockWeb
             string untrustedFolderPath = context.Request.Form["folderPath"] ?? string.Empty;
             string encryptedRootFolder = context.Request.QueryString["rootFolder"];
 
-            /* Scrub the file name */
+            // Scrub the file name 
 
-            string scrubedFileName = ScrubFileName( untrustedFileName );
+            /*
+	            3/17/2020 - JME 
+	            And remove spaces, I did not add the removal of spaces to the scrub as the scrub logic
+                has existed for a while and is used in other places that may not want that. We can move
+                this to the scrub should we desire in the future.
+
+                Reason: The theme editor needs files with no spaces to be used in CSS
+            */
+            string scrubedFileName = ScrubFileName( untrustedFileName ).Replace(" ", "_");
 
             if ( string.IsNullOrWhiteSpace( scrubedFileName ) )
             {
@@ -287,7 +295,7 @@ namespace RockWeb
         /// <summary>
         /// Dictionary of deprecated or incorrect mime types and what they should be mapped to instead
         /// </summary>
-        private Dictionary<string, string> _mimeTypeRemap = new Dictionary<string, string>
+        private readonly Dictionary<string, string> _mimeTypeRemap = new Dictionary<string, string>
         {
             { "text/directory", "text/vcard" },
             { "text/directory; profile=vCard", "text/vcard" },
@@ -336,7 +344,18 @@ namespace RockWeb
             binaryFile.BinaryFileTypeId = binaryFileType.Id;
             binaryFile.MimeType = uploadedFile.ContentType;
             binaryFile.FileSize = uploadedFile.ContentLength;
-            binaryFile.FileName = Path.GetFileName( uploadedFile.FileName );
+
+            /*
+             * 2020-02-11 BJW
+             *
+             * The ReplaceSpecialCharacters extension call was added to remove characters that are outside the legal character range.
+             * For example, if a file is moved from a Linux system, it might have a colon that manifests as a char with int value
+             * in the thousands range (far outside typical character range. This causes unpredictable behavior with the various file
+             * storage providers (GCP might handle it differently than the database storage provider). In order to add consistency
+             * we simply replace any of these characters with an underscore. This includes spaces, which are normal, but are security
+             * risks if they fall in certain parts of the filename.
+             */
+            binaryFile.FileName = Path.GetFileName( uploadedFile.FileName.ReplaceSpecialCharacters( "_" ) );
 
             if ( _mimeTypeRemap.ContainsKey( binaryFile.MimeType ) )
             {
@@ -413,7 +432,17 @@ namespace RockWeb
             // Get the base filename
             string baseFileName = Path.GetFileName( untrustedFileName );
 
-            // Scrub invalid file characters
+            /*
+             * 2020-03-25 JME
+             *
+             * While C# has a listing of invalid file characters (used below), we added a few more of our own to help
+             * with dealing with linking easily to files that have been uploaded.
+             *
+             * Specific Use Case: Theme Editor was having issues when using uploaded files from the Image Upload control
+             */
+            baseFileName = baseFileName.Replace( "(", "" ).Replace( ")", "" );
+
+            // Scrub base invalid file characters
             return Regex.Replace( baseFileName, "[" + Regex.Escape( Path.GetInvalidFileNameChars().ToString() ) + "]", string.Empty, RegexOptions.CultureInvariant );
         }
 
@@ -425,7 +454,7 @@ namespace RockWeb
         public string ScrubFilePath( string untrustedFilePath )
         {
             // Scrub invalid path characters
-            return Regex.Replace( untrustedFilePath, "[" + Regex.Escape( Path.GetInvalidPathChars().ToString() ) + "]", string.Empty, RegexOptions.CultureInvariant );
+            return Regex.Replace( untrustedFilePath.Trim(), "[" + Regex.Escape( Path.GetInvalidPathChars().ToString() ) + "]", string.Empty, RegexOptions.CultureInvariant );
         }
     }
 }

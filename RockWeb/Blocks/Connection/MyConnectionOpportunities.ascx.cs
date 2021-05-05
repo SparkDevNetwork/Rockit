@@ -28,7 +28,9 @@ using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
+using Rock.Utility;
 using Rock.Web.Cache;
+using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
 namespace RockWeb.Blocks.Connection
@@ -40,23 +42,122 @@ namespace RockWeb.Blocks.Connection
     [Category( "Connection" )]
     [Description( "Block to display the connection opportunities that user is authorized to view, and the opportunities that are currently assigned to the user." )]
 
-    [LinkedPage( "Configuration Page", "Page used to modify and create connection opportunities.", true, "", "", 0 )]
-    [LinkedPage( "Detail Page", "Page used to view details of an requests.", true, "", "", 1 )]
-    [ConnectionTypesField("Connection Types", "Optional list of connection types to limit the display to (All will be displayed by default).", false, order:2 )]
-    [BooleanField( "Show Request Total", "If enabled, the block will show the total number of requests.", true, order: 3 )]
-    [BooleanField( "Show Last Activity Note", "If enabled, the block will show the last activity note for each request in the list.", false, order:4 )]
+    #region Block Attributes
+    [LinkedPage(
+        "Configuration Page",
+        Description = "Page used to modify and create connection opportunities.",
+        IsRequired = true,
+        Order = 0,
+        Key = AttributeKey.ConfigurationPage )]
+    [LinkedPage(
+        "Detail Page",
+        Description = "Page used to view details of an requests.",
+        IsRequired = true,
+        Order = 1,
+        Key = AttributeKey.DetailPage )]
+    [BooleanField(
+        "Use Connection Request Detail Page From Connection Type",
+        Key = AttributeKey.UseConnectionRequestDetailPageFromConnectionType,
+        Description = "If enabled, the Connection Request Detail page defined by the Connection Type will be used to view the request(if it's not empty/unset). Otherwise the Connection Request Detail page configured on this block will be used.",
+        DefaultBooleanValue = true,
+        Order = 1
+    )]
+    [ConnectionTypesField(
+        "Connection Types",
+        Description = "Optional list of connection types to limit the display to (All will be displayed by default).",
+        IsRequired = false,
+        Order = 2,
+        Key = AttributeKey.ConnectionTypes )]
+    [BooleanField(
+        "Show Request Total",
+        Description = "If enabled, the block will show the total number of requests.",
+        DefaultBooleanValue = true,
+        Order = 3,
+        Key = AttributeKey.ShowRequestTotal )]
+    [BooleanField(
+        "Show Last Activity Note",
+        Description = "If enabled, the block will show the last activity note for each request in the list.",
+        DefaultBooleanValue = false,
+        Order = 4,
+        Key = AttributeKey.ShowLastActivityNote )]
 
-    [CodeEditorField( "Status Template", "Lava Template that can be used to customize what is displayed in the status bar. Includes common merge fields plus ConnectionOpportunities, ConnectionTypes and the default IdleTooltip.", CodeEditorMode.Lava, CodeEditorTheme.Rock, defaultValue:
-@"<div class='pull-left badge-legend padding-r-md'>
+    [CodeEditorField(
+        "Status Template",
+        Description = "Lava Template that can be used to customize what is displayed in the status bar. Includes common merge fields plus ConnectionOpportunities, ConnectionTypes and the default IdleTooltip.",
+        EditorMode = CodeEditorMode.Lava,
+        EditorTheme = CodeEditorTheme.Rock,
+        DefaultValue = StatusTemplateDefaultValue,
+        Order = 5,
+        Key = AttributeKey.StatusTemplate )]
+
+    [CodeEditorField(
+        "Opportunity Summary Template",
+        Description = "Lava Template that can be used to customize what is displayed in each Opportunity Summary. Includes common merge fields plus the OpportunitySummary and ConnectionOpportunity.",
+        EditorMode = CodeEditorMode.Lava,
+        EditorTheme = CodeEditorTheme.Rock,
+        DefaultValue = OpportunitySummaryTemplateDefaultValue,
+        Key = AttributeKey.OpportunitySummaryTemplate,
+        Order = 6 )]
+    [CodeEditorField(
+        "Connection Request Status Icons Template",
+        Description = "Lava Template that can be used to customize what is displayed for the status icons in the connection request grid.",
+        EditorMode = CodeEditorMode.Lava,
+        EditorTheme = CodeEditorTheme.Rock,
+        DefaultValue = ConnectionRequestStatusIconsTemplateDefaultValue,
+        Key = AttributeKey.ConnectionRequestStatusIconsTemplate,
+        Order = 7 )]
+    [BooleanField(
+        "Enable Request Security",
+        DefaultBooleanValue = false,
+        Description = "When enabled, the security column for the request would be displayed.",
+        Key = AttributeKey.EnableRequestSecurity,
+        IsRequired = true,
+        Order = 8
+    )]
+    #endregion Block Attributes
+    public partial class MyConnectionOpportunities : Rock.Web.UI.RockBlock, ICustomGridColumns
+    {
+        #region Attribute Keys
+        private static class AttributeKey
+        {
+            public const string ConfigurationPage = "ConfigurationPage";
+            public const string DetailPage = "DetailPage";
+            public const string EnableRequestSecurity = "EnableRequestSecurity";
+            public const string ConnectionTypes = "ConnectionTypes";
+            public const string ShowRequestTotal = "ShowRequestTotal";
+            public const string ShowLastActivityNote = "ShowLastActivityNote";
+            public const string StatusTemplate = "StatusTemplate";
+            public const string ConnectionRequestStatusIconsTemplate = "ConnectionRequestStatusIconsTemplate";
+            public const string OpportunitySummaryTemplate = "OpportunitySummaryTemplate";
+            public const string UseConnectionRequestDetailPageFromConnectionType = "UseConnectionRequestDetailPageFromConnectionType";
+        }
+        #endregion Attribute Keys
+
+        #region Page Parameter Keys
+
+        /// <summary>
+        /// Keys to use for Page Parameters
+        /// </summary>
+        private static class PageParameterKey
+        {
+            public const string ConnectionRequestId = "ConnectionRequestId";
+            public const string ConnectionOpportunityId = "ConnectionOpportunityId";
+        }
+
+        #endregion
+
+        #region Attribute Default values
+
+        private const string StatusTemplateDefaultValue = @"
+<div class='pull-left badge-legend padding-r-md'>
     <span class='pull-left badge badge-info badge-circle js-legend-badge' data-toggle='tooltip' data-original-title='Assigned To You'><span class='sr-only'>Assigned To You</span></span>
     <span class='pull-left badge badge-warning badge-circle js-legend-badge' data-toggle='tooltip' data-original-title='Unassigned Item'><span class='sr-only'>Unassigned Item</span></span>
     <span class='pull-left badge badge-critical badge-circle js-legend-badge' data-toggle='tooltip' data-original-title='Critical Status'><span class='sr-only'>Critical Status</span></span>
     <span class='pull-left badge badge-danger badge-circle js-legend-badge' data-toggle='tooltip' data-original-title='{{ IdleTooltip }}'><span class='sr-only'>{{ IdleTooltip }}</span></span>
-</div>", order:5
-)]
+</div>";
 
-    [CodeEditorField( "Opportunity Summary Template", "Lava Template that can be used to customize what is displayed in each Opportunity Summary. Includes common merge fields plus the OpportunitySummary, ConnectionOpportunity, and its ConnectionRequests.", CodeEditorMode.Lava, CodeEditorTheme.Rock, defaultValue:
-@"<span class=""item-count"" title=""There are {{ 'active connection' | ToQuantity:OpportunitySummary.TotalRequests }} in this opportunity."">{{ OpportunitySummary.TotalRequests | Format:'#,###,##0' }}</span>
+        private const string OpportunitySummaryTemplateDefaultValue = @"
+<span class=""item-count"" title=""There are {{ 'active connection' | ToQuantity:OpportunitySummary.TotalRequests }} in this opportunity."">{{ OpportunitySummary.TotalRequests | Format:'#,###,##0' }}</span>
 <i class='{{ OpportunitySummary.IconCssClass }}'></i>
 <h3>{{ OpportunitySummary.Name }}</h3>
 <div class='status-list'>
@@ -65,10 +166,9 @@ namespace RockWeb.Blocks.Connection
     <span class='badge badge-critical'>{{ OpportunitySummary.CriticalCount | Format:'#,###,###' }}</span>
     <span class='badge badge-danger'>{{ OpportunitySummary.IdleCount | Format:'#,###,###' }}</span>
 </div>
-", order:6
-)]
-    [CodeEditorField( "Connection Request Status Icons Template", "Lava Template that can be used to customize what is displayed for the status icons in the connection request grid.", CodeEditorMode.Lava, CodeEditorTheme.Rock, defaultValue:
-@"
+";
+
+        private const string ConnectionRequestStatusIconsTemplateDefaultValue = @"
 <div class='status-list'>
     {% if ConnectionRequestStatusIcons.IsAssignedToYou %}
     <span class='badge badge-info js-legend-badge' data-toggle='tooltip' data-original-title='Assigned To You'><span class='sr-only'>Assigned To You</span></span>
@@ -83,11 +183,10 @@ namespace RockWeb.Blocks.Connection
     <span class='badge badge-danger js-legend-badge' data-toggle='tooltip' data-original-title='{{ IdleTooltip }}'><span class='sr-only'>{{ IdleTooltip }}</span></span>
     {% endif %}
 </div>
-", key: "ConnectionRequestStatusIconsTemplate", order:7
-)]
+";
 
-    public partial class MyConnectionOpportunities : Rock.Web.UI.RockBlock
-    {
+        #endregion Attribute Default values
+
         #region Fields
 
         private const string TOGGLE_ACTIVE_SETTING = "MyConnectionOpportunities_ToggleShowActive";
@@ -131,22 +230,26 @@ namespace RockWeb.Blocks.Connection
             rFilter.ApplyFilterClick += rFilter_ApplyFilterClick;
 
             gRequests.DataKeyNames = new string[] { "Id" };
+            gRequests.EntityTypeId = EntityTypeCache.Get<ConnectionRequest>().Id;
             gRequests.Actions.AddClick += gRequests_Add;
             gRequests.GridRebind += gRequests_GridRebind;
             gRequests.ShowConfirmDeleteDialog = false;
             gRequests.PersonIdField = "PersonId";
+            var securityField = gRequests.ColumnsOfType<SecurityField>().FirstOrDefault();
+            securityField.EntityTypeId = EntityTypeCache.Get( typeof( ConnectionRequest ) ).Id;
+            securityField.Visible = GetAttributeValue( AttributeKey.EnableRequestSecurity ).AsBoolean();
 
             var lastActivityNoteBoundField = gRequests.ColumnsOfType<RockBoundField>().FirstOrDefault( a => a.DataField == "LastActivityNote" );
             if ( lastActivityNoteBoundField != null )
             {
-                lastActivityNoteBoundField.Visible = GetAttributeValue( "ShowLastActivityNote" ).AsBoolean();
+                lastActivityNoteBoundField.Visible = GetAttributeValue( AttributeKey.ShowLastActivityNote ).AsBoolean();
             }
 
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
 
             string deleteScript = @"
-    $('table.js-grid-requests a.grid-delete-button').click(function( e ){
+    $('table.js-grid-requests a.grid-delete-button').on('click', function( e ){
         e.preventDefault();
         Rock.dialogs.confirm('Are you sure you want to delete this connection request? All of the activities for this request will also be deleted, and any existing workflow associations will be lost!', function (result) {
             if (result) {
@@ -255,7 +358,7 @@ namespace RockWeb.Blocks.Connection
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void lbConnectionTypes_Click( object sender, EventArgs e )
         {
-            NavigateToLinkedPage( "ConfigurationPage" );
+            NavigateToLinkedPage( AttributeKey.ConfigurationPage );
         }
 
         /// <summary>
@@ -273,12 +376,12 @@ namespace RockWeb.Blocks.Connection
                 if ( tglMyOpportunities.Checked )
                 {
                     // if 'My Opportunities' is selected, only include the opportunities that have active requests with current person as the connector
-                    rptConnectionOpportunities.DataSource = connectionType.Opportunities.Where( o => o.HasActiveRequestsForConnector ).ToList();
+                    rptConnectionOpportunities.DataSource = connectionType.Opportunities.Where( o => o.HasActiveRequestsForConnector ).OrderBy( c => c.Name ).ToList();
                 }
                 else
                 {
                     // if 'All Opportunities' is selected, show all the opportunities for the type
-                    rptConnectionOpportunities.DataSource = connectionType.Opportunities.OrderBy(c => c.Name);
+                    rptConnectionOpportunities.DataSource = connectionType.Opportunities.OrderBy( c => c.Name );
                 }
                 rptConnectionOpportunities.DataBind();
                 //rptConnectionOpportunities.ItemCommand += rptConnectionOpportunities_ItemCommand;
@@ -294,7 +397,7 @@ namespace RockWeb.Blocks.Connection
         /// <returns></returns>
         public string GetOpportunitySummaryHtml( OpportunitySummary opportunitySummary )
         {
-            var template = this.GetAttributeValue( "OpportunitySummaryTemplate" );
+            var template = this.GetAttributeValue( AttributeKey.OpportunitySummaryTemplate );
 
             var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson, new Rock.Lava.CommonMergeFieldsOptions { GetLegacyGlobalMergeFields = false } );
             mergeFields.Add( "OpportunitySummary", DotLiquid.Hash.FromAnonymousObject( opportunitySummary ) );
@@ -420,6 +523,10 @@ namespace RockWeb.Blocks.Connection
                 {
                     e.Value = ResolveValues( e.Value, cblLastActivity );
                 }
+                else if ( e.Key == "LastActivityDateRange" )
+                {
+                    e.Value = SlidingDateRangePicker.FormatDelimitedValues( e.Value );
+                }
                 else
                 {
                     e.Value = string.Empty;
@@ -434,7 +541,7 @@ namespace RockWeb.Blocks.Connection
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void gRequests_Add( object sender, EventArgs e )
         {
-            NavigateToLinkedPage( "DetailPage", "ConnectionRequestId", 0, "ConnectionOpportunityId", SelectedOpportunityId );
+            NavigateToConnectionPage( 0 );
         }
 
         /// <summary>
@@ -444,7 +551,7 @@ namespace RockWeb.Blocks.Connection
         /// <param name="e">The <see cref="RowEventArgs" /> instance containing the event data.</param>
         protected void gRequests_Edit( object sender, RowEventArgs e )
         {
-            NavigateToLinkedPage( "DetailPage", "ConnectionRequestId", e.RowKeyId, "ConnectionOpportunityId", SelectedOpportunityId );
+            NavigateToConnectionPage( e.RowKeyId );
         }
 
         protected void gRequests_Delete( object sender, RowEventArgs e )
@@ -480,9 +587,9 @@ namespace RockWeb.Blocks.Connection
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         /// <exception cref="System.NotImplementedException"></exception>
-        protected void gRequests_GridRebind( object sender, EventArgs e )
+        protected void gRequests_GridRebind( object sender, GridRebindEventArgs e )
         {
-            BindGrid();
+            BindGrid( e.IsExporting );
         }
 
         /// <summary>
@@ -500,10 +607,10 @@ namespace RockWeb.Blocks.Connection
                     var opportunitySummary = SummaryState.SelectMany( a => a.Opportunities ).FirstOrDefault( a => a.Id == SelectedOpportunityId.Value );
                     if ( opportunitySummary != null )
                     {
-                        dynamic connectionRequestInfo = e.Row.DataItem;
+                        ConnectionRequestInfo connectionRequestInfo = e.Row.DataItem as ConnectionRequestInfo;
                         int connectionRequestId = connectionRequestInfo.Id;
 
-                        string connectionRequestStatusIconTemplate = this.GetAttributeValue( "ConnectionRequestStatusIconsTemplate" );
+                        string connectionRequestStatusIconTemplate = this.GetAttributeValue( AttributeKey.ConnectionRequestStatusIconsTemplate );
 
                         Dictionary<string, object> mergeFields = new Dictionary<string, object>();
                         ConnectionRequestStatusIcons connectionRequestStatusIcons = new ConnectionRequestStatusIcons
@@ -536,23 +643,26 @@ namespace RockWeb.Blocks.Connection
             SummaryState = new List<ConnectionTypeSummary>();
 
             var rockContext = new RockContext();
-            var opportunities = new ConnectionOpportunityService( rockContext )
-                .Queryable().AsNoTracking();
+            var opportunitiesQuery = new ConnectionOpportunityService( rockContext ).Queryable();
 
-            var typeFilter = GetAttributeValue( "ConnectionTypes" ).SplitDelimitedValues().AsGuidList();
+            var typeFilter = GetAttributeValue( AttributeKey.ConnectionTypes ).SplitDelimitedValues().AsGuidList();
             if ( typeFilter.Any() )
             {
-                opportunities = opportunities.Where( o => typeFilter.Contains( o.ConnectionType.Guid ) );
+                opportunitiesQuery = opportunitiesQuery.Where( o => typeFilter.Contains( o.ConnectionType.Guid ) );
             }
 
             if ( tglShowActive.Checked )
             {
-                opportunities = opportunities.Where( a => a.ConnectionType.IsActive );
-
+                opportunitiesQuery = opportunitiesQuery.Where( a => a.ConnectionType.IsActive );
             }
 
+            var selfAssignedOpportunities = new List<int>();
+            bool isSelfAssignedOpportunitiesQueried = false;
+
+            var opportunitiesList = opportunitiesQuery.AsNoTracking().ToList();
+
             // Loop through opportunities
-            foreach ( var opportunity in opportunities )
+            foreach ( var opportunity in opportunitiesList )
             {
                 // Check to see if person can edit the opportunity because of edit rights to this block or edit rights to
                 // the opportunity
@@ -591,7 +701,20 @@ namespace RockWeb.Blocks.Connection
                     }
                 }
 
-                var canView = canEdit || opportunity.IsAuthorized( Authorization.VIEW, CurrentPerson );
+                if ( opportunity.ConnectionType.EnableRequestSecurity && !isSelfAssignedOpportunitiesQueried )
+                {
+                    isSelfAssignedOpportunitiesQueried = true;
+                    selfAssignedOpportunities = new ConnectionRequestService( rockContext )
+                        .Queryable()
+                        .Where( a => a.ConnectorPersonAlias.PersonId == CurrentPersonId.Value )
+                        .Select( a => a.ConnectionOpportunityId )
+                        .Distinct()
+                        .ToList();
+                }
+
+                var canView = canEdit ||
+                                opportunity.IsAuthorized( Authorization.VIEW, CurrentPerson ) ||
+                                ( opportunity.ConnectionType.EnableRequestSecurity && selfAssignedOpportunities.Contains( opportunity.Id ) );
 
                 // Is user is authorized to view this opportunity type...
                 if ( canView )
@@ -604,6 +727,9 @@ namespace RockWeb.Blocks.Connection
                         {
                             Id = opportunity.ConnectionTypeId,
                             Name = opportunity.ConnectionType.Name,
+                            EnableRequestSecurity = opportunity.ConnectionType.EnableRequestSecurity,
+                            ConnectionRequestDetailPageId = opportunity.ConnectionType.ConnectionRequestDetailPageId,
+                            ConnectionRequestDetailPageRouteId = opportunity.ConnectionType.ConnectionRequestDetailPageRouteId,
                             Opportunities = new List<OpportunitySummary>()
                         };
                         SummaryState.Add( connectionTypeSummary );
@@ -698,7 +824,6 @@ namespace RockWeb.Blocks.Connection
                     ConnectorPersonId = r.ConnectorPersonAlias != null ? r.ConnectorPersonAlias.PersonId : -1
                 } );
 
-
             if ( cpCampusFilterForPage.SelectedCampusId.HasValue )
             {
                 activeRequestsQry = activeRequestsQry.Where( a => a.CampusId.HasValue && a.CampusId == cpCampusFilterForPage.SelectedCampusId );
@@ -733,7 +858,7 @@ namespace RockWeb.Blocks.Connection
             }
 
             //Set the Idle tooltip
-            var connectionTypes = opportunities.Where( o => allOpportunities.Contains( o.Id ) ).Select( o => o.ConnectionType ).Distinct().ToList();
+            var connectionTypes = opportunitiesList.Where( o => allOpportunities.Contains( o.Id ) ).Select( o => o.ConnectionType ).Distinct().ToList();
             StringBuilder sb = new StringBuilder();
             if ( connectionTypes.Select( t => t.DaysUntilRequestIdle ).Distinct().Count() == 1 )
             {
@@ -749,15 +874,15 @@ namespace RockWeb.Blocks.Connection
                 sb.Append( "</ul>" );
             }
 
-            var statusTemplate = this.GetAttributeValue( "StatusTemplate" );
-            var statusMergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields(this.RockPage);
+            var statusTemplate = this.GetAttributeValue( AttributeKey.StatusTemplate );
+            var statusMergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage );
             statusMergeFields.Add( "ConnectionOpportunities", allOpportunities );
             statusMergeFields.Add( "ConnectionTypes", connectionTypes );
             statusMergeFields.Add( "IdleTooltip", sb.ToString().EncodeHtml() );
             lStatusBarContent.Text = statusTemplate.ResolveMergeFields( statusMergeFields );
             BindSummaryData();
 
-            if ( GetAttributeValue( "ShowRequestTotal" ).AsBoolean( true ) )
+            if ( GetAttributeValue( AttributeKey.ShowRequestTotal ).AsBoolean( true ) )
             {
                 lTotal.Visible = true;
                 lTotal.Text = string.Format( "Total Requests: {0:N0}", SummaryState.SelectMany( s => s.Opportunities ).Sum( o => o.TotalRequests ) );
@@ -871,16 +996,18 @@ namespace RockWeb.Blocks.Connection
         /// <summary>
         /// Binds the grid.
         /// </summary>
-        private void BindGrid()
+        private void BindGrid( bool isExporting = false )
         {
+            ConnectionTypeSummary connectionTypeSummary = null;
             OpportunitySummary opportunitySummary = null;
 
             if ( SelectedOpportunityId.HasValue )
             {
+                connectionTypeSummary = SummaryState.Where( t => t.Opportunities.Any( o => o.Id == SelectedOpportunityId.Value ) ).FirstOrDefault();
                 opportunitySummary = SummaryState.SelectMany( t => t.Opportunities.Where( o => o.Id == SelectedOpportunityId.Value ) ).FirstOrDefault();
             }
 
-            if ( opportunitySummary != null )
+            if ( connectionTypeSummary != null && opportunitySummary != null )
             {
                 gRequests.Actions.ShowAdd = opportunitySummary.CanEdit;
                 gRequests.IsDeleteEnabled = opportunitySummary.CanEdit;
@@ -888,9 +1015,8 @@ namespace RockWeb.Blocks.Connection
 
                 using ( var rockContext = new RockContext() )
                 {
-
                     // Get queryable of all requests that belong to the selected opportunity, and user is authorized to view (based on security or connector group)
-                    var requests = new ConnectionRequestService( rockContext )
+                    var requestsQuery = new ConnectionRequestService( rockContext )
                         .Queryable().AsNoTracking()
                         .Where( r =>
                             r.ConnectionOpportunityId == SelectedOpportunityId.Value &&
@@ -903,18 +1029,18 @@ namespace RockWeb.Blocks.Connection
                     var dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( sdrpLastActivityDateRange.DelimitedValues );
                     if ( dateRange.Start.HasValue )
                     {
-                        requests = requests.Where( r => r.ConnectionRequestActivities.Select( a => a.ModifiedDateTime ).Min() >= dateRange.Start.Value );
+                        requestsQuery = requestsQuery.Where( r => r.ConnectionRequestActivities.Select( a => a.ModifiedDateTime ).Min() >= dateRange.Start.Value );
                     }
 
                     if ( dateRange.End.HasValue )
                     {
-                        requests = requests.Where( r => r.ConnectionRequestActivities.Select( a => a.ModifiedDateTime ).Max() <= dateRange.End.Value );
+                        requestsQuery = requestsQuery.Where( r => r.ConnectionRequestActivities.Select( a => a.ModifiedDateTime ).Max() <= dateRange.End.Value );
                     }
 
                     // Filter by Requester
                     if ( ppRequester.PersonId.HasValue )
                     {
-                        requests = requests
+                        requestsQuery = requestsQuery
                             .Where( r =>
                                 r.PersonAlias != null &&
                                 r.PersonAlias.PersonId == ppRequester.PersonId.Value );
@@ -923,24 +1049,23 @@ namespace RockWeb.Blocks.Connection
                     // Filter by Connector
                     if ( tglMyOpportunities.Checked )
                     {
-                        requests = requests
+                        requestsQuery = requestsQuery
                             .Where( r =>
                                 r.ConnectorPersonAlias != null &&
                                 r.ConnectorPersonAlias.PersonId == CurrentPersonId );
                     }
                     else if ( ppConnector.PersonId.HasValue )
                     {
-                        requests = requests
+                        requestsQuery = requestsQuery
                             .Where( r =>
                                 r.ConnectorPersonAlias != null &&
                                 r.ConnectorPersonAlias.PersonId == ppConnector.PersonId.Value );
                     }
 
                     // Filter by State
-
                     if ( tglMyOpportunities.Checked )
                     {
-                        requests = requests
+                        requestsQuery = requestsQuery
                             .Where( r => r.ConnectionState == ConnectionState.Active ||
                                     ( r.ConnectionState == ConnectionState.FutureFollowUp && r.FollowupDate.HasValue && r.FollowupDate.Value < _midnightToday ) );
                     }
@@ -959,7 +1084,7 @@ namespace RockWeb.Blocks.Connection
                         }
                         if ( futureFollowup || states.Any() )
                         {
-                            requests = requests
+                            requestsQuery = requestsQuery
                                 .Where( r =>
                                     ( futureFollowup && r.ConnectionState == ConnectionState.FutureFollowUp &&
                                         r.FollowupDate.HasValue && r.FollowupDate.Value < _midnightToday ) ||
@@ -971,7 +1096,7 @@ namespace RockWeb.Blocks.Connection
                     List<int> statusIds = cblStatus.SelectedValuesAsInt;
                     if ( statusIds.Any() )
                     {
-                        requests = requests
+                        requestsQuery = requestsQuery
                             .Where( r => statusIds.Contains( r.ConnectionStatusId ) );
                     }
 
@@ -979,7 +1104,7 @@ namespace RockWeb.Blocks.Connection
                     if ( cpCampusFilterForPage.SelectedCampusId.HasValue )
                     {
                         int campusId = cpCampusFilterForPage.SelectedCampusId.Value;
-                        requests = requests
+                        requestsQuery = requestsQuery
                                 .Where( r =>
                                     r.CampusId.HasValue && r.CampusId == campusId );
                     }
@@ -988,7 +1113,7 @@ namespace RockWeb.Blocks.Connection
                         List<int> campusIds = cblCampusGridFilter.SelectedValuesAsInt;
                         if ( campusIds.Count > 0 )
                         {
-                            requests = requests
+                            requestsQuery = requestsQuery
                                 .Where( r =>
                                     r.Campus != null &&
                                     campusIds.Contains( r.CampusId.Value ) );
@@ -999,7 +1124,7 @@ namespace RockWeb.Blocks.Connection
                     List<int> lastActivityIds = cblLastActivity.SelectedValuesAsInt;
                     if ( lastActivityIds.Any() )
                     {
-                        requests = requests
+                        requestsQuery = requestsQuery
                             .Where( r => lastActivityIds.Contains(
                                 r.ConnectionRequestActivities.OrderByDescending( a => a.CreatedDateTime ).Select( a => a.ConnectionActivityTypeId ).FirstOrDefault() ) );
                     }
@@ -1008,17 +1133,28 @@ namespace RockWeb.Blocks.Connection
                     SortProperty sortProperty = gRequests.SortProperty;
                     if ( sortProperty != null && sortProperty.Property != LAST_ACTIVITY )
                     {
-                        requests = requests.Sort( sortProperty );
+                        requestsQuery = requestsQuery.Sort( sortProperty );
                     }
                     else
                     {
-                        requests = requests
+                        requestsQuery = requestsQuery
                             .OrderBy( r => r.PersonAlias.Person.LastName )
                             .ThenBy( r => r.PersonAlias.Person.NickName );
                     }
 
-                    var requestList = requests.ToList();
-                    var roleIds = requestList.Where( r => r.AssignedGroupMemberRoleId.HasValue).Select( r => r.AssignedGroupMemberRoleId.Value ).ToList();
+
+                    var requestList = requestsQuery
+                        .Include( a => a.ConnectionStatus )
+                        .Include( a => a.ConnectionRequestActivities )
+                        .Include( a => a.PersonAlias.Person )
+                        .Include( a => a.ConnectorPersonAlias.Person )
+                        .Include( a => a.AssignedGroup )
+                        .Include( a => a.ConnectionStatus )
+                        .Include( a => a.ConnectionOpportunity.ConnectionType )
+                        .AsNoTracking()
+                        .ToList();
+
+                    var roleIds = requestList.Where( r => r.AssignedGroupMemberRoleId.HasValue ).Select( r => r.AssignedGroupMemberRoleId.Value ).ToList();
 
                     var roles = new GroupTypeRoleService( rockContext )
                         .Queryable().AsNoTracking()
@@ -1027,28 +1163,44 @@ namespace RockWeb.Blocks.Connection
 
                     var lastActivityNoteBoundField = gRequests.ColumnsOfType<RockBoundField>().FirstOrDefault( a => a.DataField == "LastActivityNote" );
 
-                    var connectionRequests = requests.ToList()
-                    .Select( r => new
-                    {
-                        r.Id,
-                        r.Guid,
-                        PersonId = r.PersonAlias.PersonId,
-                        Name = r.PersonAlias.Person.FullNameReversed,
-                        Campus = r.Campus,
-                        Group = r.AssignedGroup != null ? r.AssignedGroup.Name : "",
-                        GroupStatus = r.AssignedGroupMemberStatus != null ? r.AssignedGroupMemberStatus.ConvertToString() : "",
-                        GroupRole = r.AssignedGroupMemberRoleId.HasValue ? roles[r.AssignedGroupMemberRoleId.Value] : "",
-                        Connector = r.ConnectorPersonAlias != null ? r.ConnectorPersonAlias.Person.FullName : "",
-                        LastActivity = FormatActivity( r.ConnectionRequestActivities.OrderByDescending( a => a.CreatedDateTime ).FirstOrDefault() ),
-                        LastActivityDateTime = r.ConnectionRequestActivities.OrderByDescending( a => a.CreatedDateTime ).Select( a => a.CreatedDateTime ).FirstOrDefault(),
-                        LastActivityNote = lastActivityNoteBoundField != null && lastActivityNoteBoundField.Visible ? r.ConnectionRequestActivities.OrderByDescending(
-                            a => a.CreatedDateTime ).Select( a => a.Note ).FirstOrDefault() : "",
-                        Status = r.ConnectionStatus.Name,
-                        StatusLabel = r.ConnectionStatus.IsCritical ? "warning" : "info",
-                        ConnectionState = r.ConnectionState,
-                        StateLabel = FormatStateLabel( r.ConnectionState, r.FollowupDate )
-                    } )
-                   .ToList();
+                    var authorizedConnectionRequests = requestList
+                        .Where( r => r.IsAuthorized( Rock.Security.Authorization.VIEW, CurrentPerson ) ).ToList();
+
+                    var connectionRequests = authorizedConnectionRequests
+                        .Select( r =>
+                        {
+                            var connectionRequestInfo = new ConnectionRequestInfo
+                            {
+                                Id = r.Id,
+                                Guid = r.Guid,
+                                PersonId = r.PersonAlias.PersonId,
+                                Name = r.PersonAlias.Person.FullNameReversed,
+                                CampusId = r.CampusId,
+                                Group = r.AssignedGroup != null ? r.AssignedGroup.Name : "",
+                                GroupStatus = r.AssignedGroupMemberStatus != null ? r.AssignedGroupMemberStatus.ConvertToString() : "",
+                                GroupRole = r.AssignedGroupMemberRoleId.HasValue ? roles[r.AssignedGroupMemberRoleId.Value] : "",
+                                Connector = r.ConnectorPersonAlias != null ? r.ConnectorPersonAlias.Person.FullNameReversed : "",
+
+                                Status = r.ConnectionStatus.Name,
+                                StatusLabel = r.ConnectionStatus.IsCritical ? "warning" : "info",
+                                ConnectionState = r.ConnectionState,
+                                StateLabel = FormatStateLabel( r.ConnectionState, r.FollowupDate, isExporting )
+                            };
+
+                            var lastConnectionRequestActivity = r.ConnectionRequestActivities.OrderByDescending( a => a.CreatedDateTime ).FirstOrDefault();
+                            if ( lastConnectionRequestActivity != null )
+                            {
+                                connectionRequestInfo.LastActivity = FormatActivity( lastConnectionRequestActivity, isExporting );
+                                connectionRequestInfo.LastActivityDateTime = lastConnectionRequestActivity.CreatedDateTime;
+                                if ( lastActivityNoteBoundField != null && ( lastActivityNoteBoundField.Visible || isExporting ) )
+                                {
+                                    connectionRequestInfo.LastActivityNote = lastConnectionRequestActivity.Note;
+                                }
+                            }
+
+                            return connectionRequestInfo;
+                        } )
+                       .ToList();
 
                     if ( sortProperty != null && sortProperty.Property == LAST_ACTIVITY )
                     {
@@ -1061,6 +1213,10 @@ namespace RockWeb.Blocks.Connection
                             connectionRequests = connectionRequests.OrderBy( a => a.LastActivityDateTime ).ToList();
                         }
                     }
+
+                    // Hide the campus column if the campus filter is not visible.
+                    gRequests.ColumnsOfType<RockBoundField>().First( c => c.DataField == "Campus" ).Visible = cpCampusFilterForPage.Visible;
+                    gRequests.RowItemText = "Connection Request";
                     gRequests.DataSource = connectionRequests;
                     gRequests.DataBind();
 
@@ -1108,13 +1264,21 @@ namespace RockWeb.Blocks.Connection
             return string.Format( "{0}-{1}", SelectedOpportunityId ?? 0, key );
         }
 
-        private string FormatActivity( object item )
+        private string FormatActivity( ConnectionRequestActivity item, bool isExporting )
         {
-            var connectionRequestActivity = item as ConnectionRequestActivity;
+            var connectionRequestActivity = item;
             if ( connectionRequestActivity != null )
             {
-                return string.Format( "{0} (<span class='small'>{1}</small>)",
-                    connectionRequestActivity.ConnectionActivityType.Name, connectionRequestActivity.CreatedDateTime.ToRelativeDateString() );
+                if ( isExporting )
+                {
+                    return string.Format( "{0} ({1})",
+                        connectionRequestActivity.ConnectionActivityType.Name, connectionRequestActivity.CreatedDateTime.ToRelativeDateString() );
+                }
+                else
+                {
+                    return string.Format( "{0} (<span class='small'>{1}</small>)",
+                        connectionRequestActivity.ConnectionActivityType.Name, connectionRequestActivity.CreatedDateTime.ToRelativeDateString() );
+                }
             }
             return string.Empty;
         }
@@ -1141,7 +1305,7 @@ namespace RockWeb.Blocks.Connection
             return resolvedValues.AsDelimited( ", " );
         }
 
-        private string FormatStateLabel( ConnectionState connectionState, DateTime? followupDate )
+        private string FormatStateLabel( ConnectionState connectionState, DateTime? followupDate, bool isExporting )
         {
             string css = string.Empty;
             switch ( connectionState )
@@ -1166,7 +1330,33 @@ namespace RockWeb.Blocks.Connection
                 text += string.Format( " ({0})", followupDate.Value.ToShortDateString() );
             }
 
-            return string.Format( "<span class='label label-{0}'>{1}</span>", css, text );
+            if ( isExporting )
+            {
+                return text;
+            }
+            else
+            {
+                return string.Format( "<span class='label label-{0}'>{1}</span>", css, text );
+            }
+        }
+
+        private void NavigateToConnectionPage( int connectionRequestId )
+        {
+            var connectionType = SummaryState.Where( t => t.Opportunities.Any( o => o.Id == SelectedOpportunityId.Value ) ).FirstOrDefault();
+            if ( GetAttributeValue( AttributeKey.UseConnectionRequestDetailPageFromConnectionType ).AsBoolean() &&
+                 ( connectionType.ConnectionRequestDetailPageId.HasValue || connectionType.ConnectionRequestDetailPageRouteId.HasValue ) )
+            {
+                Dictionary<string, string> pageParameters = new Dictionary<string, string>();
+                pageParameters.Add( PageParameterKey.ConnectionRequestId, connectionRequestId.ToString() );
+                pageParameters.Add( PageParameterKey.ConnectionOpportunityId, SelectedOpportunityId.ToStringSafe() );
+                var pageReference = new Rock.Web.PageReference( connectionType.ConnectionRequestDetailPageId ?? 0, connectionType.ConnectionRequestDetailPageRouteId ?? 0, pageParameters );
+                NavigateToPage( pageReference );
+
+            }
+            else
+            {
+                NavigateToLinkedPage( AttributeKey.DetailPage, PageParameterKey.ConnectionRequestId, connectionRequestId, PageParameterKey.ConnectionOpportunityId, SelectedOpportunityId );
+            }
         }
 
         #endregion
@@ -1178,6 +1368,9 @@ namespace RockWeb.Blocks.Connection
         {
             public int Id { get; set; }
             public string Name { get; set; }
+            public bool EnableRequestSecurity { get; set; }
+            public int? ConnectionRequestDetailPageId { get; set; }
+            public int? ConnectionRequestDetailPageRouteId { get; set; }
             public List<OpportunitySummary> Opportunities { get; set; }
         }
 
@@ -1239,6 +1432,38 @@ namespace RockWeb.Blocks.Connection
             public bool IsUnassigned { get; set; }
             public bool IsIdle { get; set; }
             public bool IsCritical { get; set; }
+        }
+
+        private class ConnectionRequestInfo : RockDynamic
+        {
+            public int Id { get; internal set; }
+            public Guid Guid { get; internal set; }
+            public int PersonId { get; internal set; }
+            public string Name { get; internal set; }
+            public string Group { get; internal set; }
+            public int? CampusId { get; internal set; }
+            public CampusCache Campus
+            {
+                get
+                {
+                    if ( CampusId.HasValue )
+                    {
+                        return CampusCache.Get( this.CampusId.Value );
+                    }
+
+                    return null;
+                }
+            }
+            public string GroupStatus { get; internal set; }
+            public string GroupRole { get; internal set; }
+            public string Connector { get; internal set; }
+            public string LastActivity { get; internal set; }
+            public DateTime? LastActivityDateTime { get; internal set; }
+            public string LastActivityNote { get; internal set; }
+            public string Status { get; internal set; }
+            public string StatusLabel { get; internal set; }
+            public ConnectionState ConnectionState { get; internal set; }
+            public string StateLabel { get; internal set; }
         }
 
         #endregion

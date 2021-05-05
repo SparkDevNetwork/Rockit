@@ -20,7 +20,7 @@
                     Financial Transaction
                 </h1>
                 <div class="panel-labels">
-                    <Rock:HighlightLabel ID="hlBatchId" LabelType="Info" runat="server" />
+                    <asp:Literal ID="lBatchId" runat="server" />
                     <Rock:HighlightLabel ID="hlType" runat="server" />
                 </div>
             </div>
@@ -42,8 +42,9 @@
                         <div class="col-md-6">
                             <asp:Panel ID="pnlSingleAccount" runat="server" Visible="false" CssClass="row">
                                 <div class="col-sm-6">
-                                    <Rock:CurrencyBox ID="tbSingleAccountAmount" label="Amount" runat="server" CssClass="input-width-lg"></Rock:CurrencyBox>
-                                    <Rock:CurrencyBox ID="tbSingleAccountFeeAmount" label="Fee" runat="server" CssClass="input-width-lg"></Rock:CurrencyBox>
+                                    <Rock:CurrencyBox ID="tbSingleAccountAmountMinusFeeCoverageAmount" label="Amount" runat="server" CssClass="input-width-lg" />
+                                    <Rock:CurrencyBox ID="tbSingleAccountFeeAmount" label="Processing Fees" runat="server" CssClass="input-width-lg" Help="The fee amount associated with the processing of the transaction." />
+                                    <Rock:CurrencyBox ID="tbSingleAccountFeeCoverageAmount" runat="server" Label="Covered Fee" Required="false" ValidationGroup="Account" Help="The fee amount that the person elected to cover." />
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="form-group">
@@ -56,14 +57,13 @@
                             </asp:Panel>
                             <asp:Panel ID="pnlAccounts" runat="server">
                                 <Rock:Grid ID="gAccountsEdit" runat="server" EmptyDataText="No Account Details" RowItemText="Account" DisplayType="Light"
-                                    ShowConfirmDeleteDialog="false">
+                                    ShowConfirmDeleteDialog="false" OnRowDataBound="gAccountsEdit_RowDataBound">
                                     <Columns>
-                                        <Rock:RockTemplateField HeaderText="Accounts">
-                                            <ItemTemplate><%# AccountName( (int)Eval("AccountId") ) %></ItemTemplate>
-                                        </Rock:RockTemplateField>
+                                        <Rock:RockLiteralField ID="lAccountsEditAccountName" HeaderText="Accounts" />
                                         <Rock:RockBoundField DataField="Summary" SortExpression="Summary" />
-                                        <Rock:CurrencyField HeaderText="Fee" DataField="FeeAmount" SortExpression="FeeAmount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
-                                        <Rock:CurrencyField HeaderText="Amount" DataField="Amount" SortExpression="Amount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
+                                        <Rock:CurrencyField HeaderText="Covered Fees" DataField="FeeCoverageAmount" SortExpression="FeeCoverageAmount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
+                                        <Rock:CurrencyField HeaderText="Processing Fees" DataField="FeeAmount" SortExpression="FeeAmount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
+                                        <Rock:RockLiteralField ID="lAccountsEditAmountMinusFeeCoverageAmount" HeaderText="Amount" SortExpression="Amount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
                                     </Columns>
                                 </Rock:Grid>
                             </asp:Panel>
@@ -75,6 +75,7 @@
                             <Rock:DefinedValuePicker ID="dvpTransactionType" runat="server" Label="Transaction Type" Required="true" />
                             <Rock:DefinedValuePicker ID="dvpSourceType" runat="server" Label="Source" />
                             <Rock:DefinedValuePicker ID="dvpCurrencyType" runat="server" Label="Currency Type" AutoPostBack="true" OnSelectedIndexChanged="ddlCurrencyType_SelectedIndexChanged" Required="true" />
+                            <Rock:DefinedValuePicker ID="dvpNonCashAssetType" runat="server" Label="Non-Cash Asset Type" />
                             <Rock:DefinedValuePicker ID="dvpCreditCardType" runat="server" Label="Credit Card Type" />
                             <Rock:DynamicPlaceholder ID="phPaymentAttributeEdits" runat="server" />
                             <Rock:FinancialGatewayPicker ID="gpPaymentGateway" runat="server" Label="Payment Gateway" ShowAll="true" />
@@ -154,14 +155,13 @@
                         </div>
                         <div class="col-md-6">
                             <label>Accounts</label>
-                            <Rock:Grid ID="gAccountsView" runat="server" EmptyDataText="No Account Details" RowItemText="Account" DisplayType="Light" ShowHeader="true">
+                            <Rock:Grid ID="gAccountsView" runat="server" EmptyDataText="No Account Details" RowItemText="Account" DisplayType="Light" ShowHeader="true" OnRowDataBound="gAccountsView_RowDataBound">
                                 <Columns>
-                                    <Rock:RockTemplateField HeaderText="Account">
-                                        <ItemTemplate><%# AccountName( (int)Eval("AccountId") ) %></ItemTemplate>
-                                    </Rock:RockTemplateField>
+                                    <Rock:RockLiteralField ID="lAccountsViewAccountName" HeaderText="Accounts" />
                                     <Rock:RockBoundField DataField="Summary" SortExpression="Summary" />
-                                    <Rock:CurrencyField HeaderText="Fee" DataField="FeeAmount" SortExpression="FeeAmount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
-                                    <Rock:CurrencyField HeaderText="Amount" DataField="Amount" SortExpression="Amount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
+                                    <Rock:CurrencyField HeaderText="Covered Fees" DataField="FeeCoverageAmount" SortExpression="FeeCoverageAmount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
+                                    <Rock:CurrencyField HeaderText="Processing Fees" DataField="FeeAmount" SortExpression="FeeAmount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
+                                    <Rock:RockLiteralField ID="lAccountsViewAmountMinusFeeCoverageAmount" HeaderText="Amount" SortExpression="Amount" ItemStyle-HorizontalAlign="Right" HeaderStyle-HorizontalAlign="Right" />
                                 </Columns>
                             </Rock:Grid>
 
@@ -233,8 +233,9 @@
                 <div class="row">
                     <div class="col-md-6">
                         <Rock:AccountPicker ID="apAccount" runat="server" Label="Account" Required="true" ValidationGroup="Account" />
-                        <Rock:CurrencyBox ID="tbAccountAmount" runat="server" Label="Amount" Required="true" ValidationGroup="Account" />
-                        <Rock:CurrencyBox ID="tbAccountFeeAmount" runat="server" Label="Fee" Required="false" ValidationGroup="Account" />
+                        <Rock:CurrencyBox ID="tbAccountAmountMinusFeeCoverageAmount" runat="server" Label="Amount" Required="true" ValidationGroup="Account" />
+                        <Rock:CurrencyBox ID="tbAccountFeeAmount" runat="server" Label="Processing Fees" Required="false" ValidationGroup="Account" Help="The fee amount associated with the processing of the transaction." />
+                        <Rock:CurrencyBox ID="tbAccountFeeCoverageAmount" runat="server" Label="Covered Fee" Required="false" ValidationGroup="Account" Help="The fee amount that the person elected to cover." />
                     </div>
                     <div class="col-md-6">
                         <Rock:RockTextBox ID="tbAccountSummary" runat="server" Label="Summary" TextMode="MultiLine" Rows="3" ValidationGroup="Account" />

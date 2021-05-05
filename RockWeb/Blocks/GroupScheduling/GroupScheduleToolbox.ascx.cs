@@ -80,6 +80,13 @@ namespace RockWeb.Blocks.GroupScheduling
 </div>",
         Order = 2
          )]
+
+    [LinkedPage( "Decline Reason Page",
+        Description = "If the group type has enabled 'RequiresReasonIfDeclineSchedule' then specify the page to provide that reason here.",
+        IsRequired = true,
+        DefaultValue = Rock.SystemGuid.Page.SCHEDULE_CONFIRMATION,
+        Key = AttributeKey.DeclineReasonPage )]
+
     public partial class GroupScheduleToolbox : RockBlock
     {
         protected class AttributeKey
@@ -87,9 +94,12 @@ namespace RockWeb.Blocks.GroupScheduling
             public const string FutureWeeksToShow = "FutureWeeksToShow";
             public const string EnableSignup = "EnableSignup";
             public const string SignupInstructions = "SignupInstructions";
+            public const string DeclineReasonPage = "DeclineReasonPage";
         }
 
         protected const string ALL_GROUPS_STRING = "All Groups";
+
+        protected const string NO_LOCATION_PREFERENCE = "No Location Preference";
 
         /// <summary>
         /// Tab menu options
@@ -221,6 +231,26 @@ $('#{0}').tooltip();
             {
                 BindTabs();
                 ShowSelectedTab();
+            }
+            else
+            {
+                var eventTarget = this.Request.Params["__EVENTTARGET"];
+                var eventArgument = this.Request.Params["__EVENTARGUMENT"];
+                if ( eventArgument.IsNotNullOrWhiteSpace() )
+                {
+                    var eventArgumentParts = eventArgument.Split( '|' );
+                    if ( eventArgumentParts.Length == 2 )
+                    {
+                        if ( eventArgumentParts[0] == "Add_GroupPreferenceAssignment" )
+                        {
+                            var groupArgument = eventArgumentParts[1];
+
+                            // groupArgument will be in the format 'GroupId:5'
+                            var groupId = groupArgument.Replace( "GroupId:", string.Empty ).AsInteger();
+                            AddEditGroupPreferenceAssignment( groupId, null );
+                        }
+                    }
+                }
             }
         }
 
@@ -355,17 +385,32 @@ $('#{0}').tooltip();
         /// <returns></returns>
         protected string GetOccurrenceDetails( Attendance attendance )
         {
+            if ( attendance.Occurrence.GroupId == null && attendance.Occurrence.LocationId == null )
+            {
+                return attendance.Occurrence.OccurrenceDate.ToShortDateString();
+            }
+
+            if ( attendance.Occurrence.GroupId == null )
+            {
+                return string.Format( "{0} - {1}", attendance.Occurrence.OccurrenceDate.ToShortDateString(), attendance.Occurrence.Location );
+            }
+
+            if ( attendance.Occurrence.LocationId == null )
+            {
+                return attendance.Occurrence.OccurrenceDate.ToShortDateString();
+            }
+
             return string.Format( "{0} - {1} - {2}", attendance.Occurrence.OccurrenceDate.ToShortDateString(), attendance.Occurrence.Group.Name, attendance.Occurrence.Location );
         }
 
         /// <summary>
-        /// Gets the occurrence time.
+        /// Gets the occurrence schedule's name.
         /// </summary>
         /// <param name="attendance">The attendance.</param>
-        /// <returns></returns>
-        protected string GetOccurrenceTime( Attendance attendance )
+        /// <returns>The name of the schedule</returns>
+        protected string GetOccurrenceScheduleName( Attendance attendance )
         {
-            return attendance.Occurrence.Schedule.GetCalendarEvent().DTStart.Value.TimeOfDay.ToTimeString();
+            return attendance.Occurrence.Schedule.Name;
         }
 
         /// <summary>
@@ -381,7 +426,7 @@ $('#{0}').tooltip();
             var attendance = e.Item.DataItem as Attendance;
 
             lConfirmedOccurrenceDetails.Text = GetOccurrenceDetails( attendance );
-            lConfirmedOccurrenceTime.Text = GetOccurrenceTime( attendance );
+            lConfirmedOccurrenceTime.Text = GetOccurrenceScheduleName( attendance );
 
             btnCancelConfirmAttending.CommandName = "AttendanceId";
             btnCancelConfirmAttending.CommandArgument = attendance.Id.ToString();
@@ -401,7 +446,7 @@ $('#{0}').tooltip();
             var attendance = e.Item.DataItem as Attendance;
 
             lPendingOccurrenceDetails.Text = GetOccurrenceDetails( attendance );
-            lPendingOccurrenceTime.Text = GetOccurrenceTime( attendance );
+            lPendingOccurrenceTime.Text = GetOccurrenceScheduleName( attendance );
             btnConfirmAttending.CommandName = "AttendanceId";
             btnConfirmAttending.CommandArgument = attendance.Id.ToString();
 
@@ -459,12 +504,25 @@ $('#{0}').tooltip();
             if ( attendanceId.HasValue )
             {
                 var rockContext = new RockContext();
+                var attendanceService = new AttendanceService( rockContext );
+                var requiresDeclineReason = attendanceService.Get( attendanceId.Value ).Occurrence.Group.GroupType.RequiresReasonIfDeclineSchedule;
 
-                // TODO: Need to provide a way to indicate the reason a pending schedule was declined.
-                int? declineReasonValueId = null;
+                if ( requiresDeclineReason )
+                {
+                    var queryParams = new Dictionary<string, string>
+                    {
+                        { "attendanceId", attendanceId.Value.ToString() },
+                        { "isConfirmed", "false" },
+                        { "ReturnUrl", this.RockPage.Guid.ToString() }
+                    };
 
-                new AttendanceService( rockContext ).ScheduledPersonDecline( attendanceId.Value, declineReasonValueId );
-                rockContext.SaveChanges();
+                    NavigateToLinkedPage( AttributeKey.DeclineReasonPage, queryParams );
+                }
+                else
+                {
+                    attendanceService.ScheduledPersonDecline( attendanceId.Value, null );
+                    rockContext.SaveChanges();
+                }
             }
 
             UpdateMySchedulesTab();
@@ -485,7 +543,7 @@ $('#{0}').tooltip();
         /// </summary>
         private void BindUpcomingSchedulesGrid()
         {
-            var currentDateTime = RockDateTime.Now;
+            var currentDateTime = RockDateTime.Now.Date;
             var rockContext = new RockContext();
 
             var qryConfirmedScheduled = new AttendanceService( rockContext ).GetConfirmedScheduled()
@@ -508,9 +566,10 @@ $('#{0}').tooltip();
                 var globalAttributes = Rock.Web.Cache.GlobalAttributesCache.Get();
                 btnCopyToClipboard.Attributes["data-clipboard-text"] = string.Format(
                     "{0}GetPersonGroupScheduleFeed.ashx?paguid={1}",
-                    globalAttributes.GetValue( "PublicApplicationRoot" ).EnsureTrailingForwardslash(),
+                    globalAttributes.GetValue( "PublicApplicationRoot" ),
                     primaryAlias.Guid );
             }
+
             btnCopyToClipboard.Disabled = false;
         }
 
@@ -555,7 +614,10 @@ $('#{0}').tooltip();
                     .Queryable()
                     .AsNoTracking()
                     .Where( x => x.Members.Any( m => m.PersonId == this.SelectedPersonId && m.IsArchived == false && m.GroupMemberStatus == GroupMemberStatus.Active ) )
-                    .Where( x => x.IsActive == true && x.IsArchived == false && x.GroupType.IsSchedulingEnabled == true )
+                    .Where( x => x.IsActive == true && x.IsArchived == false
+                        && x.GroupType.IsSchedulingEnabled == true
+                        && x.DisableScheduling == false
+                        && x.DisableScheduleToolboxAccess == false )
                     .Where( x => x.GroupLocations.Any( gl => gl.Schedules.Any() ) )
                     .OrderBy( x => new { x.Order, x.Name } )
                     .AsNoTracking()
@@ -564,6 +626,7 @@ $('#{0}').tooltip();
                 rptGroupPreferences.DataSource = groups;
                 rptGroupPreferences.DataBind();
 
+                pnlBlackoutDates.Visible = groups.Any();
                 nbNoScheduledGroups.Visible = groups.Any() == false;
             }
         }
@@ -586,10 +649,7 @@ $('#{0}').tooltip();
 
             using ( var rockContext = new RockContext() )
             {
-                var groupMemberService = new GroupMemberService( rockContext );
-
-                // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                var groupMember = groupMemberService.GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
                 if ( groupMember != null )
                 {
                     groupMember.ScheduleReminderEmailOffsetDays = days;
@@ -629,8 +689,7 @@ $('#{0}').tooltip();
             {
                 var groupMemberService = new GroupMemberService( rockContext );
 
-                // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                var groupMember = groupMemberService.GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
 
                 if ( groupMember != null )
                 {
@@ -673,7 +732,7 @@ $('#{0}').tooltip();
 
             var lGroupPreferencesGroupNameHtml = ( Literal ) e.Item.FindControl( "lGroupPreferencesGroupNameHtml" );
             var hfPreferencesGroupId = ( HiddenField ) e.Item.FindControl( "hfPreferencesGroupId" );
-            var rptGroupPreferenceAssignments = ( Repeater ) e.Item.FindControl( "rptGroupPreferenceAssignments" );
+            var gGroupPreferenceAssignments = ( Grid ) e.Item.FindControl( "gGroupPreferenceAssignments" );
 
             var groupType = GroupTypeCache.Get( group.GroupTypeId );
             if ( groupType != null && groupType.IconCssClass.IsNotNullOrWhiteSpace() )
@@ -685,10 +744,75 @@ $('#{0}').tooltip();
                 lGroupPreferencesGroupNameHtml.Text = group.Name;
             }
 
-
             hfPreferencesGroupId.Value = group.Id.ToString();
 
             rptGroupPreferencesBindDropDowns( group, e );
+
+            // bind grid gGroupPreferenceAssignments
+            using ( var rockContext = new RockContext() )
+            {
+                var groupId = hfPreferencesGroupId.Value.AsInteger();
+                int? groupMemberId = null;
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
+                if ( groupMember != null )
+                {
+                    groupMemberId = groupMember.Id;
+                }
+
+                var groupLocationService = new GroupLocationService( rockContext );
+
+                var qryGroupLocations = groupLocationService
+                    .Queryable()
+                    .Where( g => g.GroupId == group.Id );
+
+                var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
+                var groupMemberAssignmentQuery = groupMemberAssignmentService
+                    .Queryable()
+                    .AsNoTracking()
+                    .Where( x =>
+                        x.GroupMemberId == groupMemberId
+                        && (
+                            !x.LocationId.HasValue
+                            || qryGroupLocations.Any( gl => gl.LocationId == x.LocationId && gl.Schedules.Any( s => s.Id == x.ScheduleId ) )
+                        ) );
+
+                // Calculate the Next Start Date Time based on the start of the week so that schedule columns are in the correct order
+                var occurrenceDate = RockDateTime.Now.SundayDate().AddDays( 1 );
+
+                var groupMemberAssignmentList = groupMemberAssignmentQuery
+                    .Include( a => a.Schedule )
+                    .Include( a => a.Location )
+                    .AsNoTracking()
+                    .ToList()
+                    .OrderBy( a => a.Schedule.Order )
+                    .ThenBy( a => a.Schedule.GetNextStartDateTime( occurrenceDate ) )
+                    .ThenBy( a => a.Schedule.Name )
+                    .ThenBy( a => a.Schedule.Id )
+                    .ThenBy( a => a.LocationId.HasValue ? a.Location.ToString( true ) : string.Empty )
+                    .ToList();
+
+                gGroupPreferenceAssignments.DataKeyNames = new string[1] { "Id" };
+                gGroupPreferenceAssignments.Actions.ShowAdd = true;
+
+                // use the ClientAddScript option since this grid is created in a repeater and a normal postback won't wire up correctly
+                gGroupPreferenceAssignments.Actions.ClientAddScript = string.Format(
+                    @"window.location = ""javascript:__doPostBack( '{0}', 'Add_GroupPreferenceAssignment|GroupId:{1}' )""",
+                    upnlContent.ClientID,
+                    group.Id );
+
+                gGroupPreferenceAssignments.DataSource = groupMemberAssignmentList;
+                gGroupPreferenceAssignments.DataBind();
+            }
+        }
+
+        /// <summary>
+        /// Adds the edit group preference assignment.
+        /// </summary>
+        /// <param name="groupId">The group identifier.</param>
+        /// <param name="groupMemberAssignmentId">The group member assignment identifier.</param>
+        private void AddEditGroupPreferenceAssignment( int groupId, int? groupMemberAssignmentId )
+        {
+            hfGroupScheduleAssignmentId.Value = groupMemberAssignmentId.ToString();
 
             // bind repeater rptGroupPreferenceAssignments
             using ( var rockContext = new RockContext() )
@@ -697,79 +821,255 @@ $('#{0}').tooltip();
                 var scheduleList = groupLocationService
                     .Queryable()
                     .AsNoTracking()
-                    .Where( g => g.GroupId == group.Id )
+                    .Where( g => g.GroupId == groupId )
                     .SelectMany( g => g.Schedules )
                     .Distinct()
                     .ToList();
 
-                List<Schedule> sortedScheduleList = scheduleList.OrderByNextScheduledDateTime();
+                List<Schedule> sortedScheduleList = scheduleList.OrderByOrderAndNextScheduledDateTime();
 
-                rptGroupPreferenceAssignments.DataSource = sortedScheduleList;
-                rptGroupPreferenceAssignments.DataBind();
+                int? selectedScheduleId = null;
+                int? selectedLocationId = null;
+
+                GroupMemberAssignmentService groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
+                int? groupMemberId = null;
+
+                if ( groupMemberAssignmentId.HasValue )
+                {
+                    GroupMemberAssignment groupMemberAssignment = groupMemberAssignmentService.Get( groupMemberAssignmentId.Value );
+                    if ( groupMemberAssignment != null )
+                    {
+                        groupMemberId = groupMemberAssignment.GroupMemberId;
+                        selectedScheduleId = groupMemberAssignment.ScheduleId;
+                        selectedLocationId = groupMemberAssignment.LocationId;
+                    }
+                }
+
+                hfGroupScheduleAssignmentGroupId.Value = groupId.ToString();
+                hfGroupScheduleAssignmentId.Value = groupMemberAssignmentId.ToString();
+
+                // get the groupMemberId record for the selectedPerson,Group (if the person is in there twice, prefer the IsLeader role
+                if ( !groupMemberId.HasValue )
+                {
+                    var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
+                    if ( groupMember != null )
+                    {
+                        groupMemberId = groupMember.Id;
+                    }
+                }
+
+                if ( !groupMemberId.HasValue )
+                {
+                    // shouldn't happen
+                    return;
+                }
+
+                var configuredScheduleIds = groupMemberAssignmentService.Queryable()
+                    .Where( a => a.GroupMemberId == groupMemberId.Value && a.ScheduleId.HasValue )
+                    .Select( s => s.ScheduleId.Value ).Distinct().ToList();
+
+                // limit to schedules that haven't had a schedule preference set yet
+                sortedScheduleList = sortedScheduleList.Where( a =>
+                    !configuredScheduleIds.Contains( a.Id )
+                    || (selectedScheduleId.HasValue && a.Id == selectedScheduleId.Value ) ).ToList();
+
+                ddlGroupScheduleAssignmentSchedule.Items.Clear();
+                ddlGroupScheduleAssignmentSchedule.Items.Add( new ListItem() );
+                foreach ( var schedule in sortedScheduleList )
+                {
+                    var scheduleListItem = new ListItem( schedule.Name, schedule.Id.ToString() );
+                    if ( selectedScheduleId.HasValue && selectedScheduleId.Value == schedule.Id )
+                    {
+                        scheduleListItem.Selected = true;
+                    }
+
+                    ddlGroupScheduleAssignmentSchedule.Items.Add( scheduleListItem );
+                }
+
+                PopulateGroupScheduleAssignmentLocations( groupId, selectedScheduleId );
+                ddlGroupScheduleAssignmentLocation.SetValue( selectedLocationId );
+
+                mdGroupScheduleAssignment.Show();
             }
         }
 
         /// <summary>
-        /// Handles the ItemDataBound event of the rptGroupPreferenceAssignments control.
+        /// Handles the Click event of the btnEditGroupPreferenceAssignment control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="RepeaterItemEventArgs"/> instance containing the event data.</param>
-        protected void rptGroupPreferenceAssignments_ItemDataBound( object sender, RepeaterItemEventArgs e )
+        /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
+        protected void btnEditGroupPreferenceAssignment_Click( object sender, RowEventArgs e )
         {
-            var schedule = e.Item.DataItem as Schedule;
-            if ( schedule == null )
+            int groupMemberAssignmentId = e.RowKeyId;
+            var groupMemberAssignmentGroupId = new GroupMemberAssignmentService( new RockContext() ).GetSelect( groupMemberAssignmentId, a => ( int? ) a.GroupMember.GroupId ) ?? 0;
+            AddEditGroupPreferenceAssignment( groupMemberAssignmentGroupId, groupMemberAssignmentId );
+        }
+
+        /// <summary>
+        /// Handles the Click event of the btnDeleteGroupPreferenceAssignment control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="RowEventArgs"/> instance containing the event data.</param>
+        protected void btnDeleteGroupPreferenceAssignment_Click( object sender, RowEventArgs e )
+        {
+            int groupMemberAssignmentId = e.RowKeyId;
+            var rockContext = new RockContext();
+            var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
+
+            var groupMemberAssignment = groupMemberAssignmentService.Get( groupMemberAssignmentId );
+
+            if ( groupMemberAssignment != null )
+            {
+                string errorMessage;
+                if ( groupMemberAssignmentService.CanDelete( groupMemberAssignment, out errorMessage ) )
+                {
+                    groupMemberAssignmentService.Delete( groupMemberAssignment );
+                    rockContext.SaveChanges();
+                }
+                else
+                {
+                    // shouldn't happen
+                }
+            }
+
+            BindGroupPreferencesRepeater();
+        }
+
+        /// <summary>
+        /// Handles the SaveClick event of the mdGroupScheduleAssignment control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void mdGroupScheduleAssignment_SaveClick( object sender, EventArgs e )
+        {
+            var groupMemberAssignmentId = hfGroupScheduleAssignmentId.Value.AsIntegerOrNull();
+            var groupId = hfGroupScheduleAssignmentGroupId.Value.AsIntegerOrNull();
+            var rockContext = new RockContext();
+            GroupMemberAssignmentService groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
+            GroupMemberAssignment groupMemberAssignment = null;
+            GroupMember groupMember = null;
+            if ( groupMemberAssignmentId.HasValue )
+            {
+                groupMemberAssignment = groupMemberAssignmentService.GetInclude( groupMemberAssignmentId.Value, a => a.GroupMember );
+            }
+
+            var groupMemberService = new GroupMemberService( rockContext );
+
+            if ( groupMemberAssignment != null )
+            {
+                groupMember = groupMemberAssignment.GroupMember;
+            }
+            else
+            {
+                groupMember = this.GetGroupMemberRecord( rockContext, groupId.Value, this.SelectedPersonId );
+            }
+
+            var scheduleId = ddlGroupScheduleAssignmentSchedule.SelectedValue.AsIntegerOrNull();
+            var locationId = ddlGroupScheduleAssignmentLocation.SelectedValue.AsIntegerOrNull();
+
+            // schedule is required, but locationId can be null (which means no location specified )
+            if ( !scheduleId.HasValue )
             {
                 return;
             }
 
-            var hfScheduleId = ( HiddenField ) e.Item.FindControl( "hfScheduleId" );
-            hfScheduleId.Value = schedule.Id.ToString();
-
-            var cbGroupPreferenceAssignmentScheduleTime = ( CheckBox ) e.Item.FindControl( "cbGroupPreferenceAssignmentScheduleTime" );
-
-            var repeaterItemGroup = ( ( Repeater ) sender ).BindingContainer as RepeaterItem;
-            var hfPreferencesGroupId = ( HiddenField ) repeaterItemGroup.FindControl( "hfPreferencesGroupId" );
-
-            var rockContext = new RockContext();
-
-            // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-            int? groupMemberId = new GroupMemberService( rockContext )
-                .GetByGroupIdAndPersonId( hfPreferencesGroupId.ValueAsInt(), this.SelectedPersonId )
-                .AsNoTracking()
-                .OrderBy( a => a.GroupRole.IsLeader )
-                .Select( gm => ( int? ) gm.Id )
-                .FirstOrDefault();
-
-            var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
-            GroupMemberAssignment groupmemberAssignment = groupMemberAssignmentService
-                .Queryable()
-                .AsNoTracking()
-                .Where( x => x.GroupMemberId == groupMemberId )
-                .Where( x => x.ScheduleId == schedule.Id )
-                .FirstOrDefault();
-
-            cbGroupPreferenceAssignmentScheduleTime.Text = schedule.Name;
-            cbGroupPreferenceAssignmentScheduleTime.Checked = groupmemberAssignment != null;
-
-            var ddlGroupPreferenceAssignmentLocation = ( DropDownList ) e.Item.FindControl( "ddlGroupPreferenceAssignmentLocation" );
-            var locations = new LocationService( rockContext ).GetByGroupSchedule( schedule.Id, hfPreferencesGroupId.ValueAsInt() )
-                .Select( a => new
-                {
-                    a.Id,
-                    a.Name
-                } ).ToList();
-
-            ddlGroupPreferenceAssignmentLocation.DataSource = locations;
-            ddlGroupPreferenceAssignmentLocation.DataValueField = "Id";
-            ddlGroupPreferenceAssignmentLocation.DataTextField = "Name";
-            ddlGroupPreferenceAssignmentLocation.DataBind();
-            ddlGroupPreferenceAssignmentLocation.Items.Insert( 0, new ListItem( string.Empty, string.Empty ) );
-            ddlGroupPreferenceAssignmentLocation.Visible = cbGroupPreferenceAssignmentScheduleTime.Checked;
-
-            if ( groupmemberAssignment != null )
+            if ( groupMemberAssignment == null )
             {
-                ddlGroupPreferenceAssignmentLocation.SelectedValue = groupmemberAssignment.LocationId.ToStringSafe();
-                ddlGroupPreferenceAssignmentLocation.Items[0].Text = "No Location Preference";
+                // just in case there is already is groupMemberAssignment, update it
+                groupMemberAssignment = groupMemberAssignmentService.GetByGroupMemberScheduleAndLocation( groupMember, scheduleId, locationId );
+
+                if ( groupMemberAssignment == null )
+                {
+                    groupMemberAssignment = new GroupMemberAssignment();
+                    groupMemberAssignmentService.Add( groupMemberAssignment );
+                }
+            }
+            else
+            {
+                bool alreadyAssigned = groupMemberAssignmentService.GetByGroupMemberScheduleAndLocation( groupMember, scheduleId, locationId ) != null;
+
+                if ( alreadyAssigned )
+                {
+                    return;
+                }
+            }
+
+            groupMemberAssignment.GroupMemberId = groupMember.Id;
+            groupMemberAssignment.ScheduleId = scheduleId;
+            groupMemberAssignment.LocationId = locationId;
+
+            rockContext.SaveChanges();
+            BindGroupPreferencesRepeater();
+            mdGroupScheduleAssignment.Hide();
+        }
+
+        /// <summary>
+        /// Populates the group schedule assignment locations.
+        /// </summary>
+        /// <param name="groupId">The group identifier.</param>
+        /// <param name="scheduleId">The schedule identifier.</param>
+        private void PopulateGroupScheduleAssignmentLocations( int groupId, int? scheduleId )
+        {
+            int? selectedLocationId = ddlGroupScheduleAssignmentLocation.SelectedValue.AsIntegerOrNull();
+            ddlGroupScheduleAssignmentLocation.Items.Clear();
+            ddlGroupScheduleAssignmentLocation.Items.Add( new ListItem( NO_LOCATION_PREFERENCE, NO_LOCATION_PREFERENCE ) );
+            if ( scheduleId.HasValue )
+            {
+                var locations = new LocationService( new RockContext() ).GetByGroupSchedule( scheduleId.Value, groupId )
+                    .OrderBy( a => a.Name )
+                    .Select( a => new
+                    {
+                        a.Id,
+                        a.Name
+                    } ).ToList();
+
+                foreach ( var location in locations )
+                {
+                    var locationListItem = new ListItem( location.Name, location.Id.ToString() );
+                    if ( selectedLocationId.HasValue && location.Id == selectedLocationId.Value )
+                    {
+                        locationListItem.Selected = true;
+                    }
+
+                    ddlGroupScheduleAssignmentLocation.Items.Add( locationListItem );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the SelectedIndexChanged event of the ddlGroupScheduleAssignmentSchedule control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void ddlGroupScheduleAssignmentSchedule_SelectedIndexChanged( object sender, EventArgs e )
+        {
+            int groupId = hfGroupScheduleAssignmentGroupId.Value.AsInteger();
+            PopulateGroupScheduleAssignmentLocations( groupId, ddlGroupScheduleAssignmentSchedule.SelectedValue.AsIntegerOrNull() );
+        }
+
+        /// <summary>
+        /// Handles the RowDataBound event of the gGroupPreferenceAssignments control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="GridViewRowEventArgs"/> instance containing the event data.</param>
+        protected void gGroupPreferenceAssignments_RowDataBound( object sender, GridViewRowEventArgs e )
+        {
+            GroupMemberAssignment groupMemberAssignment = e.Row.DataItem as GroupMemberAssignment;
+            if ( groupMemberAssignment == null )
+            {
+                return;
+            }
+
+            var lScheduleName = e.Row.FindControl( "lScheduleName" ) as Literal;
+            var lLocationName = e.Row.FindControl( "lLocationName" ) as Literal;
+            lScheduleName.Text = groupMemberAssignment.Schedule.Name;
+            if ( groupMemberAssignment.LocationId.HasValue )
+            {
+                lLocationName.Text = groupMemberAssignment.Location.ToString( true );
+            }
+            else
+            {
+                lLocationName.Text = NO_LOCATION_PREFERENCE;
             }
         }
 
@@ -786,7 +1086,7 @@ $('#{0}').tooltip();
             var hfScheduleId = ( HiddenField ) repeaterItemSchedule.FindControl( "hfScheduleId" );
 
             ddlGroupPreferenceAssignmentLocation.Visible = scheduleCheckBox.Checked;
-            ddlGroupPreferenceAssignmentLocation.Items[0].Text = scheduleCheckBox.Checked ? "No Location Preference" : string.Empty;
+            ddlGroupPreferenceAssignmentLocation.Items[0].Text = scheduleCheckBox.Checked ? NO_LOCATION_PREFERENCE : string.Empty;
 
             var repeaterItemGroup = repeaterItemSchedule.FindFirstParentWhere( p => p is RepeaterItem );
             var hfPreferencesGroupId = ( HiddenField ) repeaterItemGroup.FindControl( "hfPreferencesGroupId" );
@@ -795,25 +1095,47 @@ $('#{0}').tooltip();
             {
                 // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
                 var groupId = hfPreferencesGroupId.ValueAsInt();
-                var groupMemberId = new GroupMemberService( rockContext ).GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).Select( a => ( int? ) a.Id ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
 
                 var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
 
-                if ( groupMemberId.HasValue )
+                if ( groupMember != null )
                 {
                     if ( scheduleCheckBox.Checked )
                     {
-                        groupMemberAssignmentService.AddOrUpdate( groupMemberId.Value, hfScheduleId.ValueAsInt() );
+                        groupMemberAssignmentService.AddOrUpdate( groupMember.Id, hfScheduleId.ValueAsInt() );
                     }
                     else
                     {
-                        groupMemberAssignmentService.DeleteByGroupMemberAndSchedule( groupMemberId.Value, hfScheduleId.ValueAsInt() );
+                        groupMemberAssignmentService.DeleteByGroupMemberAndSchedule( groupMember.Id, hfScheduleId.ValueAsInt() );
                     }
                 }
 
                 rockContext.SaveChanges();
-
             }
+        }
+
+        /// <summary>
+        /// Gets the GroupMember record for <see cref="SelectedPersonId" /> and specified groupId.
+        /// If the person is in there more than once, prefer the IsLeader role.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="groupId">The group identifier.</param>
+        /// <param name="personId">The person identifier.</param>
+        /// <returns></returns>
+        private GroupMember GetGroupMemberRecord( RockContext rockContext, int groupId, int? personId )
+        {
+            if ( !personId.HasValue )
+            {
+                return null;
+            }
+
+            var groupMemberQuery = new GroupMemberService( rockContext )
+             .GetByGroupIdAndPersonId( groupId, personId.Value );
+
+            var groupMember = groupMemberQuery.OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+
+            return groupMember;
         }
 
         /// <summary>
@@ -833,13 +1155,13 @@ $('#{0}').tooltip();
 
             using ( var rockContext = new RockContext() )
             {
-                var groupMemberId = new GroupMemberService( rockContext ).GetByGroupIdAndPersonId( groupId, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).Select( a => ( int? ) a.Id ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, groupId, this.SelectedPersonId );
 
                 var groupMemberAssignmentService = new GroupMemberAssignmentService( rockContext );
 
-                if ( groupMemberId.HasValue )
+                if ( groupMember != null )
                 {
-                    groupMemberAssignmentService.AddOrUpdate( groupMemberId.Value, hfScheduleId.ValueAsInt(), locationDropDownList.SelectedValueAsInt() );
+                    groupMemberAssignmentService.AddOrUpdate( groupMember.Id, hfScheduleId.ValueAsInt(), locationDropDownList.SelectedValueAsInt() );
                 }
 
                 rockContext.SaveChanges();
@@ -864,7 +1186,7 @@ $('#{0}').tooltip();
                 var groupMemberService = new GroupMemberService( rockContext );
 
                 // if the person is in the group more than once (for example, as a leader and as a member), just get one of the member records, but prefer the record where they have a leader role
-                var groupMember = groupMemberService.GetByGroupIdAndPersonId( group.Id, this.SelectedPersonId ).OrderBy( a => a.GroupRole.IsLeader ).FirstOrDefault();
+                var groupMember = this.GetGroupMemberRecord( rockContext, group.Id, this.SelectedPersonId );
 
                 if ( groupMember == null )
                 {
@@ -934,8 +1256,15 @@ $('#{0}').tooltip();
             {
                 var personScheduleExclusionService = new PersonScheduleExclusionService( rockContext );
                 var personScheduleExclusion = personScheduleExclusionService.Get( e.RowKeyId );
+
                 if ( personScheduleExclusion != null )
                 {
+                    var scheduleExclusionChildren = personScheduleExclusionService.Queryable().Where( x => x.ParentPersonScheduleExclusionId == personScheduleExclusion.Id );
+                    foreach ( var scheduleExclusionChild in scheduleExclusionChildren )
+                    {
+                        scheduleExclusionChild.ParentPersonScheduleExclusionId = null;
+                    }
+
                     personScheduleExclusionService.Delete( personScheduleExclusion );
                     rockContext.SaveChanges();
                     BindBlackoutDates();
@@ -962,11 +1291,10 @@ $('#{0}').tooltip();
 
             using ( var rockContext = new RockContext() )
             {
-                List<int> familyMemberAliasIds = new PersonService( rockContext )
+                var familyMemberAliasIds = new PersonService( rockContext )
                     .GetFamilyMembers( this.SelectedPersonId, true )
-                    .Select( m => m.Person.Aliases.FirstOrDefault( a => a.PersonId == m.PersonId ) )
-                    .Select( a => a.Id )
-                    .ToList();
+                    .SelectMany( m => m.Person.Aliases )
+                    .Select( a => a.Id ).ToList();
 
                 var personScheduleExclusionService = new PersonScheduleExclusionService( rockContext );
                 var personScheduleExclusions = personScheduleExclusionService
@@ -1044,7 +1372,9 @@ $('#{0}').tooltip();
                     .Queryable()
                     .AsNoTracking()
                     .Where( g => g.PersonId == this.SelectedPersonId )
-                    .Where( g => g.Group.GroupType.IsSchedulingEnabled == true )
+                    .Where( g => g.Group.GroupType.IsSchedulingEnabled == true
+                        && g.Group.DisableScheduling == false
+                        && g.Group.DisableScheduleToolboxAccess == false )
                     .Select( g => new { Value = ( int? ) g.GroupId, Text = g.Group.Name } )
                     .ToList();
 
@@ -1117,7 +1447,6 @@ $('#{0}').tooltip();
             }
 
             int? parentId = null;
-
 
             foreach ( ListItem item in cblBlackoutPersons.Items )
             {
@@ -1223,7 +1552,7 @@ $('#{0}').tooltip();
                 .ThenBy( a => a.LocationName )
                 .ToList();
 
-            var selectedPerson = new PersonService(new RockContext()).GetNoTracking( this.SelectedPersonId );
+            var selectedPerson = new PersonService( new RockContext() ).GetNoTracking( this.SelectedPersonId );
 
             var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson );
             mergeFields.Add( "IsSchedulesAvailable", availableSchedules.Any() );
@@ -1234,13 +1563,17 @@ $('#{0}').tooltip();
             {
                 if ( availableSchedule.GroupId != currentGroupId )
                 {
-                    currentGroupId = availableSchedule.GroupId;
+                    if ( currentGroupId != -1 )
+                    {
+                        phSignUpSchedules.Controls.Add( new LiteralControl( "</div>" ) );
+                    }
+
                     CreateGroupHeader( availableSchedule.GroupName, availableSchedule.GroupType );
                 }
 
                 if ( availableSchedule.ScheduledDateTime.Date != currentOccurrenceDate.Date )
                 {
-                    if ( currentScheduleId != -1 )
+                    if ( currentScheduleId != -1 && availableSchedule.GroupId == currentGroupId )
                     {
                         phSignUpSchedules.Controls.Add( new LiteralControl( "</div>" ) );
                     }
@@ -1249,6 +1582,7 @@ $('#{0}').tooltip();
                     CreateDateHeader( currentOccurrenceDate );
                 }
 
+                currentGroupId = availableSchedule.GroupId;
                 currentScheduleId = availableSchedule.ScheduleId;
                 CreateScheduleSignUpRow( availableSchedule, availableGroupLocationSchedules );
             }
@@ -1270,11 +1604,10 @@ $('#{0}').tooltip();
         /// <param name="dateTime">The date time.</param>
         private void CreateDateHeader( DateTime dateTime )
         {
-            string date = dateTime.ToShortDateString();
-            string dayOfWeek = dateTime.DayOfWeek.ToString();
+            string date = dateTime.ToLongDateString();
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine( "<div class='form-control-group'>" );
-            sb.AppendLine( string.Format( "<label class='control-label'>{0}&nbsp;({1})</label><br /><br />", date, dayOfWeek ) );
+            sb.AppendLine( "<div class='form-control-group margin-b-lg'>" );
+            sb.AppendLine( string.Format( "<div class=\"clearfix\"><label class='control-label'>{0}</label></div>", date ) );
             phSignUpSchedules.Controls.Add( new LiteralControl( sb.ToString() ) );
         }
 
@@ -1286,11 +1619,9 @@ $('#{0}').tooltip();
         private void CreateScheduleSignUpRow( PersonScheduleSignup personScheduleSignup, List<PersonScheduleSignup> availableGroupLocationSchedules )
         {
             var scheduleSignUpRowItem = new HtmlGenericContainer();
-            scheduleSignUpRowItem.Attributes.Add( "class", "row" );
+            scheduleSignUpRowItem.Attributes.Add( "class", "row d-flex flex-wrap align-items-center" );
             scheduleSignUpRowItem.AddCssClass( "js-person-schedule-signup-row" );
-            scheduleSignUpRowItem.AddCssClass( "margin-b-sm" );
             phSignUpSchedules.Controls.Add( scheduleSignUpRowItem );
-
 
             var hfGroupId = new HiddenField { ID = "hfGroupId", Value = personScheduleSignup.GroupId.ToString() };
             var hfScheduleId = new HiddenField { ID = "hfScheduleId", Value = personScheduleSignup.ScheduleId.ToString() };
@@ -1306,12 +1637,21 @@ $('#{0}').tooltip();
 
             var cbSignupSchedule = new RockCheckBox();
             cbSignupSchedule.ID = "cbSignupSchedule";
-            cbSignupSchedule.Text = personScheduleSignup.ScheduledDateTime.ToString( "hh:mm tt" );
+            cbSignupSchedule.DisplayInline = true;
+            cbSignupSchedule.Text = personScheduleSignup.ScheduledDateTime.ToShortTimeString();
             cbSignupSchedule.ToolTip = personScheduleSignup.ScheduleName;
             cbSignupSchedule.AddCssClass( "js-person-schedule-signup-checkbox" );
             cbSignupSchedule.Checked = false;
             cbSignupSchedule.AutoPostBack = true;
             cbSignupSchedule.CheckedChanged += CbSignupSchedule_CheckedChanged;
+            cbSignupSchedule.Enabled = !personScheduleSignup.MaxScheduled;
+
+            if ( personScheduleSignup.MaxScheduled )
+            {
+                cbSignupSchedule.Text += " (filled)";
+                cbSignupSchedule.AddCssClass( "text-muted" );
+            }
+
             pnlCheckboxCol.Controls.Add( cbSignupSchedule );
 
             var locations = availableGroupLocationSchedules
@@ -1326,7 +1666,9 @@ $('#{0}').tooltip();
             ddlSignupLocations.Visible = false;
 
             ddlSignupLocations.AddCssClass( "js-person-schedule-signup-ddl" );
-            ddlSignupLocations.Items.Insert( 0, new ListItem( "No Location Preference", string.Empty ) );
+            ddlSignupLocations.AddCssClass( "input-sm" );
+            ddlSignupLocations.AddCssClass( "my-1" );
+            ddlSignupLocations.Items.Insert( 0, new ListItem( NO_LOCATION_PREFERENCE, string.Empty ) );
             foreach ( var location in locations )
             {
                 ddlSignupLocations.Items.Add( new ListItem( location.Name, location.Id.ToString() ) );
@@ -1392,7 +1734,7 @@ $('#{0}').tooltip();
                     var locationId = ddlSignupLocations.SelectedValue.AsIntegerOrNull();
                     var groupId = hfGroupId.Value.AsInteger();
                     var attendanceId = hfAttendanceId.Value.AsIntegerOrNull();
-                    AttendanceOccurrence attendanceOccurrence = new AttendanceOccurrenceService( rockContext ).GetOrCreateAttendanceOccurrence( occurrenceDate, scheduleId, locationId, groupId );
+                    AttendanceOccurrence attendanceOccurrence = new AttendanceOccurrenceService( rockContext ).GetOrAdd( occurrenceDate, groupId, locationId, scheduleId );
                     var attendanceService = new AttendanceService( rockContext );
 
                     if ( attendanceId.HasValue )
@@ -1432,20 +1774,48 @@ $('#{0}').tooltip();
             {
                 var scheduleService = new ScheduleService( rockContext );
                 var attendanceService = new AttendanceService( rockContext );
+                var groupService = new GroupService( rockContext );
                 var personScheduleExclusionService = new PersonScheduleExclusionService( rockContext );
 
                 var groupLocationService = new GroupLocationService( rockContext );
-                var personGroupLocationQry = groupLocationService.Queryable();
+                var personGroupLocationQry = groupLocationService.Queryable().AsNoTracking();
 
                 // get GroupLocations that are for Groups that the person is an active member of
-                personGroupLocationQry = personGroupLocationQry.Where( a => a.Group.GroupType.IsSchedulingEnabled == true && a.Group.Members.Any( m => m.PersonId == this.SelectedPersonId && m.IsArchived == false && m.GroupMemberStatus == GroupMemberStatus.Active ) );
+                personGroupLocationQry = personGroupLocationQry.Where( a => a.Group.IsArchived == false
+                    && a.Group.GroupType.IsSchedulingEnabled == true
+                    && a.Group.DisableScheduling == false
+                    && a.Group.DisableScheduleToolboxAccess == false
+                    && a.Group.Members.Any( m => m.PersonId == this.SelectedPersonId && m.IsArchived == false && m.GroupMemberStatus == GroupMemberStatus.Active ) );
 
                 var personGroupLocationList = personGroupLocationQry.ToList();
+
+                var groupsThatHaveSchedulingRequirements = personGroupLocationQry.Where( a => a.Group.SchedulingMustMeetRequirements ).Select( a => a.Group ).Distinct().ToList();
+
+                var personDoesntMeetSchedulingRequirementGroupIds = new HashSet<int>();
+
+                foreach ( var groupThatHasSchedulingRequirements in groupsThatHaveSchedulingRequirements )
+                {
+                    var personDoesntMeetSchedulingRequirements = groupService.GroupMembersNotMeetingRequirements( groupThatHasSchedulingRequirements, false, false )
+                        .Where( a => a.Key.PersonId == this.SelectedPersonId )
+                        .Any();
+
+                    if ( personDoesntMeetSchedulingRequirements )
+                    {
+                        personDoesntMeetSchedulingRequirementGroupIds.Add( groupThatHasSchedulingRequirements.Id );
+                    }
+                }
 
                 foreach ( var personGroupLocation in personGroupLocationList )
                 {
                     foreach ( var schedule in personGroupLocation.Schedules )
                     {
+                        //  find if this has max volunteers here
+                        int? maximumCapacitySetting = null;
+                        if ( personGroupLocation.GroupLocationScheduleConfigs.Any() )
+                        {
+                            maximumCapacitySetting = personGroupLocation.GroupLocationScheduleConfigs.Where( c => c.ScheduleId == schedule.Id ).FirstOrDefault().MaximumCapacity;
+                        }
+
                         var startDateTimeList = schedule.GetScheduledStartTimes( startDate, endDate );
                         foreach ( var startDateTime in startDateTimeList )
                         {
@@ -1462,6 +1832,21 @@ $('#{0}').tooltip();
                                 continue;
                             }
 
+                            if ( personDoesntMeetSchedulingRequirementGroupIds.Contains( personGroupLocation.GroupId ) )
+                            {
+                                // don't show groups that have scheduling requirements that the person hasn't met
+                                continue;
+                            }
+
+                            // If there is a maximum Campacity then find out how many aleady RSVP with "Yes"
+                            var currentScheduled = maximumCapacitySetting != null
+                                ? attendanceService
+                                    .GetAttendances( startDateTime, personGroupLocation.LocationId, schedule.Id, Rock.Model.RSVP.Yes )
+                                    .Count()
+                                : 0;
+
+                            bool maxScheduled = maximumCapacitySetting != null && currentScheduled >= maximumCapacitySetting;
+
                             // Add to master list personScheduleSignups
                             personScheduleSignups.Add( new PersonScheduleSignup
                             {
@@ -1475,6 +1860,7 @@ $('#{0}').tooltip();
                                 ScheduleId = schedule.Id,
                                 ScheduleName = schedule.Name,
                                 ScheduledDateTime = startDateTime,
+                                MaxScheduled = maxScheduled
                             } );
                         }
                     }
@@ -1487,17 +1873,27 @@ $('#{0}').tooltip();
         protected class PersonScheduleSignup
         {
             public int GroupId { get; set; }
-            public int GroupOrder { get; set; }
-            public string GroupName { get; set; }
-            public GroupTypeCache GroupType { get; set; }
-            public int LocationId { get; set; }
-            public int ScheduleId { get; set; }
-            public DateTime ScheduledDateTime { get; set; }
-            public string ScheduleName { get; set; }
-            public string LocationName { get; set; }
-            public int LocationOrder { get; set; }
-        }
 
+            public int GroupOrder { get; set; }
+
+            public string GroupName { get; set; }
+
+            public GroupTypeCache GroupType { get; set; }
+
+            public int LocationId { get; set; }
+
+            public int ScheduleId { get; set; }
+
+            public DateTime ScheduledDateTime { get; set; }
+
+            public string ScheduleName { get; set; }
+
+            public string LocationName { get; set; }
+
+            public int LocationOrder { get; set; }
+
+            public bool MaxScheduled { get; set; }
+        }
 
         #endregion Sign-up Tab
     }

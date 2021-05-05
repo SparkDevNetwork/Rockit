@@ -2,7 +2,7 @@
 
 <script type="text/javascript">
     function clearActiveDialog() {
-        $('#<%= btnHideDialog.ClientID %>').click();
+        $('#<%= btnHideDialog.ClientID %>').trigger('click');
     }
 
     function updateField(obj) {
@@ -32,6 +32,10 @@
                 </div>
                 <Rock:PanelDrawer ID="pdAuditDetails" runat="server"></Rock:PanelDrawer>
                 <div class="panel-body">
+                    <Rock:NotificationBox ID="nbArchivedPlacementGroupWarning" runat="server" NotificationBoxType="Warning" Text="One or more placement groups on this opportunity have been archived." Visible="false" />
+
+                    <Rock:NotificationBox ID="nbArchivedConnectorGroupWarning" runat="server" NotificationBoxType="Warning" Text="One or more connector groups on this opportunity have been archived." Visible="false" />
+
                     <Rock:NotificationBox ID="nbEditModeMessage" runat="server" NotificationBoxType="Info" />
 
                     <Rock:NotificationBox ID="nbIncorrectOpportunity" runat="server" NotificationBoxType="Danger" Visible="false"
@@ -82,6 +86,40 @@
                             </div>
                         </div>
 
+                        <Rock:PanelWidget ID="wpConnectionRequestAttributes" runat="server" Title="Connection Request Attributes" CssClass="group-type-attribute-panel">
+                            <Rock:NotificationBox ID="nbConnectionRequestAttributes" runat="server" NotificationBoxType="Info"
+                                Text="Connection Request Attributes apply to requests in this opportunity.  Each request will have their own value for these attributes" />
+                            <Rock:RockControlWrapper ID="rcwConnectionRequestAttributesInherited" runat="server" Label="Inherited Connection Request Attributes">
+                                <div class="grid">
+                                    <Rock:Grid ID="gConnectionRequestAttributesInherited" runat="server" AllowPaging="false" DisplayType="Light" ShowHeader="true" RowItemText="Inherited Connection Request Attribute">
+                                        <Columns>
+                                            <Rock:RockBoundField DataField="Name" HeaderText="Attribute" />
+                                            <Rock:RockBoundField DataField="Description" HeaderText="Description" />
+                                            <Rock:RockTemplateField HeaderText="Inherited">
+                                                <ItemTemplate>(Inherited from <a href='<%# Eval("Url") %>' target='_blank'><%# Eval("GroupType") %></a>)</ItemTemplate>
+                                            </Rock:RockTemplateField>
+                                        </Columns>
+                                    </Rock:Grid>
+                                </div>
+                            </Rock:RockControlWrapper>
+
+                            <Rock:RockControlWrapper ID="rcwConnectionRequestAttributes" runat="server" Label="Connection Request Attribute(s)">
+                                <div class="grid">
+                                    <Rock:Grid ID="gConnectionRequestAttributes" runat="server" AllowPaging="false" DisplayType="Light" RowItemText="Connection Request Attribute" ShowConfirmDeleteDialog="false">
+                                        <Columns>
+                                            <Rock:ReorderField />
+                                            <Rock:RockBoundField DataField="Name" HeaderText="Attribute" />
+                                            <Rock:RockBoundField DataField="Description" HeaderText="Description" />
+                                            <Rock:BoolField DataField="IsRequired" HeaderText="Required" />
+                                            <Rock:SecurityField TitleField="Name" />
+                                            <Rock:EditField OnClick="gConnectionRequestAttributes_Edit" />
+                                            <Rock:DeleteField OnClick="gConnectionRequestAttributes_Delete" />
+                                        </Columns>
+                                    </Rock:Grid>
+                                </div>
+                            </Rock:RockControlWrapper>
+                        </Rock:PanelWidget>
+
                         <Rock:PanelWidget ID="wpAttributes" runat="server" Title="Opportunity Attributes">
                             <Rock:DynamicPlaceHolder ID="phAttributes" runat="server" />
                         </Rock:PanelWidget>
@@ -104,7 +142,14 @@
                             <div class="grid">
                                 <Rock:Grid ID="gConnectionOpportunityGroups" runat="server" AllowPaging="false" DisplayType="Light" RowItemText="Group" ShowConfirmDeleteDialog="false">
                                     <Columns>
-                                        <Rock:RockBoundField DataField="GroupName" HeaderText="Name" />
+                                        <Rock:RockTemplateField HeaderText="Name">
+                                            <ItemTemplate>
+                                                <asp:Literal ID="lGroupName" runat="server" Text='<%# Eval("GroupName") %>' />
+                                                <asp:Literal ID="lArchivedWarning" runat="server" Visible='<%# Eval("IsArchived") %>'>
+                                                    <span class="label label-warning">Archived</span>
+                                                </asp:Literal>
+                                            </ItemTemplate>
+                                        </Rock:RockTemplateField>
                                         <Rock:RockBoundField DataField="GroupTypeName" HeaderText="Group Type" />
                                         <Rock:RockBoundField DataField="CampusName" HeaderText="Campus" />
                                         <Rock:DeleteField OnClick="gConnectionOpportunityGroups_Delete" />
@@ -119,7 +164,14 @@
                                     <div class="grid">
                                         <Rock:Grid ID="gConnectionOpportunityConnectorGroups" runat="server" AllowPaging="false" DisplayType="Light" RowItemText="Campus Connector Group" ShowConfirmDeleteDialog="false">
                                             <Columns>
-                                                <Rock:RockBoundField DataField="GroupName" HeaderText="Group" />
+                                                <Rock:RockTemplateField HeaderText="Group">
+                                                    <ItemTemplate>
+                                                        <asp:Literal ID="lGroupName" runat="server" Text='<%# Eval("GroupName") %>' />
+                                                        <asp:Literal ID="lArchivedWarning" runat="server" Visible='<%# Eval("IsArchived") %>'>
+                                                            <span class="label label-warning">Archived</span>
+                                                        </asp:Literal>
+                                                    </ItemTemplate>
+                                                </Rock:RockTemplateField>
                                                 <Rock:RockBoundField DataField="CampusName" HeaderText="Campus" />
                                                 <Rock:EditField OnClick="gConnectionOpportunityConnectorGroups_Edit" />
                                                 <Rock:DeleteField OnClick="gConnectionOpportunityConnectorGroups_Delete" />
@@ -152,6 +204,17 @@
                             </div>
                         </Rock:PanelWidget>
 
+                        <Rock:PanelWidget ID="wpAdvancedSettings" runat="server" Title="Advanced Settings">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <Rock:RockCheckBox ID="cbShowStatusOnTransfer" runat="server" Label="Show Status On Transfer" Help="When enabled, the status field will be shown. Otherwise, the status will not be changeable and will remain the same after the transfer. This allows for workflow logic to change the status and not allow the individual to change it."/>
+                                    <Rock:RockCheckBox ID="cbShowCampusOnTransfer" runat="server" Label="Show Campus On Transfer" Help="When enabled, a campus dropdown will be shown."/>
+                                </div>
+                                <div class="col-md-6">
+                                    <Rock:RockCheckBox ID="cbShowConnectButton" runat="server" Label="Show Connect Button" Help="When enabled, the Connect button will be shown. Hiding the connect button allows for the connection process to be automated using workflows or for use cases where the concept of 'connection' doesn't make sense."/>
+                                </div>
+                            </div>
+                        </Rock:PanelWidget>
                         <div class="actions">
                             <asp:LinkButton ID="btnSave" runat="server" AccessKey="s" ToolTip="Alt+s"  Text="Save" CssClass="btn btn-primary" OnClick="btnSave_Click" />
                             <asp:LinkButton ID="btnCancel" runat="server" AccessKey="c" ToolTip="Alt+c" Text="Cancel" CssClass="btn btn-link" CausesValidation="false" OnClick="btnCancel_Click" />
@@ -163,6 +226,12 @@
 
         <asp:Button ID="btnHideDialog" runat="server" Style="display: none" OnClick="btnHideDialog_Click" />
         <asp:HiddenField ID="hfActiveDialog" runat="server" />
+
+         <Rock:ModalDialog ID="dlgConnectionRequestAttribute" runat="server" Title="Connection Request Attributes" OnSaveClick="dlgConnectionRequestAttribute_SaveClick" OnCancelScript="clearActiveDialog();" ValidationGroup="ConnectionRequestAttributes">
+            <Content>
+                <Rock:AttributeEditor ID="edtConnectionRequestAttributes" runat="server" ShowActions="false" ValidationGroup="ConnectionRequestAttributes" />
+            </Content>
+        </Rock:ModalDialog>
 
         <Rock:ModalDialog ID="dlgWorkflowDetails" runat="server" Title="Select Workflow" OnSaveClick="dlgWorkflowDetails_SaveClick" OnCancelScript="clearActiveDialog();" ValidationGroup="WorkflowDetails">
             <Content>
@@ -184,6 +253,7 @@
                             <asp:ListItem Value="3" Text="State Changed" />
                             <asp:ListItem Value="4" Text="Activity Added" />
                             <asp:ListItem Value="6" Text="Manual" />
+                            <asp:ListItem Value="9" Text="Future Follow-up Date Reached" />
                         </Rock:RockDropDownList>
                     </div>
                     <div class="col-md-6">

@@ -61,17 +61,17 @@
                     if ($(".js-pnlsearch").is(":visible")) {
 
                         // setup digits buttons
-                        $('.js-pnlsearch .tenkey a.digit').click(function () {
+                        $('.js-pnlsearch .tenkey a.digit').on('click', function () {
                             $phoneNumber = $("input[id$='tbPhone']");
                             $phoneNumber.val($phoneNumber.val() + $(this).html());
                             return false;
                         });
-                        $('.js-pnlsearch .tenkey a.back').click(function () {
+                        $('.js-pnlsearch .tenkey a.back').on('click', function () {
                             $phoneNumber = $("input[id$='tbPhone']");
                             $phoneNumber.val($phoneNumber.val().slice(0, -1));
                             return false;
                         });
-                        $('.js-pnlsearch .tenkey a.clear').click(function () {
+                        $('.js-pnlsearch .tenkey a.clear').on('click', function () {
                             $phoneNumber = $("input[id$='tbPhone']");
                             $phoneNumber.val('');
                             return false;
@@ -90,13 +90,34 @@
 
                         // set focus
                         if (!isTouchDevice) {
-                            $(".input-account .form-control:first").focus();
+                            $(".input-account .form-control").first().focus();
                         }
 
                         // setup digits buttons
                         $('.js-pnlaccountentry .tenkey a.digit').on('click', function () {
                             $amount = $(".input-group.active .form-control");
-                            $amount.val($amount.val() + $(this).html());
+                            if ($(this).text() == '.') {
+                                var allowDecimal = new RegExp('^[0-9]*$');
+                                if (allowDecimal.test($amount.val())) {
+                                    $amount.attr('type','text').val($amount.val() + $(this).text());
+                                    var digits = /[0-9\/]+/;
+                                    $amount.on('keypress.digits', function (e) {
+                                        if (!digits.test(e.key)) {
+                                            e.preventDefault();
+                                        } else {
+                                            $(this).attr('type','number').off('keypress.digits');
+                                        }
+                                    });
+                                }
+                            } else {
+                                var decimalSplit = $amount.val().split('.')[1];
+                                if (typeof decimalSplit === 'undefined' || decimalSplit.length < 2 ) {
+                                    $amount.val($amount.val() + $(this).text());
+                                }
+                                if ($amount.attr('type') === 'text') {
+                                    $amount.attr('type','number');
+                                }
+                            }
                             return false;
                         });
                         $('.js-pnlaccountentry .tenkey a.clear').on('click', function () {
@@ -115,11 +136,10 @@
                     // register entry
                     //
                     if ($(".js-pnlregister").is(":visible")) {
-                        $(".input-account .form-control:first").focus();
+                        $(".input-account .form-control").first().focus();
                     }
                 });
             });
-
         </script>
 
         <Rock:NotificationBox ID="nbBlockConfigErrors" runat="server" NotificationBoxType="Danger" />

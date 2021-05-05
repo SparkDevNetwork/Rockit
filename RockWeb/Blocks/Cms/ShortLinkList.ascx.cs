@@ -15,17 +15,21 @@
 // </copyright>
 //
 using System;
+using System.ComponentModel;
+using System.Data.Entity;
 using System.Linq;
+using System.Web.UI;
+using System.Web.UI.WebControls;
 
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
+using Rock.Security;
+using Rock.Utility;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
-using System.ComponentModel;
-using Rock.Security;
-using System.Web.UI;
 
 namespace RockWeb.Blocks.Cms
 {
@@ -35,9 +39,36 @@ namespace RockWeb.Blocks.Cms
     [DisplayName( "Short Link List" )]
     [Category( "CMS" )]
     [Description( "Lists all the short Links ." )]
-    [LinkedPage( "Detail Page" )]
+
+    #region Block Attributes
+
+    [LinkedPage(
+        "Detail Page",
+        Key = AttributeKey.DetailPage,
+        Order = 0 )]
+
+    #endregion
     public partial class ShortLinkList : RockBlock, ISecondaryBlock, ICustomGridColumns
     {
+        #region Attribute Keys
+
+        private static class AttributeKey
+        {
+            public const string DetailPage = "DetailPage";
+        }
+
+        #endregion Attribute Keys
+
+        #region Filter Attribute Keys
+
+        private class FilterAttributeKeys
+        {
+            public const string Token = "Token";
+            public const string Site = "Site";
+        }
+
+        #endregion
+
         #region Base Control Methods
 
         /// <summary>
@@ -51,6 +82,10 @@ namespace RockWeb.Blocks.Cms
             gShortLinks.DataKeyNames = new string[] { "Id" };
             gShortLinks.Actions.AddClick += gShortLinks_AddClick;
             gShortLinks.GridRebind += gShortLinks_GridRebind;
+
+            gfShortLink.ApplyFilterClick += gfShortLink_ApplyFilterClick;
+            gfShortLink.DisplayFilterValue += gfShortLink_DisplayFilterValue;
+            gfShortLink.ClearFilterClick += gfShortLink_ClearFilterClick;
 
             // Block Security and special attributes (RockPage takes care of View)
             bool canAddEditDelete = IsUserAuthorized( Authorization.EDIT );
@@ -75,8 +110,60 @@ namespace RockWeb.Blocks.Cms
 
             if ( !Page.IsPostBack )
             {
+                BindFilter();
                 BindGrid();
             }
+        }
+
+        #endregion
+
+        #region Filter
+
+        /// <summary>
+        /// Displays the text of the gfShortLink control
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        protected void gfShortLink_DisplayFilterValue( object sender, GridFilter.DisplayFilterValueArgs e )
+        {
+            switch ( e.Key )
+            {
+                case "Site":
+                    int? siteId = e.Value.AsIntegerOrNull();
+                    if ( siteId.HasValue )
+                    {
+                        var site = SiteCache.Get( siteId.Value );
+                        if ( site != null )
+                        {
+                            e.Value = site.Name;
+                        }
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Handles the ApplyFilterClick event of the gfShortLink control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void gfShortLink_ApplyFilterClick( object sender, EventArgs e )
+        {
+            gfShortLink.SaveUserPreference( FilterAttributeKeys.Site, ddlSite.SelectedValue );
+            gfShortLink.SaveUserPreference( FilterAttributeKeys.Token, txtToken.Text );
+
+            BindGrid();
+        }
+
+        /// <summary>
+        /// Handles the ClearFilterClick event of the gfShortLink control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void gfShortLink_ClearFilterClick( object sender, EventArgs e )
+        {
+            gfShortLink.DeleteUserPreferences();
+            BindFilter();
         }
 
         #endregion
@@ -123,7 +210,7 @@ namespace RockWeb.Blocks.Cms
         /// <exception cref="System.NotImplementedException"></exception>
         protected void gShortLinks_AddClick( object sender, EventArgs e )
         {
-            NavigateToLinkedPage( "DetailPage", "ShortLinkId", 0 );
+            NavigateToLinkedPage( AttributeKey.DetailPage, "ShortLinkId", 0 );
         }
 
         /// <summary>
@@ -133,7 +220,7 @@ namespace RockWeb.Blocks.Cms
         /// <param name="e">The <see cref="RowEventArgs" /> instance containing the event data.</param>
         protected void gShortLinks_Edit( object sender, RowEventArgs e )
         {
-            NavigateToLinkedPage( "DetailPage", "ShortLinkId", e.RowKeyId );
+            NavigateToLinkedPage( AttributeKey.DetailPage, "ShortLinkId", e.RowKeyId );
         }
 
         /// <summary>
@@ -148,6 +235,23 @@ namespace RockWeb.Blocks.Cms
         }
 
         /// <summary>
+        /// Binds the filter.
+        /// </summary>
+        private void BindFilter()
+        {
+            txtToken.Text = gfShortLink.GetUserPreference( FilterAttributeKeys.Token );
+
+            ddlSite.Items.Clear();
+
+            foreach ( SiteCache site in new SiteService( new RockContext() ).Queryable().AsNoTracking().OrderBy( s => s.Name ).Select( a => a.Id ).ToList().Select( a => SiteCache.Get( a ) ) )
+            {
+                ddlSite.Items.Add( new ListItem( site.Name, site.Id.ToString() ) );
+            }
+            ddlSite.Items.Insert( 0, new ListItem( string.Empty, string.Empty ) );
+            ddlSite.SetValue( gfShortLink.GetUserPreference( FilterAttributeKeys.Site ) );
+        }
+
+        /// <summary>
         /// Binds the group members grid.
         /// </summary>
         protected void BindGrid()
@@ -156,11 +260,25 @@ namespace RockWeb.Blocks.Cms
             {
                 var pageShortLinkService = new PageShortLinkService( rockContext );
 
-                var qry = pageShortLinkService.Queryable().ToList()
+                var shortLinkQry = pageShortLinkService.Queryable();
+
+                string token = gfShortLink.GetUserPreference( FilterAttributeKeys.Token );
+                if ( !string.IsNullOrEmpty( token ) )
+                {
+                    shortLinkQry = shortLinkQry.Where( s => s.Token.Contains( token ) );
+                }
+
+                int? siteId = gfShortLink.GetUserPreference( FilterAttributeKeys.Site ).AsIntegerOrNull();
+                if ( siteId.HasValue )
+                {
+                    shortLinkQry = shortLinkQry.Where( s => s.SiteId == siteId.Value );
+                }
+
+
+                var qry = shortLinkQry.ToList()
                     .Select( s => new ShortLinkRow( s ) )
                     .ToList()
                     .AsQueryable();
-
 
                 SortProperty sortProperty = gShortLinks.SortProperty;
                 if ( sortProperty != null )
@@ -192,7 +310,7 @@ namespace RockWeb.Blocks.Cms
 
         #endregion
 
-        protected class ShortLinkRow
+        protected class ShortLinkRow : RockDynamic
         {
             public int Id { get; set; }
             public int SiteId { get; set; }

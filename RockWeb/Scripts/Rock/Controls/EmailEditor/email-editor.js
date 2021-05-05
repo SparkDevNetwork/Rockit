@@ -62,10 +62,11 @@
         });
 
         // configure and load the dragula script for structure components
-        self.structureDrake = dragula([self.editorToolbarStructure, document.querySelector('.structure-dropzone')], {
+        self.structureDrake = dragula([self.editorToolbarStructure, document.querySelector('.dropzone, .structure-dropzone')], {
           isContainer: function (el)
           {
-            return el.classList.contains('structure-dropzone');
+            var isContainer = el.classList.contains('structure-dropzone') || (el.classList.contains('dropzone') && !el.classList.contains('disable-columns') && !el.parentElement.classList.contains('component'));
+            return isContainer;
           },
           copy: function (el, source)
           {
@@ -136,7 +137,7 @@
 
 
         // add autoscroll capabilities during dragging
-        $(window).mousemove(function (e) {
+        $(window).on('mousemove', function (e) {
             if (self.contentDrake.dragging) {
                 // editor scrollbar
                 // automatically scroll the editor (inner scrollbar) if the mouse gets within 10% of the top or 10% of the bottom while dragger
