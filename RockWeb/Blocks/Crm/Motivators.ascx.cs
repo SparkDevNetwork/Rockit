@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Entity;
 using System.Linq;
 using System.Web.UI.WebControls;
 
@@ -38,8 +39,10 @@ namespace Rockweb.Blocks.Crm
     [Description( "Allows you to take a Motivators Assessment test and saves your results." )]
 
     #region Block Attributes
-    [CodeEditorField( "Instructions",
-        Key = AttributeKeys.Instructions,
+
+    [CodeEditorField(
+        "Instructions",
+        Key = AttributeKey.Instructions,
         Description = "The text (HTML) to display at the top of the instructions section.  <span class='tip tip-lava'></span> <span class='tip tip-html'></span>",
         EditorMode = CodeEditorMode.Html,
         EditorTheme = CodeEditorTheme.Rock,
@@ -48,8 +51,9 @@ namespace Rockweb.Blocks.Crm
         DefaultValue = InstructionsDefaultValue,
         Order = 0 )]
 
-    [CodeEditorField( "Results Message",
-        Key = AttributeKeys.ResultsMessage,
+    [CodeEditorField(
+        "Results Message",
+        Key = AttributeKey.ResultsMessage,
         Description = "The text (HTML) to display at the top of the results section.<span class='tip tip-lava'></span><span class='tip tip-html'></span>",
         EditorMode = CodeEditorMode.Html,
         EditorTheme = CodeEditorTheme.Rock,
@@ -59,43 +63,38 @@ namespace Rockweb.Blocks.Crm
         Order = 1 )]
 
     [TextField( "Set Page Title",
-        Key = AttributeKeys.SetPageTitle,
+        Key = AttributeKey.SetPageTitle,
         Description = "The text to display as the heading.",
         IsRequired = false,
         DefaultValue = "Motivators Assessment",
         Order = 2 )]
 
     [TextField( "Set Page Icon",
-        Key = AttributeKeys.SetPageIcon,
+        Key = AttributeKey.SetPageIcon,
         Description = "The css class name to use for the heading icon.",
         IsRequired = false,
         DefaultValue = "fa fa-key",
         Order = 3 )]
 
-    [IntegerField( "Number of Questions",
-        Key = AttributeKeys.NumberofQuestions,
+    [IntegerField(
+        "Number of Questions",
+        Key = AttributeKey.NumberOfQuestions,
         Description = "The number of questions to show per page while taking the test",
         IsRequired = true,
         DefaultIntegerValue = 20,
         Order = 4 )]
-
-    [BooleanField( "Allow Retakes",
-        Key = AttributeKeys.AllowRetakes,
-        Description = "If enabled, the person can retake the test after the minimum days passes.",
-        DefaultBooleanValue = true,
-        Order = 5 )]
     #endregion Block Attributes
+
     public partial class Motivators : Rock.Web.UI.RockBlock
     {
         #region Attribute Keys
-        protected static class AttributeKeys
+        private static class AttributeKey
         {
             public const string Instructions = "Instructions";
             public const string SetPageTitle = "SetPageTitle";
             public const string SetPageIcon = "SetPageIcon";
             public const string ResultsMessage = "ResultsMessage";
-            public const string AllowRetakes = "AllowRetakes";
-            public const string NumberofQuestions = "NumberofQuestions";
+            public const string NumberOfQuestions = "NumberofQuestions";
         }
 
         #endregion Attribute Keys
@@ -104,7 +103,7 @@ namespace Rockweb.Blocks.Crm
         /// <summary>
         /// A defined list of page parameter keys used by this block.
         /// </summary>
-        protected static class PageParameterKey
+        private static class PageParameterKey
         {
             /// <summary>
             /// The assessment identifier
@@ -157,77 +156,69 @@ namespace Rockweb.Blocks.Crm
 </p>";
 
         private const string ResultMessageDefaultValue = @"<p>
-   {{ Person.NickName }}, here are your motivators results. We’ve listed your Top 5 Motivators, your
-   growth propensity score, along with a complete listing of all 22 motivators and your results
-   for each.
+    {{ Person.NickName }}, here are your motivators results. We’ve listed your Top 5 Motivators, your
+    growth propensity score, along with a complete listing of all 22 motivators and your results
+    for each.
 </p>
-
 <h2>Growth Propensity</h2>
 <p>
     Growth Propensity measures your perceived mindset on a continuum between a growth mindset and
     fixed mindset. These are two ends of a spectrum about how we view our own capacity and potential.
 </p>
-
-{[ chart type:'gauge' backgroundcolor:'#f13c1f,#f0e3ba,#0e9445,#3f56a1' gaugelimits:'0,2,17,85,100']}
-    [[ dataitem value:'{{ GrowthScore }}' fillcolor:'#484848' ]] [[ enddataitem ]]
-{[ endchart ]}
-
+<div style='margin: 0;max-width:280px'>
+    {[ chart type:'gauge' backgroundcolor:'#f13c1f,#f0e3ba,#0e9445,#3f56a1' gaugelimits:'0,2,17,85,100' chartheight:'150px']}
+        [[ dataitem value:'{{ GrowthScore }}' fillcolor:'#484848' ]] [[ enddataitem ]]
+    {[ endchart ]}
+</div>
 <h2>Individual Motivators</h2>
 <p>
     There are 22 possible motivators in this assessment. While your Top 5 Motivators may be most helpful in understanding your results in a snapshot, you may also find it helpful to see your scores on each for a complete picture.
 </p>
-
-<!--  Theme Chart -->
-<div class=""panel panel-default"">
-    <div class=""panel-heading"">
-    <h2 class=""panel-title""><b>Composite Score</b></h2>
+<!-- Theme Chart -->
+<div class='panel panel-default'>
+    <div class='panel-heading'>
+        <h2 class='panel-title'><b>Composite Score</b></h2>
     </div>
-    <div class=""panel-body"">
-    {[chart type:'horizontalBar' chartheight:'200px' ]}
-    {% for motivatorThemeScore in MotivatorThemeScores %}
-        [[dataitem label:'{{ motivatorThemeScore.DefinedValue.Value }}' value:'{{ motivatorThemeScore.Value }}' fillcolor:'{{ motivatorThemeScore.DefinedValue | Attribute:'Color' }}' ]]
-        [[enddataitem]]
-    {% endfor %}
-    {[endchart]}
+    <div class='panel-body'>
+        {[chart type:'horizontalBar' chartheight:'200px' xaxistype:'linearhorizontal0to100' ]}
+            {% for motivatorThemeScore in MotivatorThemeScores %}
+                [[dataitem label:'{{ motivatorThemeScore.DefinedValue.Value }}' value:'{{ motivatorThemeScore.Value }}' fillcolor:'{{ motivatorThemeScore.DefinedValue | Attribute:'Color' }}' ]]
+                [[enddataitem]]
+            {% endfor %}
+        {[endchart]}
     </div>
 </div>
-
 <p>
     This graph is based on the average composite score for each Motivator Theme.
 </p>
-
 {% for motivatorThemeScore in MotivatorThemeScores %}
     <p>
         <b>{{ motivatorThemeScore.DefinedValue.Value }}</b>
-        </br>
+        <br>
         {{ motivatorThemeScore.DefinedValue.Description }}
-        </br>
+        <br>
         {{ motivatorThemeScore.DefinedValue | Attribute:'Summary' }}
     </p>
 {% endfor %}
-
 <p>
-   The following graph shows your motivators ranked from top to bottom.
+    The following graph shows your motivators ranked from top to bottom.
 </p>
-
-  <div class=""panel panel-default"">
-    <div class=""panel-heading"">
-      <h2 class=""panel-title""><b>Ranked Motivators</b></h2>
+<div class='panel panel-default'>
+    <div class='panel-heading'>
+        <h2 class='panel-title'><b>Ranked Motivators</b></h2>
     </div>
-    <div class=""panel-body"">
-
-      {[ chart type:'horizontalBar' ]}
-        {% for motivatorScore in MotivatorScores %}
-        {% assign theme = motivatorScore.DefinedValue | Attribute:'Theme' %}
-            {% if theme and theme != empty %}
-                [[dataitem label:'{{ motivatorScore.DefinedValue.Value }}' value:'{{ motivatorScore.Value }}' fillcolor:'{{ motivatorScore.DefinedValue | Attribute:'Color' }}' ]]
-                [[enddataitem]]
-            {% endif %}
-        {% endfor %}
+    <div class='panel-body'>
+        {[ chart type:'horizontalBar' xaxistype:'linearhorizontal0to100' ]}
+            {% for motivatorScore in MotivatorScores %}
+                {% assign theme = motivatorScore.DefinedValue | Attribute:'Theme' %}
+                {% if theme and theme != empty %}
+                    [[dataitem label:'{{ motivatorScore.DefinedValue.Value }}' value:'{{ motivatorScore.Value }}' fillcolor:'{{ motivatorScore.DefinedValue | Attribute:'Color' }}' ]]
+                    [[enddataitem]]
+                {% endif %}
+            {% endfor %}
         {[endchart]}
     </div>
-  </div>
-";
+</div>";
 
         #endregion Attribute Default values
 
@@ -257,8 +248,8 @@ namespace Rockweb.Blocks.Crm
         /// </summary>
         public int QuestionCount
         {
-            get { return ViewState[AttributeKeys.NumberofQuestions] as int? ?? 0; }
-            set { ViewState[AttributeKeys.NumberofQuestions] = value; }
+            get { return ViewState[AttributeKey.NumberOfQuestions] as int? ?? 0; }
+            set { ViewState[AttributeKey.NumberOfQuestions] = value; }
         }
 
         /// <summary>
@@ -304,7 +295,8 @@ namespace Rockweb.Blocks.Crm
             {
                 try
                 {
-                    _targetPerson = new PersonService( new RockContext() ).GetByUrlEncodedKey( personKey );
+                    var personService = new PersonService( new RockContext() );
+                    _targetPerson = personService.GetByPersonActionIdentifier( personKey, "Assessment" ) ?? personService.GetByUrlEncodedKey( personKey );
                     _isQuerystringPersonKey = true;
                 }
                 catch ( Exception )
@@ -340,60 +332,7 @@ namespace Rockweb.Blocks.Crm
         {
             if ( !Page.IsPostBack )
             {
-                var rockContext = new RockContext();
-                var assessmentType = new AssessmentTypeService( rockContext ).Get( Rock.SystemGuid.AssessmentType.MOTIVATORS.AsGuid() );
-                Assessment assessment = null;
-
-                if ( _targetPerson != null )
-                {
-                    var primaryAliasId = _targetPerson.PrimaryAliasId;
-
-                    if ( _assessmentId == 0 )
-                    {
-                        // This indicates that the block should create a new assessment instead of looking for an existing one. e.g. a user directed re-take
-                        assessment = null;
-                    }
-                    else
-                    {
-                        // Look for an existing pending or completed assessment.
-                        assessment = new AssessmentService( rockContext )
-                            .Queryable()
-                            .Where( a => ( _assessmentId.HasValue && a.Id == _assessmentId ) || ( a.PersonAliasId == primaryAliasId && a.AssessmentTypeId == assessmentType.Id ) )
-                            .OrderByDescending( a => a.CreatedDateTime )
-                            .FirstOrDefault();
-                    }
-
-                    if ( assessment != null )
-                    {
-                        hfAssessmentId.SetValue( assessment.Id );
-                    }
-                    else
-                    {
-                        hfAssessmentId.SetValue( 0 );
-                    }
-
-                    if ( assessment != null && assessment.Status == AssessmentRequestStatus.Complete )
-                    {
-                        MotivatorService.AssessmentResults savedScores = MotivatorService.LoadSavedAssessmentResults( _targetPerson );
-                        ShowResult( savedScores, assessment );
-                    }
-                    else if ( ( assessment == null && !assessmentType.RequiresRequest ) || ( assessment != null && assessment.Status == AssessmentRequestStatus.Pending ) )
-                    {
-                        if ( _targetPerson.Id != CurrentPerson.Id )
-                        {
-                            // If the current person is not the target person and there are no results to show then show a not taken message.
-                            HidePanelsAndShowError( string.Format("{0} does not have results for the Conflict Profile Assessment.", _targetPerson.FullName ) );
-                        }
-                        else
-                        {
-                            ShowInstructions();
-                        }
-                    }
-                    else
-                    {
-                        HidePanelsAndShowError( "Sorry, this test requires a request from someone before it can be taken." );
-                    }
-                }
+                ShowAssessment();
             }
             else
             {
@@ -580,13 +519,157 @@ namespace Rockweb.Blocks.Crm
 
         #region Methods
 
+        /// <summary>
+        /// Shows the assessment.
+        /// A null value for _targetPerson is already handled in OnInit() so this method assumes there is a value
+        /// </summary>
+        private void ShowAssessment()
+        {
+            /*
+            2020-01-09 - ETD
+            This block will either show the assessment results of the most recent assessment test or give the assessment test.
+            The following use cases are considered:
+            1. If the assessment ID "0" was provided then create a new test for the current user. This covers user directed retakes.
+            2. If the assessment ID was provided and is not "0"
+                Note: The assessment results are stored on the person's attributes and are overwritten if the assessment is retaken. So past Assessments will not be loaded by this block.
+                The test data is saved in the assessment table but would need to be recomputed, which may be a future feature.
+                a. The assessment ID is ignored and the current person is used.
+                b. If the assessment exists for the current person and is completed then show the results
+                c. If the assessment exists for the current person and is pending then show the questions.
+                d. If the assessment does not exist for the current person then nothing loads.
+            3. If the assessment ID was not provided and the PersonKey was provided
+                a. If there is only one test of the type
+                    1. If the assessment is completed show the results
+                    2. If the assessment is pending and the current person is the one assigned the test then show the questions.
+                    3. If the assessment is pending and the current person is not the one assigned then show a message that the test has not been completed.
+                b. If more than one of type
+                    1. If the latest requested assessment is completed show the results.
+                    2. If the latest requested assessment is pending and the current person is the one assigned then show the questions.
+                    3. If the latest requested assessment is pending and the current person is not the one assigned the show the results of the last completed test.
+                    4. If the latest requested assessment is pending and the current person is not the one assigned and there are no previous completed assessments then show a message that the test has not been completed.
+            4. If an assessment ID or PersonKey were not provided or are not valid then show an error message
+            */
+
+            var rockContext = new RockContext();
+            var assessmentType = new AssessmentTypeService( rockContext ).Get( Rock.SystemGuid.AssessmentType.MOTIVATORS.AsGuid() );
+            Assessment assessment = null;
+            Assessment previouslyCompletedAssessment = null;
+
+            // A "0" value indicates that the block should create a new assessment instead of looking for an existing one, so keep assessment null. e.g. a user directed re-take
+            if ( _assessmentId != 0 )
+            {
+                var assessments = new AssessmentService( rockContext )
+                .Queryable()
+                .AsNoTracking()
+                .Where( a => a.PersonAlias != null
+                             && a.PersonAlias.PersonId == _targetPerson.Id
+                             && a.AssessmentTypeId == assessmentType.Id )
+                .OrderByDescending( a => a.CompletedDateTime ?? a.RequestedDateTime )
+                .ToList();
+
+                if ( _assessmentId == null && assessments.Count == 0 )
+                {
+                    // For this to happen the user has to have never taken the assessment, the user isn't using a link with the assessment ID, AND they are arriving at the block directly rather than through the assessment list block.
+                    // So treat this as a user directed take/retake.
+                    _assessmentId = 0;
+                }
+                else
+                {
+                    if ( assessments.Count > 0 )
+                    {
+                        // If there are any results then pick the first one. If the assesement ID was specified then the query will only return one result
+                        assessment = assessments[0];
+                    }
+                    if ( assessments.Count > 1 )
+                    {
+                        // If there are more than one result then we need to pick the right one (see developer note)
+                        // If the most recent assessment is "Completed" then it is already set as the assessment and we can move on. Otherwise check if there are previoulsy completed assessments.
+                        if ( assessment.Status == AssessmentRequestStatus.Pending )
+                        {
+                            // If the most recent assessment is pending then check for a prior completed one
+                            previouslyCompletedAssessment = assessments.Where( a => a.Status == AssessmentRequestStatus.Complete ).FirstOrDefault();
+                        }
+                    }
+                }
+            }
+
+            if ( assessment == null )
+            {
+                // If assessment is null and _assessmentId = 0 this is user directed. If the type does not require a request then show instructions
+                if ( _assessmentId == 0 && !assessmentType.RequiresRequest )
+                {
+                    hfAssessmentId.SetValue( 0 );
+                    ShowInstructions();
+                }
+                else
+                {
+                    // If assessment is null and _assessmentId != 0 or is 0 but the type does require a request then show requires request error
+                    HidePanelsAndShowError( "Sorry, this test requires a request from someone before it can be taken." );
+                }
+
+                return;
+            }
+
+            hfAssessmentId.SetValue( assessment.Id );
+
+            // If assessment is completed show the results
+            if ( assessment.Status == AssessmentRequestStatus.Complete )
+            {
+                MotivatorService.AssessmentResults savedScores = MotivatorService.LoadSavedAssessmentResults( _targetPerson );
+                ShowResult( savedScores, assessment );
+                return;
+            }
+
+            if ( assessment.Status == AssessmentRequestStatus.Pending )
+            {
+                if ( _targetPerson.Id != CurrentPerson.Id )
+                {
+                    // If assessment is pending and the current person is not the one assigned the show previouslyCompletedAssessment results
+                    if ( previouslyCompletedAssessment != null )
+                    {
+                        MotivatorService.AssessmentResults savedScores = MotivatorService.LoadSavedAssessmentResults( _targetPerson );
+                        ShowResult( savedScores, previouslyCompletedAssessment, true );
+                        return;
+                    }
+
+                    // If assessment is pending and the current person is not the one assigned and previouslyCompletedAssessment is null show a message that the test has not been completed.
+                    HidePanelsAndShowError( string.Format("{0} does not have results for the {1} Assessment.", _targetPerson.FullName, assessmentType.Title ) );
+                }
+                else
+                {
+                    // If assessment is pending and the current person is the one assigned then show the questions
+                    ShowInstructions();
+                }
+
+                return;
+            }
+
+            // This should never happen, if the block gets to this point then something is not right
+            HidePanelsAndShowError( "Unable to load assessment" );
+        }
+
+        /// <summary>
+        /// Hides the Instructions and Questions panels and shows the specified error.
+        /// </summary>
+        /// <param name="errorMessage">The error message.</param>
         private void HidePanelsAndShowError( string errorMessage )
         {
             pnlInstructions.Visible = false;
             pnlQuestion.Visible = false;
             pnlResult.Visible = false;
+            ShowNotification( errorMessage, NotificationBoxType.Danger );
+        }
+
+        /// <summary>
+        /// Shows the notification.
+        /// </summary>
+        /// <param name="errorMessage">The error message.</param>
+        /// <param name="notificationBoxType">Type of the notification box.</param>
+        private void ShowNotification( string errorMessage, NotificationBoxType notificationBoxType )
+        {
             nbError.Visible = true;
             nbError.Text = errorMessage;
+            nbError.NotificationBoxType = notificationBoxType;
         }
 
         /// <summary>
@@ -594,13 +677,13 @@ namespace Rockweb.Blocks.Crm
         /// </summary>
         private void SetPanelTitleAndIcon()
         {
-            string panelTitle = this.GetAttributeValue( AttributeKeys.SetPageTitle );
+            string panelTitle = this.GetAttributeValue( AttributeKey.SetPageTitle );
             if ( !string.IsNullOrEmpty( panelTitle ) )
             {
                 lTitle.Text = panelTitle;
             }
 
-            string panelIcon = this.GetAttributeValue( AttributeKeys.SetPageIcon );
+            string panelIcon = this.GetAttributeValue( AttributeKey.SetPageIcon );
             if ( !string.IsNullOrEmpty( panelIcon ) )
             {
                 iIcon.Attributes["class"] = panelIcon;
@@ -623,28 +706,30 @@ namespace Rockweb.Blocks.Crm
                 mergeFields.Add( "Person", _targetPerson );
             }
 
-            lInstructions.Text = GetAttributeValue( AttributeKeys.Instructions ).ResolveMergeFields( mergeFields );
+            lInstructions.Text = GetAttributeValue( AttributeKey.Instructions ).ResolveMergeFields( mergeFields );
         }
 
         /// <summary>
         /// Shows the result.
         /// </summary>
-        private void ShowResult( MotivatorService.AssessmentResults result, Assessment assessment )
+        private void ShowResult( MotivatorService.AssessmentResults result, Assessment assessment, bool isPrevious = false )
         {
             pnlInstructions.Visible = false;
             pnlQuestion.Visible = false;
             pnlResult.Visible = true;
+            btnRetakeTest.Visible = false;
 
-            var allowRetakes = GetAttributeValue( AttributeKeys.AllowRetakes ).AsBoolean();
+            if ( isPrevious )
+            {
+                ShowNotification( "A more recent assessment request has been made but has not been taken. Displaying the most recently completed test.", NotificationBoxType.Info );
+            }
+
+            bool requiresRequest = assessment.AssessmentType.RequiresRequest;
             var minDays = assessment.AssessmentType.MinimumDaysToRetake;
 
-            if ( !_isQuerystringPersonKey && allowRetakes && assessment.CompletedDateTime.HasValue && assessment.CompletedDateTime.Value.AddDays( minDays ) <= RockDateTime.Now )
+            if ( !_isQuerystringPersonKey && !requiresRequest && assessment.CompletedDateTime.HasValue && assessment.CompletedDateTime.Value.AddDays( minDays ) <= RockDateTime.Now )
             {
                 btnRetakeTest.Visible = true;
-            }
-            else
-            {
-                btnRetakeTest.Visible = false;
             }
 
             // Resolve the text field merge fields
@@ -660,7 +745,7 @@ namespace Rockweb.Blocks.Crm
                 mergeFields.Add( "GrowthScore", result.GrowthScore );
             }
 
-            lResult.Text = GetAttributeValue( AttributeKeys.ResultsMessage ).ResolveMergeFields( mergeFields );
+            lResult.Text = GetAttributeValue( AttributeKey.ResultsMessage ).ResolveMergeFields( mergeFields );
         }
 
         /// <summary>
@@ -683,7 +768,7 @@ namespace Rockweb.Blocks.Crm
             if ( QuestionCount == 0 && _assessmentResponses != null )
             {
                 // Set the max number of questions to be no greater than the actual number of questions.
-                int numQuestions = this.GetAttributeValue( AttributeKeys.NumberofQuestions ).AsInteger();
+                int numQuestions = this.GetAttributeValue( AttributeKey.NumberOfQuestions ).AsInteger();
                 QuestionCount = ( numQuestions > _assessmentResponses.Count ) ? _assessmentResponses.Count : numQuestions;
             }
 

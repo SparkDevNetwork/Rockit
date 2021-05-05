@@ -34,6 +34,21 @@
   }
 }
 
+.ace_editor {
+  &.is-fullscreen {
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2500;
+    width: auto;
+    height: auto;
+    margin: 0;
+    border: 0;
+  }
+}
+
 .slug-row {
   display: block;
   margin-bottom: (@padding-base-vertical / 2);
@@ -80,7 +95,7 @@
 
   p {
     margin-bottom: 10px;
-    font-weight: normal !important;
+    font-weight: @font-weight-normal !important;
 
     &.attributes {
       margin-bottom: 0;

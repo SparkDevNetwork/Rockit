@@ -44,7 +44,7 @@
 
         // Default utility function to attempt to map a Rock.Web.UI.Controls.Pickers.TreeViewItem
         // to a more standard JS object.
-		_mapArrayDefault = function (arr) {
+		_mapArrayDefault = function (arr, treeView) {
 		    return $.map(arr, function (item) {
 		        var node = {
 		            id: item.Guid || item.Id,
@@ -58,8 +58,12 @@
 		        };
 
 		        if (item.Children && typeof item.Children.length === 'number') {
-		            node.children = _mapArrayDefault(item.Children);
-		        }
+		            node.children = _mapArrayDefault(item.Children, treeView);
+                }
+
+                if (node.isCategory) {
+                    node.id = treeView.options.categoryPrefix + node.id;
+                }
 
 		        return node;
 		    });
@@ -161,7 +165,8 @@
                     if (parentNode && parentNode.entityId) {
                         restUrl += parentNode.entityId;
                     } else {
-                        restUrl += parentId;
+                        var sanitizedId = parentId.toString().replace(self.options.categoryPrefix, '');
+                        restUrl += sanitizedId;
                     }
 
                     if (self.options.restParams) {
@@ -345,7 +350,7 @@
 
             // Call configured `mapData` function. If it wasn't overridden by the user,
             // `_mapArrayDefault` will be called.
-            nodeArray = this.options.mapping.mapData(data);
+            nodeArray = this.options.mapping.mapData(data, this);
 
             for (i = 0; i < nodeArray.length; i++) {
                 nodeArray[i].isOpen = false;
@@ -592,6 +597,17 @@
                 }
 
                 $item.toggleClass('selected');
+
+                // If the item exists under multiple tree branches, select/de-select all instances of the same item.
+                var isSelected = $item.hasClass('selected');
+                $rockTree.find('li[data-id="' + id + '"].rocktree-item > span').each(function (idx, span) {
+                    $(span).removeClass('selected');
+                    if (isSelected) {
+                        $(span).addClass('selected');
+                    }
+                });
+
+                $rockTree.find('.selected').parent('li[data-id="' + id + '"]').removeClass('selected');
                 $rockTree.find('.selected').parent('li').each(function (idx, li) {
                     var $li = $(li);
                     selectedNodes.push({
@@ -725,6 +741,7 @@
         local: null,
         multiselect: false,
         categorySelection: true,
+        categoryPrefix: '',
         showSelectChildren: false,
         loadingHtml: '<span class="rocktree-loading"><i class="fa fa-refresh fa-spin"></i></span>',
         iconClasses: {

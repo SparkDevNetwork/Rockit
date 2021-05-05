@@ -54,8 +54,8 @@ namespace RockWeb.Blocks.Prayer
         <strong>Prayer Request</strong>
     </div>
     <div class='col-md-6 text-right'>
-      {% if PrayerRequest.EnteredDateTime  %}
-          Date Entered: {{  PrayerRequest.EnteredDateTime | Date:'M/d/yyyy'  }}
+      {% if PrayerRequest.EnteredDateTime %}
+          Date Entered: {{ PrayerRequest.EnteredDateTime | Date:'M/d/yyyy' }}
       {% endif %}
     </div>
 </div>
@@ -80,10 +80,31 @@ namespace RockWeb.Blocks.Prayer
 {% endif %}
 
 " )]
-    [BooleanField( "Display Campus", "Display the campus filter", true,category: "Filtering", order: 6 )]
+    [BooleanField( "Display Campus", "Should the campus field be displayed? If there is only one active campus then the campus field will not show.", true,category: "Filtering", order: 6 )]
     [BooleanField( "Public Only", "If selected, all non-public prayer request will be excluded.", false, "", 7 )]
+    [BooleanField( "Create Interactions for Prayers",
+        Description = "If enabled then this block will record an Interaction whenever somebody prays for a prayer request.",
+        DefaultBooleanValue = true,
+        IsRequired = true,
+        Key = AttributeKey.CreateInteractionsForPrayers,
+        Order = 8 )]
     public partial class PrayerSession : RockBlock
     {
+        #region Keys
+
+        /// <summary>
+        /// Attribute keys for the <see cref="PrayerSession"/> block.
+        /// </summary>
+        private static class AttributeKey
+        {
+            /// <summary>
+            /// The create interactions for prayers key.
+            /// </summary>
+            public const string CreateInteractionsForPrayers = "CreateInteractionsForPrayers";
+        }
+
+        #endregion
+
         #region Fields
 
         private const string CAMPUS_PREFERENCE = "prayer-session-{0}-campus";
@@ -532,7 +553,11 @@ namespace RockWeb.Blocks.Prayer
             hlblPrayerCountTotal.Text = prayerRequest.PrayerCount.ToString() + " team prayers";
             hlblUrgent.Visible = prayerRequest.IsUrgent ?? false;
 
-            hlblCampus.Text = prayerRequest.CampusId.HasValue ? prayerRequest.Campus.Name : string.Empty;
+            if ( CampusCache.All( false ).Count() > 1 )
+            {
+                hlblCampus.Text = prayerRequest.CampusId.HasValue ? prayerRequest.Campus.Name : string.Empty;
+            }
+
             hlblCategory.Text = prayerRequest.Category.Name;
             var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson, new Rock.Lava.CommonMergeFieldsOptions { GetLegacyGlobalMergeFields = false } );
 
@@ -557,6 +582,11 @@ namespace RockWeb.Blocks.Prayer
             }
 
             CurrentPrayerRequestId = prayerRequest.Id;
+
+            if ( GetAttributeValue( AttributeKey.CreateInteractionsForPrayers ).AsBoolean() )
+            {
+                PrayerRequestService.EnqueuePrayerInteraction( prayerRequest, CurrentPerson, PageCache.Layout.Site.Name, Request.UserAgent, RockPage.GetClientIpAddress(), RockPage.Session["RockSessionId"]?.ToString().AsGuidOrNull() );
+            }
 
             try
             {

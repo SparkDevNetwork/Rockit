@@ -336,7 +336,7 @@
             LayoutDefinedValueGuid option must be specified
             </exception>
         </member>
-        <member name="M:Rock.StatementGenerator.Rest.StatementGeneratorFinancialTransactionsController.RenderGivingStatement(System.Int32,System.Nullable{System.Int32},System.Nullable{System.Int32})">
+        <member name="M:Rock.StatementGenerator.Rest.StatementGeneratorFinancialTransactionsController.RenderGivingStatement(System.Int32,System.Nullable{System.Int32},System.Nullable{System.Int32},System.Boolean)">
             <summary>
             Render and return a giving statement for the specified person.
             </summary>
@@ -348,7 +348,11 @@
             lava. This defined value should be a part of the Statement Generator Lava Template defined
             type. If no ID is specified, then the default defined value for the Statement Generator Lava
             Template defined type is assumed.</param>
-            <returns>The rendered giving statement</returns>
+            <param name="hideRefundedTransactions">if set to <c>true</c> transactions that have any
+            refunds will be hidden.</param>
+            <returns>
+            The rendered giving statement
+            </returns>
         </member>
         <member name="M:Rock.StatementGenerator.Rest.StatementGeneratorFinancialTransactionsController.GetFinancialPledgeQuery(Rock.StatementGenerator.StatementGeneratorOptions,Rock.Data.RockContext,System.Boolean)">
             <summary>
@@ -628,6 +632,14 @@
             The size of the chapter.
             </value>
         </member>
+        <member name="P:Rock.StatementGenerator.StatementGeneratorOptions.GroupByPageCount">
+            <summary>
+            Gets or sets a value indicating whether [group by page count].
+            </summary>
+            <value>
+              <c>true</c> if [group by page count]; otherwise, <c>false</c>.
+            </value>
+        </member>
         <member name="T:Rock.StatementGenerator.OrderBy">
             <summary>
             
@@ -635,12 +647,17 @@
         </member>
         <member name="F:Rock.StatementGenerator.OrderBy.PostalCode">
             <summary>
-            The postal code
+            Sort by postal code
             </summary>
         </member>
         <member name="F:Rock.StatementGenerator.OrderBy.LastName">
             <summary>
-            The last name
+            Sort by Last Name
+            </summary>
+        </member>
+        <member name="F:Rock.StatementGenerator.OrderBy.PageCount">
+            <summary>
+            Sort by Page Count
             </summary>
         </member>
         <member name="T:Rock.StatementGenerator.SystemGuid.Attribute">

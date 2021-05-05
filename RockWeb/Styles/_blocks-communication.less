@@ -42,19 +42,26 @@ iframe.email-body {
 
 // 2. Communication Entry
 // -------------------------
-.emaileditor-wrapper {
-  position: relative;
-  height: 900px;
-  margin: -15px;
+#emaileditor,
+.panel-fill-body {
+  height: ~"calc(100vh - var(--email-editor-offset, 360px))";
+  min-height: 300px;
+  margin: -15px -15px 0 -15px;
+  border-bottom: 1px solid @panel-border;
 }
 
-#emaileditor {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+.panel-actions-bordered {
+  padding: @panel-body-padding @panel-body-padding 0;
+  margin: @panel-body-padding -@panel-body-padding 0;
+  border-top: 1px solid @panel-border;
 }
+
+#emaileditor-properties {
+  width: 40%;
+  padding: (@grid-gutter-width / 2);
+  background-color: @panel-heading-bg;
+}
+
 
 #section-email {
   position: absolute;
@@ -80,6 +87,7 @@ iframe.email-body {
   bottom: 0;
   left: 0;
   width: 60%;
+  border-right: 1px solid @panel-border;
 }
 
 .emaileditor-iframe {
@@ -90,19 +98,12 @@ iframe.email-body {
   width: 100%;
   height: 100%;
   border: 0;
-  border-right: 1px solid @panel-border;
 }
 
-#emaileditor-properties {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 40%;
-  padding: 12px;
-  background-color: @panel-heading-bg;
+.emaileditor-propertypanels .propertypanel-title {
+  margin-top: 0;
+  font-weight: @font-weight-semibold;
 }
-
 
 // 3. Communication Wizard
 // -------------------------
@@ -116,6 +117,7 @@ iframe.email-body {
   overflow: hidden;
   color: @text-color;
   border: 1px solid @panel-border;
+  outline-offset: -1px;
 
   &:focus {
     color: @text-color;
@@ -123,7 +125,7 @@ iframe.email-body {
 
   &:hover {
     color: @text-color;
-    border: 2px solid @alert-info-border;
+    outline: 2px solid @alert-info-border;
   }
 
   label {
@@ -132,10 +134,10 @@ iframe.email-body {
 }
 
 .template-selected {
-  border: 2px solid @alert-info-text;
+  outline: 2px solid @alert-info-text;
 
   &:hover {
-    border: 2px solid @alert-info-text;
+    outline: 2px solid @alert-info-text;
   }
 
   &::before {
@@ -211,6 +213,7 @@ iframe.email-body {
     height: ~"calc(100vh - 200px)";
     min-height: 300px;
     border-right: 1px solid rgba(0,0,0, .2);
+
     @media (min-width: 599px) {
       min-width: 320px;
     }
@@ -220,14 +223,14 @@ iframe.email-body {
     }
 
     .header {
-      height: 49px;
       padding: 7px 16px;
+      font-weight: @font-weight-normal;
       background-color: @panel-heading-bg;
     }
 
     .overflow-scroll {
+      flex: 1 1 0;
       width: 100%;
-      height: ~"calc(100% - 50px)";
       overflow: hidden;
       overflow-y: scroll;
     }
@@ -279,7 +282,7 @@ iframe.email-body {
     }
   }
 
-  .messages-outer-container{
+  .messages-outer-container {
     position: relative;
     flex-grow: 1;
     padding: 15px;
@@ -400,7 +403,7 @@ iframe.email-body {
       border-radius: 20px;
     }
 
-    &.outbound .bubble{
+    &.outbound .bubble {
       color: #fff;
       background-color: #0084ff;
     }
@@ -431,7 +434,6 @@ iframe.email-body {
   background: @panel-heading-bg;
 }
 
-
 .components-list {
   margin: 12px 0;
 
@@ -454,6 +456,7 @@ iframe.email-body {
     text-align: center;
     cursor: -webkit-grab;
     cursor: -moz-grab;
+    cursor: grab;
     zoom: 1;
     background-color: #fff;
     border: 1px solid transparent;
@@ -491,9 +494,22 @@ iframe.email-body {
   }
 }
 
+.mobile-pages-container {
+  .component {
+    display: none;
+  }
+
+  .component.gu-transit {
+    display: block;
+    padding: @panel-heading-padding;
+    margin-bottom: @line-height-computed;
+    background-color: @panel-heading-bg; // Replace with @panel-widget-heading-bg
+    border: 1px solid @panel-heading-border; // Replace with @panel-widget-heading-border
+  }
+}
 
 .sms-actions-container {
-  padding: 20px 20px !important;
+  padding: 20px !important;
   counter-reset: section;
 
   .component {
@@ -550,6 +566,7 @@ iframe.email-body {
   }
 
   &.inactive {
+    color: fade(@text-color, 50%);
     background-color: rgba(255, 255, 255, .5);
 
     &::after {
@@ -596,7 +613,7 @@ iframe.email-body {
   }
 }
 
-.sms-pipeline  {
+.sms-pipeline-detail {
   .sms-heading {
     max-width: 500px;
     padding: 20px 16px;
@@ -615,14 +632,14 @@ iframe.email-body {
 
   .drag-container-empty::after {
     display: block;
-    content: 'Drag and Drop Here';
     max-width: 500px;
+    height: 200px;
     padding: 80px 0;
     margin: 0 auto 20px;
     font-size: 20px;
     text-align: center;
-    border: 3px dashed rgba(0,0,0,0.2);
-    height: 200px;
+    content: "Drag and Drop Here";
+    border: 3px dashed rgba(0,0,0,.2);
   }
 
   h4 {
@@ -631,7 +648,6 @@ iframe.email-body {
     font-size: 18px;
     font-weight: 500;
     background: @panel-heading-bg;
-    border-top: 1px solid rgba(219, 219, 219, .5);
     border-top: 1px solid fade(@panel-border, 100%);
   }
 
@@ -649,9 +665,99 @@ iframe.email-body {
 .component.gu-mirror,
 .sms-action.gu-mirror {
   list-style: none;
+  cursor: -moz-grabbing !important;
+  cursor: -webkit-grabbing !important;
+  cursor: grabbing !important;
 
   &::before,
   &::after {
     display: none;
   }
+}
+
+.metric-tile {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-align: center !important;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  align-items: center !important;
+  margin-bottom: 12px;
+  color: #fff;
+
+  .value {
+    flex-basis: 0;
+    flex-grow: 1;
+    min-width: 60%;
+    max-width: 100%;
+    padding: 4px 12px 14px;
+    font-size: 36px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: right;
+    -ms-flex-preferred-size: 0;
+    -ms-flex-positive: 1;
+
+    small {
+      display: block;
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1em;
+    }
+  }
+
+  .metric-icon {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-align: center;
+    flex-basis: 100px;
+    flex-grow: 1;
+    -ms-flex-pack: center;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    max-width: 100%;
+    height: 65px;
+    min-height: 100px;
+    font-size: 60px;
+    color: #fff;
+    text-align: center;
+    background: rgba(0, 0, 0, .15);
+    border-radius: 0;
+    -ms-flex-preferred-size: 0;
+    -ms-flex-positive: 1;
+  }
+
+  &.metric-sm .value {
+    font-size: 26px;
+    line-height: 1.4;
+
+    small {
+      font-size: 16px;
+    }
+  }
+}
+
+.metric-pending {
+  background-color: @metric-pending-bg;
+}
+
+.metric-delivered {
+  background-color: @metric-delivered-bg;
+}
+
+.metric-failed {
+  background-color: @metric-failed-bg;
+}
+
+.metric-cancelled {
+  background-color: @metric-cancelled-bg;
+}
+
+.metric-clicked {
+  background-color: @metric-clicked-bg;
+}
+
+.metric-opened {
+  background-color: @metric-opened-bg;
 }

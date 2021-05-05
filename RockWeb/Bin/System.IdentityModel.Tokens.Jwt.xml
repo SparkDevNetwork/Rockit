@@ -1175,6 +1175,27 @@
             <returns>A <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.</returns>
             <exception cref="T:System.ArgumentException">If 'expires' &lt;= 'notBefore'.</exception>
         </member>
+        <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CreateJwtSecurityToken(System.String,System.String,System.Security.Claims.ClaimsIdentity,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Nullable{System.DateTime},Microsoft.IdentityModel.Tokens.SigningCredentials)">
+            <summary>
+            Creates a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>
+            </summary>
+            <param name="issuer">The issuer of the token.</param>
+            <param name="audience">The audience for this token.</param>
+            <param name="subject">The source of the <see cref="T:System.Security.Claims.Claim"/>(s) for this token.</param>
+            <param name="notBefore">The notbefore time for this token.</param>
+            <param name="expires">The expiration time for this token.</param>
+            <param name="issuedAt">The issue time for this token.</param>
+            <param name="signingCredentials">Contains cryptographic material for generating a signature.</param>
+            <remarks>If <see cref="P:System.Security.Claims.ClaimsIdentity.Actor"/> is not null, then a claim { actort, 'value' } will be added to the payload. <see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CreateActorValue(System.Security.Claims.ClaimsIdentity)"/> for details on how the value is created.
+            <para>See <seealso cref="T:System.IdentityModel.Tokens.Jwt.JwtHeader"/> for details on how the HeaderParameters are added to the header.</para>
+            <para>See <seealso cref="T:System.IdentityModel.Tokens.Jwt.JwtPayload"/> for details on how the values are added to the payload.</para>
+            <para>Each <see cref="T:System.Security.Claims.Claim"/> on the <paramref name="subject"/> added will have <see cref="P:System.Security.Claims.Claim.Type"/> translated according to the mapping found in
+            <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/>. Adding and removing to <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/> will affect the name component of the Json claim.</para>
+            <para><see cref="M:Microsoft.IdentityModel.Tokens.SigningCredentials.#ctor(Microsoft.IdentityModel.Tokens.SecurityKey,System.String)"/> is used to sign <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityToken.RawData"/>.</para>
+            </remarks>
+            <returns>A <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.</returns>
+            <exception cref="T:System.ArgumentException">If 'expires' &lt;= 'notBefore'.</exception>
+        </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CreateToken(Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor)">
             <summary>
             Creates a Json Web Token (JWT).

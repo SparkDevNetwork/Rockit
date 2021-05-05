@@ -3,15 +3,19 @@
     initializeCodeEditor(context);
 
     function initializeCodeEditor(context) {
-        var $codeEditor = $('#codeeditor-div-' + context.options.codeEditorOptions.controlId);
-        var $codeEditorContainer = $codeEditor.closest('.code-editor-container');
-        $codeEditorContainer.hide();
-        $codeEditorContainer.height(context.layoutInfo.editingArea.height());
-        var $inCodeEditorModeHiddenField = $('#' + context.options.codeEditorOptions.inCodeEditorModeHiddenFieldId);
-        $inCodeEditorModeHiddenField.val("0");
-        // move code editor into summernote div
-        var element = $codeEditorContainer.detach();
-        context.layoutInfo.editingArea.closest('.note-editor').append(element);
+        // Prevent CodeEditor from being repeatedly re-initialized
+        if (typeof context.options.codeEditorOptions.initialized === 'undefined') {
+            var $codeEditor = $('#codeeditor-div-' + context.options.codeEditorOptions.controlId);
+            var $codeEditorContainer = $codeEditor.closest('.code-editor-container');
+            $codeEditorContainer.hide();
+
+            var $inCodeEditorModeHiddenField = $('#' + context.options.codeEditorOptions.inCodeEditorModeHiddenFieldId);
+            $inCodeEditorModeHiddenField.val("0");
+            // move code editor into summernote div
+            var element = $codeEditorContainer.detach();
+            context.layoutInfo.editingArea.closest('.note-editor').append(element);
+            context.options.codeEditorOptions.initialized = true;
+        }
     }
 
     // create button
@@ -33,13 +37,14 @@
 
                 // check if there are lava commands
                 var hasLavaCommandsRegEx = /{%.*%\}/;
-            
+
                 var hasLavaCommands = hasLavaCommandsRegEx.test(content);
 
                 if (!hasLavaCommands) {
                     $('.js-wysiwyg-warning').hide();
                     context.code(content);
                     context.layoutInfo.editingArea.show();
+                    context.layoutInfo.editor.removeClass('code-editor-visible');
                     context.layoutInfo.statusbar.show();
                     $codeEditorContainer.hide();
                     $inCodeEditorModeHiddenField.val("0");
@@ -62,13 +67,16 @@
                 }
 
                 context.layoutInfo.editingArea.hide();
+                context.layoutInfo.editor.addClass('code-editor-visible');
                 context.layoutInfo.statusbar.hide();
 
                 // HtmlEditor.cs will initialize this with keepEditorContent = true and set the codeEditor content instead of the summernoteNote editor content
                 // this will prevent bad html or scripts from trying to render when startInCodeEditor mode is enabled
                 if (!keepEditorContent) {
                     var content = context.code();
-                    ace.edit($codeEditor.attr('id')).setValue(content);
+                    var editor = ace.edit($codeEditor.attr('id'));
+                    editor.setValue(content);
+                    editor.resize();
                 }
                 $codeEditorContainer.show();
 
@@ -79,5 +87,5 @@
         }
     });
 
-    return button.render();   // return button as jquery object 
+    return button.render();   // return button as jquery object
 }

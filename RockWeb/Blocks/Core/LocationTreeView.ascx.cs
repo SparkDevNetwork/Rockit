@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,10 +34,22 @@ namespace RockWeb.Blocks.Core
     [Category( "Core" )]
     [Description( "Creates a navigation tree for named locations." )]
 
-    [TextField( "Treeview Title", "Location Tree View", false )]
-    [LinkedPage("Detail Page")]
+    [TextField( "Treeview Title",
+        Description = "Location Tree View",
+        IsRequired = false,
+        Key = AttributeKey.TreeviewTitle )]
+
+    [LinkedPage( "Detail Page",
+        Key = AttributeKey.DetailPage )]
+
     public partial class LocationTreeView : RockBlock
     {
+        public static class AttributeKey
+        {
+            public const string TreeviewTitle = "TreeviewTitle";
+            public const string DetailPage = "DetailPage";
+        }
+
 
         #region Fields
 
@@ -139,7 +151,7 @@ namespace RockWeb.Blocks.Core
             // disable add child Location if no Location is selected
             int selectedLocationId = hfSelectedLocationId.ValueAsInt();
 
-            if (selectedLocationId == 0)
+            if ( selectedLocationId == 0 )
             {
                 lbAddLocationChild.Enabled = false;
             }
@@ -154,14 +166,14 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
-        protected void lbAddLocationRoot_Click(object sender, EventArgs e)
+        protected void lbAddLocationRoot_Click( object sender, EventArgs e )
         {
             Dictionary<string, string> qryParams = new Dictionary<string, string>();
             qryParams.Add( "LocationId", 0.ToString() );
             qryParams.Add( "ParentLocationId", 0.ToString() );
             qryParams.Add( "ExpandedIds", hfInitialLocationParentIds.Value );
 
-            NavigateToLinkedPage( "DetailPage", qryParams );
+            NavigateToLinkedPage( AttributeKey.DetailPage, qryParams );
         }
 
         /// <summary>
@@ -169,7 +181,7 @@ namespace RockWeb.Blocks.Core
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
-        protected void lbAddLocationChild_Click(object sender, EventArgs e)
+        protected void lbAddLocationChild_Click( object sender, EventArgs e )
         {
             int locationId = hfSelectedLocationId.ValueAsInt();
 
@@ -178,7 +190,7 @@ namespace RockWeb.Blocks.Core
             qryParams.Add( "ParentLocationId", locationId.ToString() );
             qryParams.Add( "ExpandedIds", hfInitialLocationParentIds.Value );
 
-            NavigateToLinkedPage( "DetailPage", qryParams );
+            NavigateToLinkedPage( AttributeKey.DetailPage, qryParams );
         }
 
         #endregion
@@ -188,11 +200,11 @@ namespace RockWeb.Blocks.Core
         private Location FindFirstLocation()
         {
             return new LocationService( new RockContext() ).Queryable()
-                .Where( l => 
-                    l.Name != null && 
+                .Where( l =>
+                    l.Name != null &&
                     l.Name != string.Empty &&
-                    !l.ParentLocationId.HasValue)
-                .OrderBy( l => l.Name)
+                    !l.ParentLocationId.HasValue )
+                .OrderBy( l => l.Name )
                 .FirstOrDefault();
         }
 

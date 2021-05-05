@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
 using System.Linq;
+using System.Text;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
@@ -84,7 +85,7 @@ namespace RockWeb.Blocks.GroupScheduling
 
     public partial class GroupSchedulerAnalytics : RockBlock
     {
-        protected static class AttributeKey
+        private static class AttributeKey
         {
             public const string DeclineChartColors = "DeclineChartColors";
             public const string BarChartNoResponseColor = "BarChartNoResponseColor";
@@ -98,7 +99,7 @@ namespace RockWeb.Blocks.GroupScheduling
         /// <summary>
         /// Keys to use for UserPreferences
         /// </summary>
-        protected static class UserPreferenceKey
+        private static class UserPreferenceKey
         {
             /// <summary>
             /// The selected Date Range
@@ -157,8 +158,6 @@ namespace RockWeb.Blocks.GroupScheduling
         protected string DoughnutChartDeclineLabelsJSON { get; set; }
 
         protected string DoughnutChartDeclineValuesJSON { get; set; }
-
-        private List<string> _errorMessages;
 
         #endregion Properties
 
@@ -364,7 +363,6 @@ var barChart = new Chart(barCtx, {{
         /// </summary>
         private void LoadFilterFromUserPreferencesOrURL()
         {
-
             sdrpDateRange.DelimitedValues = this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedDateRange );
             hfTabs.Value = this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedViewBy );
             gpGroups.GroupId = this.GetUrlSettingOrBlockUserPreference( UserPreferenceKey.SelectedGroupId ).AsIntegerOrNull();
@@ -383,8 +381,6 @@ var barChart = new Chart(barCtx, {{
             }
 
             ppPerson.SetValue( selectedPerson );
-
-            
         }
 
         /// <summary>
@@ -461,7 +457,8 @@ var barChart = new Chart(barCtx, {{
                         break;
                     case "dataview":
                         var dataView = new DataViewService( rockContext ).Get( dvDataViews.SelectedValueAsInt().Value );
-                        var personsFromDv = dataView.GetQuery( null, rockContext, null, out _errorMessages ) as IQueryable<Person>;
+                        var dataViewGetQueryArgs = new DataViewGetQueryArgs { DbContext = rockContext };
+                        var personsFromDv = dataView.GetQuery( dataViewGetQueryArgs ) as IQueryable<Person>;
                         var personAliasIds = personsFromDv.Select( d => d.Aliases.Where( a => a.AliasPersonId == d.Id ).Select( a => a.Id ).FirstOrDefault() ).ToList();
 
                         groupAttendances = groupAttendances.Where( a => personAliasIds.Contains( a.PersonAliasId.Value ) );
@@ -544,7 +541,7 @@ var barChart = new Chart(barCtx, {{
 
                 var groupSchedules = groupLocations.SelectMany( a => a.Schedules ).DistinctBy( a => a.Guid ).ToList();
 
-                List<Schedule> sortedScheduleList = groupSchedules.OrderByNextScheduledDateTime();
+                List<Schedule> sortedScheduleList = groupSchedules.OrderByOrderAndNextScheduledDateTime();
 
                 cblSchedules.Visible = sortedScheduleList.Any();
 
@@ -573,20 +570,29 @@ var barChart = new Chart(barCtx, {{
                 return;
             }
 
-            DateTime firstDateTime;
-            DateTime lastDateTime;
+            DateRange dateRange;
 
             if ( sdrpDateRange.DelimitedValues.IsNotNullOrWhiteSpace() )
             {
-                var dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( sdrpDateRange.DelimitedValues );
-                firstDateTime = dateRange.Start.Value.Date;
-                lastDateTime = dateRange.End.Value.Date;
+                dateRange = SlidingDateRangePicker.CalculateDateRangeFromDelimitedValues( sdrpDateRange.DelimitedValues );
             }
             else
             {
-                firstDateTime = attendances.Min( a => a.StartDateTime.Date );
-                lastDateTime = attendances.Max( a => a.StartDateTime.Date );
+                dateRange = new DateRange();
             }
+
+            if ( !dateRange.Start.HasValue )
+            {
+                dateRange.Start = attendances.Min( a => a.StartDateTime.Date );
+            }
+
+            if ( !dateRange.End.HasValue )
+            {
+                dateRange.End = attendances.Max( a => a.StartDateTime.Date );
+            }
+
+            var firstDateTime = dateRange.Start.Value.Date;
+            var lastDateTime = dateRange.End.Value.Date;
 
             int daysCount = ( int ) Math.Ceiling( ( lastDateTime - firstDateTime ).TotalDays );
 
@@ -670,14 +676,14 @@ var barChart = new Chart(barCtx, {{
         protected void CreateBarChartGroupedByWeek( int daysCount, DateTime firstDateTime, List<Attendance> attendances )
         {
             List<SchedulerSummaryData> barchartdata = attendances
-                .GroupBy( a => new { StartWeek = a.StartDateTime.StartOfWeek( DayOfWeek.Monday ) } )
+                .GroupBy( a => new { StartWeek = a.StartDateTime.StartOfWeek( RockDateTime.FirstDayOfWeek ) } )
                 .Select( a => new SchedulerSummaryData( a.Key.StartWeek, a.ToList() ) )
                 .ToList();
 
             var weeks = Enumerable.Range( 0, ( int ) Math.Ceiling( ( daysCount / 7.0 ) + 1 ) )
                 .Select( x => new
                 {
-                    date = firstDateTime.StartOfWeek( DayOfWeek.Monday ).AddDays( x * 7 )
+                    date = firstDateTime.StartOfWeek( RockDateTime.FirstDayOfWeek ).AddDays( x * 7 )
                 } );
 
             var groupedByDate = weeks
@@ -767,13 +773,38 @@ var barChart = new Chart(barCtx, {{
         /// <returns></returns>
         protected bool ValidateFilter()
         {
+            nbNoData.Visible = false;
             nbGroupWarning.Visible = nbPersonWarning.Visible = nbDataviewWarning.Visible = false;
             switch ( hfTabs.Value )
             {
                 case "group":
-                    return gpGroups.GroupId != null ? true : !( nbGroupWarning.Visible = true );
+                    {
+                        if ( gpGroups.GroupId != null )
+                        {
+                            nbGroupWarning.Visible = false;
+                            var group = new GroupService( new RockContext() ).Get( gpGroups.GroupId.Value );
+                            if ( group != null && !group.DisableScheduling )
+                            {
+                                nbSchedulingDisabled.Visible = false;
+                                return true;
+                            }
+                            else
+                            {
+                                nbSchedulingDisabled.Visible = true;
+                                nbSchedulingDisabled.Text = string.Format( "Scheduling is disabled for the {0} group.", group.Name );
+                            }
+                        }
+                        else
+                        {
+                            nbGroupWarning.Visible = true;
+                        }
+
+                        return false;
+                    }
+
                 case "person":
                     return ppPerson.PersonAliasId != null ? true : !( nbPersonWarning.Visible = true );
+
                 case "dataview":
                     return ( dvDataViews.SelectedValue != null && dvDataViews.SelectedValue != "0" ) ? true : !( nbDataviewWarning.Visible = true );
             }
@@ -837,7 +868,7 @@ var barChart = new Chart(barCtx, {{
                 }
             }
 
-            if (gData.SortProperty != null)
+            if ( gData.SortProperty != null )
             {
                 schedulerSummaryDataList = schedulerSummaryDataList.AsQueryable().Sort( gData.SortProperty ).ToList();
             }
@@ -943,6 +974,7 @@ var barChart = new Chart(barCtx, {{
             {
                 Name = person.FullName;
                 SetCountFields( attendances );
+                SetDeclineReasonsField( attendances );
             }
 
             private void SetCountFields( List<Attendance> attendances )
@@ -954,11 +986,25 @@ var barChart = new Chart(barCtx, {{
                 CommittedNoShowCount = attendances.Count( aa => aa.RSVP == RSVP.Yes && aa.DidAttend == false );
             }
 
+            private void SetDeclineReasonsField( List<Attendance> attendances )
+            {
+                var declinedAttendances = attendances.Where( a => a.RSVP == RSVP.No );
+                var declinedReasons = new StringBuilder("<ul class='list-unstyled m-0'>");
+                foreach ( var declinedAttendance in declinedAttendances )
+                {
+                    var declinedReason = DefinedValueCache.GetValue( declinedAttendance.DeclineReasonValueId );
+                    declinedReasons.Append( string.Format( "<li><small>{0}</small> {1}</li>", declinedAttendance.StartDateTime.ToShortDateTimeString(), declinedReason.EncodeHtml() ) );
+                }
+                declinedReasons.Append( "</ul>" );
+                DeclinedReasons = declinedReasons.ToString();
+            }
+
             public string Name { get; private set; }
 
             public DateTime StartDateTime { get; private set; }
 
             public int ScheduledCount { get; private set; }
+
             public string ScheduledCountText
             {
                 get
@@ -968,6 +1014,7 @@ var barChart = new Chart(barCtx, {{
             }
 
             public int NoResponseCount { get; private set; }
+
             public string NoResponseCountText
             {
                 get
@@ -977,6 +1024,7 @@ var barChart = new Chart(barCtx, {{
             }
 
             public int DeclineCount { get; private set; }
+
             public string DeclineCountText
             {
                 get
@@ -986,6 +1034,7 @@ var barChart = new Chart(barCtx, {{
             }
 
             public int AttendedCount { get; private set; }
+
             public string AttendedCountText
             {
                 get
@@ -995,6 +1044,7 @@ var barChart = new Chart(barCtx, {{
             }
 
             public int CommittedNoShowCount { get; private set; }
+
             public string CommittedNoShowCountText
             {
                 get
@@ -1002,6 +1052,8 @@ var barChart = new Chart(barCtx, {{
                     return CommittedNoShowCount == 0 ? "-" : CommittedNoShowCount.ToString();
                 }
             }
+
+            public string DeclinedReasons { get; private set; }
         }
 
         /// <summary>

@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Data.Entity;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -26,6 +27,7 @@ using Rock;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
+using Rock.Web.Cache;
 
 namespace RockWeb
 {
@@ -44,19 +46,24 @@ namespace RockWeb
             {
                 context.Response.Clear();
 
+                context.RewritePath( context.Server.HtmlDecode( context.Request.Url.PathAndQuery ) );
+
                 // Check to see if this is a BinaryFileType/BinaryFile or just a plain content file (if isBinaryFile not specified, assume it is a BinaryFile)
                 bool isBinaryFile = ( context.Request.QueryString["isBinaryFile"] ?? "T" ).AsBoolean();
 
                 if ( isBinaryFile )
                 {
-                    ProcessBinaryFileRequest( context );
+                    using ( var rockContext = new RockContext() )
+                    {
+                        ProcessBinaryFileRequest( context, rockContext );
+                    }
                 }
                 else
                 {
                     ProcessContentFileRequest( context );
                 }
             }
-            catch ( Exception ex )
+            catch ( Exception )
             {
                 if ( !context.Response.IsClientConnected )
                 {
@@ -64,7 +71,7 @@ namespace RockWeb
                 }
                 else
                 {
-                    throw ex;
+                    throw;
                 }
             }
         }
@@ -141,11 +148,21 @@ namespace RockWeb
                         {
                             using ( var resizedStream = GetResized( context.Request.QueryString, fileContents ) )
                             {
+                                if ( resizedStream.CanSeek )
+                                {
+                                    resizedStream.Seek( 0, SeekOrigin.Begin );
+                                }
+
                                 resizedStream.CopyTo( context.Response.OutputStream );
                             }
                         }
                         else
                         {
+                            if ( fileContents.CanSeek )
+                            {
+                                fileContents.Seek( 0, SeekOrigin.Begin );
+                            }
+
                             fileContents.CopyTo( context.Response.OutputStream );
                         }
 
@@ -183,7 +200,7 @@ namespace RockWeb
         /// Processes the binary file request.
         /// </summary>
         /// <param name="context">The context.</param>
-        private void ProcessBinaryFileRequest( HttpContext context )
+        private void ProcessBinaryFileRequest( HttpContext context, RockContext rockContext )
         {
             int fileId = context.Request.QueryString["id"].AsInteger();
             Guid fileGuid = context.Request.QueryString["guid"].AsGuid();
@@ -193,8 +210,6 @@ namespace RockWeb
                 SendBadRequest( context, "File id key must be a guid or an int." );
                 return;
             }
-
-            var rockContext = new RockContext();
 
             var binaryFileQuery = new BinaryFileService( rockContext ).Queryable();
             if ( fileGuid != Guid.Empty )
@@ -211,8 +226,9 @@ namespace RockWeb
             var binaryFileMetaData = binaryFileQuery.Select( a => new
             {
                 a.Id,
-                BinaryFileType_AllowCaching = a.BinaryFileType.AllowCaching,
+                BinaryFileType_CacheToServerFileSystem = a.BinaryFileType.CacheToServerFileSystem,
                 BinaryFileType_RequiresViewSecurity = a.BinaryFileType.RequiresViewSecurity,
+                a.BinaryFileTypeId,
                 ModifiedDateTime = a.ModifiedDateTime ?? DateTime.MaxValue,
                 a.MimeType,
                 a.FileName
@@ -224,13 +240,17 @@ namespace RockWeb
                 return;
             }
 
+            // Add cache validation headers
+            context.Response.AddHeader( "Last-Modified", binaryFileMetaData.ModifiedDateTime.ToUniversalTime().ToString( "R" ) );
+            context.Response.AddHeader( "ETag", binaryFileMetaData.ModifiedDateTime.ToString().XxHash() );
+
             //// if the binaryFile's BinaryFileType requires view security, check security
             //// note: we put a RequiresViewSecurity flag on BinaryFileType because checking security for every image would be slow (~40ms+ per image request)
             if ( binaryFileMetaData.BinaryFileType_RequiresViewSecurity )
             {
                 var currentUser = new UserLoginService( rockContext ).GetByUserName( UserLogin.GetCurrentUserName() );
                 Person currentPerson = currentUser != null ? currentUser.Person : null;
-                BinaryFile binaryFileAuth = new BinaryFileService( rockContext ).Queryable( "BinaryFileType" ).First( a => a.Id == binaryFileMetaData.Id );
+                BinaryFile binaryFileAuth = new BinaryFileService( rockContext ).Queryable( "BinaryFileType" ).AsNoTracking().First( a => a.Id == binaryFileMetaData.Id );
                 if ( !binaryFileAuth.IsAuthorized( Authorization.VIEW, currentPerson ) )
                 {
                     SendNotAuthorized( context );
@@ -245,7 +265,7 @@ namespace RockWeb
                 // Is it cached
                 string cacheName = UrlQueryToCachedFileName( context.Request.QueryString, binaryFileMetaData.MimeType );
                 string physCachedFilePath = context.Request.MapPath( string.Format( "~/App_Data/Cache/{0}", cacheName ) );
-                if ( binaryFileMetaData.BinaryFileType_AllowCaching && File.Exists( physCachedFilePath ) )
+                if ( binaryFileMetaData.BinaryFileType_CacheToServerFileSystem && File.Exists( physCachedFilePath ) )
                 {
                     //// Compare the File's LastWrite DateTime (which comes from the OS's clock), adjust it for the Rock OrgTimeZone, then compare to BinaryFile's ModifiedDateTime (which is already in OrgTimeZone).
                     //// If the BinaryFile record in the database is less recent than the last time this was cached, it is safe to use the Cached version.
@@ -261,7 +281,7 @@ namespace RockWeb
                 if ( fileContent == null )
                 {
                     // If we didn't get it from the cache, get it from the binaryFileService
-                    BinaryFile binaryFile = GetFromBinaryFileService( context, binaryFileMetaData.Id );
+                    BinaryFile binaryFile = GetFromBinaryFileService( context, binaryFileMetaData.Id, rockContext );
 
                     if ( binaryFile != null )
                     {
@@ -282,7 +302,7 @@ namespace RockWeb
                             }
                         }
 
-                        if ( binaryFileMetaData.BinaryFileType_AllowCaching )
+                        if ( binaryFileMetaData.BinaryFileType_CacheToServerFileSystem )
                         {
                             Cache( fileContent, physCachedFilePath );
 
@@ -307,11 +327,10 @@ namespace RockWeb
                 }
 
                 // respond with File
-                if ( binaryFileMetaData.BinaryFileType_AllowCaching )
+                if ( binaryFileMetaData.BinaryFileTypeId != null )
                 {
-                    // if binaryFileType is set to allowcaching, also tell the browser to cache it for 365 days
-                    context.Response.Cache.SetLastModified( binaryFileMetaData.ModifiedDateTime );
-                    context.Response.Cache.SetMaxAge( new TimeSpan( 365, 0, 0, 0 ) );
+                    var binaryFileCache = BinaryFileTypeCache.Get( binaryFileMetaData.BinaryFileTypeId.Value );
+                    binaryFileCache.CacheControlHeader.SetupHttpCachePolicy( context.Response.Cache );
                 }
 
                 // set the mime-type to that of the binary file
@@ -402,12 +421,10 @@ namespace RockWeb
         /// <param name="fileId">The file identifier.</param>
         /// <param name="fileGuid">The file unique identifier.</param>
         /// <returns></returns>
-        private BinaryFile GetFromBinaryFileService( HttpContext context, int fileId )
+        private BinaryFile GetFromBinaryFileService( HttpContext context, int fileId, RockContext rockContext )
         {
             BinaryFile binaryFile = null;
             System.Threading.ManualResetEvent completedEvent = new ManualResetEvent( false );
-
-            var rockContext = new RockContext();
 
             // use the binaryFileService.BeginGet/EndGet which is a little faster than the regular get
             AsyncCallback cb = ( IAsyncResult asyncResult ) =>
@@ -423,6 +440,7 @@ namespace RockWeb
             // wait up to 5 minutes for the response
             completedEvent.WaitOne( 300000 );
             return binaryFile;
+
         }
 
         /// <summary>

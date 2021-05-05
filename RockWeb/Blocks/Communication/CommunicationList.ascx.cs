@@ -25,11 +25,11 @@ using System.Web.UI.WebControls;
 
 using Rock;
 using Rock.Attribute;
-using Rock.Constants;
 using Rock.Data;
 using Rock.Model;
+using Rock.Reporting;
 using Rock.Security;
-using Rock.Web;
+using Rock.Utility;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
@@ -40,13 +40,46 @@ namespace RockWeb.Blocks.Communication
     [Category( "Communication" )]
     [Description( "Lists the status of all previously created communications." )]
 
+    #region Block Attributes
     [SecurityAction( Authorization.APPROVE, "The roles and/or users that have access to approve new communications." )]
 
-    [LinkedPage( "Detail Page", order: 1 )]
-    [LinkedPage( "Email Analytics", defaultValue: Rock.SystemGuid.Page.EMAIL_ANALYTICS, order: 2 )]
+    [LinkedPage(
+        "Detail Page",
+        Key = AttributeKey.DetailPage,
+        Order = 1 )]
+
+    #endregion Block Attributes
     public partial class CommunicationList : Rock.Web.UI.RockBlock, ICustomGridColumns
     {
+        #region Attribute Keys
+
+        /// <summary>
+        /// Keys to use for Block Attributes
+        /// </summary>
+        private static class AttributeKey
+        {
+            public const string DetailPage = "DetailPage";
+        }
+
+        #endregion Attribute Keys
+
+        #region Page Parameter Keys
+
+        /// <summary>
+        /// Keys to use for Page Parameters
+        /// </summary>
+        private static class PageParameterKey
+        {
+            public const string CommunicationId = "CommunicationId";
+        }
+
+        #endregion
+
+        #region Fields
+
         private bool canApprove = false;
+
+        #endregion Fields
 
         #region Control Methods
 
@@ -115,6 +148,11 @@ namespace RockWeb.Blocks.Communication
             }
             rFilter.SaveUserPreference( "Created Date Range", drpCreatedDates.DelimitedValues );
 
+            if ( nreRecipientCount.LowerValue.HasValue || nreRecipientCount.UpperValue.HasValue )
+            {
+                rFilter.SaveUserPreference( "Recipient Count", nreRecipientCount.DelimitedValues );
+            }
+
             rFilter.SaveUserPreference( "Sent Date Range", drpSentDates.DelimitedValues );
             rFilter.SaveUserPreference( "Content", tbContent.Text );
 
@@ -182,6 +220,11 @@ namespace RockWeb.Blocks.Communication
                         e.Value = DateRangePicker.FormatDelimitedValues( e.Value );
                         break;
                     }
+                case "Recipient Count":
+                    {
+                        e.Value = NumberRangeEditor.FormatDelimitedValues( e.Value );
+                        break;
+                    }
                 default:
                     {
                         e.Value = string.Empty;
@@ -222,18 +265,6 @@ namespace RockWeb.Blocks.Communication
                         }
                         lDetails.Text = details.ToString();
                     }
-
-                    Literal lEmailAnalyticsLink = e.Row.FindControl( "lEmailAnalyticsLink" ) as Literal;
-                    if ( lEmailAnalyticsLink != null )
-                    {
-                        var qryParams = new Dictionary<string, string>();
-                        qryParams.Add( "CommunicationId", communicationItem.Id.ToString() );
-                        var emailAnalyticsUrl = new PageReference( this.GetAttributeValue( "EmailAnalytics" ), qryParams ).BuildUrl();
-                        if ( !string.IsNullOrEmpty( emailAnalyticsUrl ) )
-                        {
-                            lEmailAnalyticsLink.Text = string.Format( "<div class='text-center'><a href='{0}' class='btn btn-default btn-sm' title='Email Analytics'><i class='fa fa-line-chart'></i></a></div>", emailAnalyticsUrl );
-                        }
-                    }
                 }
             }
         }
@@ -245,7 +276,7 @@ namespace RockWeb.Blocks.Communication
         /// <param name="e">The <see cref="Rock.Web.UI.Controls.RowEventArgs" /> instance containing the event data.</param>
         protected void gCommunication_RowSelected( object sender, Rock.Web.UI.Controls.RowEventArgs e )
         {
-            NavigateToLinkedPage( "DetailPage", "CommunicationId", e.RowKeyId );
+            NavigateToLinkedPage( AttributeKey.DetailPage, PageParameterKey.CommunicationId, e.RowKeyId );
         }
 
         /// <summary>
@@ -330,6 +361,8 @@ namespace RockWeb.Blocks.Communication
                 rFilter.SaveUserPreference( "Created Date Range", drpCreatedDates.DelimitedValues );
             }
 
+            nreRecipientCount.DelimitedValues = rFilter.GetUserPreference( "Recipient Count" );
+
             drpSentDates.DelimitedValues = rFilter.GetUserPreference( "Sent Date Range" );
 
             tbContent.Text = rFilter.GetUserPreference( "Content" );
@@ -384,6 +417,16 @@ namespace RockWeb.Blocks.Communication
                         c.SenderPersonAlias.PersonId == CurrentPersonId );
             }
 
+            if ( nreRecipientCount.LowerValue.HasValue )
+            {
+                communications = communications.Where( a => a.Recipients.Count() >= nreRecipientCount.LowerValue.Value );
+            }
+
+            if ( nreRecipientCount.UpperValue.HasValue )
+            {
+                communications = communications.Where( a => a.Recipients.Count() <= nreRecipientCount.UpperValue.Value );
+            }
+
             if ( drpCreatedDates.LowerValue.HasValue )
             {
                 communications = communications.Where( a => a.CreatedDateTime.HasValue && a.CreatedDateTime.Value >= drpCreatedDates.LowerValue.Value );
@@ -428,8 +471,7 @@ namespace RockWeb.Blocks.Communication
                 {
                     Id = c.Id,
                     CommunicationType = c.CommunicationType,
-                    // Subject = string.IsNullOrEmpty( c.Subject ) ? c.Name : c.Subject,
-                    Subject = string.IsNullOrEmpty( c.Name ) ? ( string.IsNullOrEmpty( c.Subject ) ? c.PushTitle : c.Subject ) : c.Name,
+                    Subject = string.IsNullOrEmpty( c.Subject ) ? ( string.IsNullOrEmpty( c.PushTitle ) ? c.Name : c.PushTitle ) : c.Subject,
                     CreatedDateTime = c.CreatedDateTime,
                     SendDateTime = c.SendDateTime ?? c.FutureSendDateTime,
                     SendDateTimePrefix = c.SendDateTime == null && c.FutureSendDateTime != null ? "<span class='label label-info'>Future</span>&nbsp;" : "",
@@ -463,28 +505,24 @@ namespace RockWeb.Blocks.Communication
                 gCommunication.SetLinqDataSource( queryable );
                 gCommunication.DataBind();
             }
-            catch ( Exception e )
+            catch ( Exception exception )
             {
-                ExceptionLogService.LogException( e );
+                ExceptionLogService.LogException( exception );
 
-                Exception sqlException = e;
-                while ( sqlException != null && !( sqlException is System.Data.SqlClient.SqlException ) )
-                {
-                    sqlException = sqlException.InnerException;
-                }
+                var sqlTimeoutException = ReportingHelper.FindSqlTimeoutException( exception );
 
                 nbBindError.Text = string.Format( "<p>An error occurred trying to retrieve the communication history. Please try adjusting your filter settings and try again.</p><p>Error: {0}</p>",
-                    sqlException != null ? sqlException.Message : e.Message );
+                    sqlTimeoutException != null ? sqlTimeoutException.Message : exception.Message );
 
+                // if an error occurred, bind the grid with an empty object list
                 gCommunication.DataSource = new List<object>();
                 gCommunication.DataBind();
             }
-
         }
 
         #endregion
 
-        protected class CommunicationItem : DotLiquid.Drop
+        protected class CommunicationItem : RockDynamic
         {
             public int Id { get; set; }
             public CommunicationType CommunicationType { get; set; }
@@ -537,5 +575,32 @@ namespace RockWeb.Blocks.Communication
             }
         }
 
+        protected void gCommunication_Copy( object sender, RowEventArgs e )
+        {
+            int? newCommunicationId = null;
+
+            using ( var rockContext = new RockContext() )
+            {
+                var communicationService = new CommunicationService( rockContext );
+
+                var newCommunication = communicationService.Copy( e.RowKeyId, CurrentPersonAliasId );
+                if ( newCommunication != null )
+                {
+                    communicationService.Add( newCommunication );
+                    rockContext.SaveChanges();
+
+                    newCommunicationId = newCommunication.Id;
+                }
+            }
+
+            if ( newCommunicationId != null )
+            {
+                var pageParams = new Dictionary<string, string>
+                {
+                    { PageParameterKey.CommunicationId, newCommunicationId.ToString() }
+                };
+                NavigateToLinkedPage( AttributeKey.DetailPage, pageParams );
+            }
+        }
     }
 }

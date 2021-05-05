@@ -28,7 +28,7 @@
                         <Rock:RockTextBox ID="tbCreateFolder" runat="server" CssClass="js-createfolder-input input-sm" />
                     </div>
                     <div class="pull-left padding-v-sm">
-                        <asp:LinkButton ID="lbCreateFolderAccept" runat="server" CssClass="btn btn-xs btn-default js-createfolder-accept" OnClick="lbCreateFolderAccept_Click" OnClientClick="return Rock.controls.assetManager.createFolderAccept_click();" >
+                        <asp:LinkButton ID="lbCreateFolderAccept" runat="server" CssClass="btn btn-xs btn-default js-createfolder-accept" OnClick="lbCreateFolderAccept_Click" >
                             <i class="fa fa-check"></i> Create Folder
                         </asp:LinkButton>
 
@@ -91,7 +91,7 @@
                             <Rock:RockTextBox ID="tbRenameFile" runat="server" CssClass="js-renamefile-input input-sm"  />
                         </div>
 
-                        <asp:LinkButton ID="lbRenameFileAccept" runat="server" CssClass="btn btn-xs btn-default js-renamefile-accept" OnClick="lbRenameFileAccept_Click" OnClientClick="return Rock.controls.assetManager.renameFileAccept_click();">
+                        <asp:LinkButton ID="lbRenameFileAccept" runat="server" CssClass="btn btn-xs btn-default js-renamefile-accept" OnClick="lbRenameFileAccept_Click">
                             <i class="fa fa-check"></i> Rename File
                         </asp:LinkButton>
 
@@ -106,7 +106,7 @@
                             <ItemTemplate>
                                 <tr>
                                     <td><Rock:RockCheckBox ID="cbSelected" runat="server" CssClass="js-checkbox" /></td>
-                                    <td><img src='<%# Eval("IconPath") %>' style='max-width:60px;'></td>
+                                    <td><img id="imgIconPath" src='<%# Eval("IconPath") %>' style='max-width:60px;' runat="server"></td>
                                     <td>
                                         <asp:Label ID="lbName" runat="server" Text='<%# Eval("Name") %>' CssClass="align-middle js-assetManager-name"></asp:Label>
                                         <asp:Label ID="lbUrl" runat="server" Text='<%# Eval("Uri") %>' style="display: none" CssClass="js-assetManager-uri" ></asp:Label>

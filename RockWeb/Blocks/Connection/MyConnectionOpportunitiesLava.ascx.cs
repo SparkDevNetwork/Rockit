@@ -35,11 +35,53 @@ namespace RockWeb.Blocks.Connection
     [Category( "Connection" )]
     [Description( "Block to display connection opportunities that are assigned to the current user. The display format is controlled by a lava template." )]
 
-    [LinkedPage( "Detail Page", "Page used to view details of a request.", false, Rock.SystemGuid.Page.CONNECTION_REQUEST_DETAIL, "", 1 )]
-    [ConnectionTypesField( "Connection Types", "Optional list of connection types to limit the display to (All will be displayed by default).", false, order: 2 )]
-    [CodeEditorField( "Contents", @"The Lava template to use for displaying connection opportunities assigned to current user.", CodeEditorMode.Lava, CodeEditorTheme.Rock, 400, false, @"{% include '~~/Assets/Lava/MyConnectionOpportunitiesSortable.lava' %}", "", 3 )]
+    #region Block Attributes
+
+    [LinkedPage(
+        "Detail Page",
+        Description = "Page used to view details of a request.",
+        IsRequired = false,
+        DefaultValue = Rock.SystemGuid.Page.CONNECTION_REQUEST_DETAIL,
+        Order = 1,
+        Key = AttributeKey.DetailPage )]
+
+    [ConnectionTypesField(
+        "Include Connection Types",
+        Description = "Optional list of connection types to include in the display to (All will be displayed by default).",
+        IsRequired = false,
+        Order = 2,
+        Key = AttributeKey.IncludedConnectionTypes )]
+
+    [ConnectionTypesField(
+        "Exclude Connection Types",
+        Description = "Optional list of connection types to exclude from the display to (None will be excluded by default).",
+        IsRequired = false,
+        Order = 3,
+        Key = AttributeKey.ExcludedConnectionTypes )]
+
+    [CodeEditorField(
+        "Contents",
+        Description = @"The Lava template to use for displaying connection opportunities assigned to current user.",
+        EditorMode = CodeEditorMode.Lava,
+        EditorTheme = CodeEditorTheme.Rock,
+        EditorHeight = 400,
+        IsRequired = false,
+        DefaultValue = @"{% include '~~/Assets/Lava/MyConnectionOpportunitiesSortable.lava' %}",
+        Key = AttributeKey.Contents,
+        Order = 4 )]
+    #endregion Block Attributes
     public partial class MyConnectionOpportunitiesLava : Rock.Web.UI.RockBlock
     {
+        #region Attribute Keys
+        private static class AttributeKey
+        {
+            public const string IncludedConnectionTypes = "ConnectionTypes";
+            public const string DetailPage = "DetailPage";
+            public const string Contents = "Contents";
+            public const string ExcludedConnectionTypes = "ExcludedConnectionTypes";
+        }
+        #endregion Attribute Keys
+
         #region Base Control Methods
 
         /// <summary>
@@ -89,13 +131,14 @@ namespace RockWeb.Blocks.Connection
 
         private void BindData()
         {
-            string contents = GetAttributeValue( "Contents" );
+            string contents = GetAttributeValue( AttributeKey.Contents );
 
             string appRoot = ResolveRockUrl( "~/" );
             string themeRoot = ResolveRockUrl( "~~/" );
             contents = contents.Replace( "~~/", themeRoot ).Replace( "~/", appRoot );
 
-            var connectionTypeGuids = GetAttributeValue( "ConnectionTypes" ).SplitDelimitedValues().AsGuidList();
+            var includedConnectionTypeGuids = GetAttributeValue( AttributeKey.IncludedConnectionTypes ).SplitDelimitedValues().AsGuidList();
+            var excludedConnectionTypeGuids = GetAttributeValue( AttributeKey.ExcludedConnectionTypes ).SplitDelimitedValues().AsGuidList();
 
             DateTime midnightToday = RockDateTime.Today.AddDays( 1 );
 
@@ -105,9 +148,14 @@ namespace RockWeb.Blocks.Connection
                 .Where( r => r.ConnectionState == ConnectionState.Active ||
                                     ( r.ConnectionState == ConnectionState.FutureFollowUp && r.FollowupDate.HasValue && r.FollowupDate.Value < midnightToday ) );
 
-            if ( connectionTypeGuids.Any() )
+            if ( includedConnectionTypeGuids.Any() )
             {
-                connectionRequests = connectionRequests.Where( a => connectionTypeGuids.Contains( a.ConnectionOpportunity.ConnectionType.Guid ) );
+                connectionRequests = connectionRequests.Where( a => includedConnectionTypeGuids.Contains( a.ConnectionOpportunity.ConnectionType.Guid ) );
+            }
+
+            if ( excludedConnectionTypeGuids.Any() )
+            {
+                connectionRequests = connectionRequests.Where( a => !excludedConnectionTypeGuids.Contains( a.ConnectionOpportunity.ConnectionType.Guid ) );
             }
 
             connectionRequests = connectionRequests.OrderBy( r => r.PersonAlias.Person.LastName ).ThenBy( r => r.PersonAlias.Person.NickName );
@@ -125,7 +173,7 @@ namespace RockWeb.Blocks.Connection
             mergeFields.Add( "LastActivityLookup", lastActivityNotes );
 
             Dictionary<string, object> linkedPages = new Dictionary<string, object>();
-            linkedPages.Add( "DetailPage", LinkedPageRoute( "DetailPage" ) );
+            linkedPages.Add( "DetailPage", LinkedPageRoute( AttributeKey.DetailPage ) );
             mergeFields.Add( "LinkedPages", linkedPages );
 
             lContents.Text = contents.ResolveMergeFields( mergeFields );

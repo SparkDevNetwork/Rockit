@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-//
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -22,21 +21,63 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Web;
+
 using Rock;
-using Rock.Attribute;
 using Rock.Model;
+using Rock.Web.Cache;
 using Rock.Web.UI;
 
 namespace RockWeb.Blocks.Utility
 {
     /// <summary>
-    /// Template block for developers to use to start a new block.
     /// </summary>
     [DisplayName( "HtmlEditor FileBrowser" )]
     [Category( "Utility" )]
     [Description( "Block to be used as part of the RockFileBrowser HtmlEditor Plugin" )]
     public partial class HtmlEditorFileBrowser : RockBlock
     {
+        #region Page Parameter Keys
+
+        private static class PageParameterKey
+        {
+            /// <summary>
+            /// The relative file path
+            /// </summary>
+            public const string RelativeFilePath = "RelativeFilePath";
+
+            /// <summary>
+            /// The root folder encrypted
+            /// </summary>
+            public const string RootFolderEncrypted = "rootFolder";
+
+            /// <summary>
+            /// The zip uploader enabled encrypted
+            /// </summary>
+            public const string ZipUploaderEnabledEncrypted = "ZipUploaderEnabled";
+
+            /// <summary>
+            /// The modal mode
+            /// </summary>
+            public const string ModalMode = "ModalMode";
+
+            /// <summary>
+            /// The title
+            /// </summary>
+            public const string Title = "Title";
+
+            /// <summary>
+            /// The browser mode
+            /// </summary>
+            public const string BrowserMode = "BrowserMode";
+
+            /// <summary>
+            /// The edit file page
+            /// </summary>
+            public const string EditFilePage = "editFilePage";
+        }
+
+        #endregion Page Parameter Keys
+
         #region Properties
 
         private List<string> RestrictedFolders
@@ -102,7 +143,6 @@ namespace RockWeb.Blocks.Utility
                     ".woff2"
                 };
             }
-
         }
 
         #endregion
@@ -116,6 +156,11 @@ namespace RockWeb.Blocks.Utility
         protected override void OnInit( EventArgs e )
         {
             base.OnInit( e );
+
+            // only enable the zip file uploaded if we can trust that it was explicitly enabled
+            var zipUploaderEnabled = IsZipUploaderEnabled();
+
+            btnUploadZipFile.Visible = zipUploaderEnabled;
 
             // NOTE: this will return a Status 400 if a valid rootfolder is not specified in the URL
             fuprFileUpload.RootFolder = GetRootFolderPath();
@@ -139,7 +184,7 @@ namespace RockWeb.Blocks.Utility
             // setup javascript for when a file is done uploading
             fuprFileUpload.DoneFunctionClientScript = string.Format( doneScriptFormat, hfSelectedFolder.ClientID );
 
-            if ( PageParameter( "browserMode" ) == "image" )
+            if ( PageParameter( PageParameterKey.BrowserMode ) == "image" )
             {
                 // point file uploads to ImageUploader.ashx which has special rules for file uploads
                 fuprFileUpload.UploadUrl = "ImageUploader.ashx";
@@ -149,6 +194,31 @@ namespace RockWeb.Blocks.Utility
                 // use the default fileUploader url
                 fuprFileUpload.UploadUrl = null;
             }
+        }
+
+        /// <summary>
+        /// Determines whether [is zip uploader enabled].
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if [is zip uploader enabled]; otherwise, <c>false</c>.
+        /// </returns>
+        private bool IsZipUploaderEnabled()
+        {
+            bool zipUploaderEnabled = false;
+            string zipUploaderEnabledEncrypted = this.PageParameter( PageParameterKey.ZipUploaderEnabledEncrypted );
+            if ( zipUploaderEnabledEncrypted.IsNotNullOrWhiteSpace() )
+            {
+                try
+                {
+                    zipUploaderEnabled = Rock.Security.Encryption.DecryptString( zipUploaderEnabledEncrypted )?.AsBoolean() ?? false;
+                }
+                catch
+                {
+                    zipUploaderEnabled = false;
+                }
+            }
+
+            return zipUploaderEnabled;
         }
 
         /// <summary>
@@ -163,9 +233,21 @@ namespace RockWeb.Blocks.Utility
             if ( !this.IsPostBack )
             {
                 pnlFileBrowser.CssClass = "is-postback";
-                pnlModalHeader.Visible = PageParameter( "ModalMode" ).AsBoolean();
-                pnlModalFooterActions.Visible = PageParameter( "ModalMode" ).AsBoolean();
-                lTitle.Text = PageParameter( "Title" );
+                pnlModalHeader.Visible = PageParameter( PageParameterKey.ModalMode ).AsBoolean();
+                pnlModalFooterActions.Visible = PageParameter( PageParameterKey.ModalMode ).AsBoolean();
+                lTitle.Text = PageParameter( PageParameterKey.Title );
+
+                if ( PageParameter( PageParameterKey.RelativeFilePath ).IsNotNullOrWhiteSpace() )
+                {
+                    string fileUrl = Server.MapPath( PageParameter( PageParameterKey.RelativeFilePath ) );
+                    string physicalRootFolder = this.Request.MapPath( GetRootFolderPath() );
+                    if ( File.Exists( fileUrl ) && fileUrl.Contains( physicalRootFolder ) )
+                    {
+                        string directoryPath = Path.GetDirectoryName( fileUrl );
+                        string relativeFolderPath = directoryPath.Replace( physicalRootFolder, string.Empty );
+                        hfSelectedFolder.Value = relativeFolderPath;
+                    }
+                }
 
                 BuildFolderTreeView();
             }
@@ -221,7 +303,7 @@ namespace RockWeb.Blocks.Utility
                 }
             }
 
-            if ( Directory.Exists( physicalRootFolder ) && !HiddenFolders.Any( a => physicalRootFolder.IndexOf( a, StringComparison.OrdinalIgnoreCase )  > 0) )
+            if ( Directory.Exists( physicalRootFolder ) && !HiddenFolders.Any( a => physicalRootFolder.IndexOf( a, StringComparison.OrdinalIgnoreCase ) > 0 ) )
             {
                 var sb = new StringBuilder();
                 sb.AppendLine( "<ul id=\"treeview\">" );
@@ -230,7 +312,7 @@ namespace RockWeb.Blocks.Utility
 
                 lblFolders.Text = sb.ToString();
                 upnlFolders.Update();
-                ListFolderContents( "" );
+                ListFolderContents( hfSelectedFolder.Value );
             }
             else
             {
@@ -249,7 +331,7 @@ namespace RockWeb.Blocks.Utility
             //// the rootFolder param is encrypted to help prevent the web user from specifying a folder
             //// and must be provided to help prevent directly browsing to this page and getting access to the filesystem
             //// we'll return Http 400 if someone is attempting to get to this page directly without a valid (encrypted) rootFolder specified
-            string rootFolderEncrypted = PageParameter( "rootFolder" );
+            string rootFolderEncrypted = PageParameter( PageParameterKey.RootFolderEncrypted );
             string rootFolder = null;
             if ( !string.IsNullOrWhiteSpace( rootFolderEncrypted ) )
             {
@@ -393,7 +475,6 @@ namespace RockWeb.Blocks.Utility
                     isRestricted = true;
                 }
 
-
                 if ( UploadRestrictedFolders.Any( a => relativeFolderPath.TrimStart( '/', '\\' ).StartsWith( a, StringComparison.OrdinalIgnoreCase ) ) )
                 {
                     isUploadRestricted = true;
@@ -402,16 +483,22 @@ namespace RockWeb.Blocks.Utility
                 hfIsRestrictedFolder.Value = isRestricted.ToString();
                 hfIsUploadRestrictedFolder.Value = isUploadRestricted.ToString();
 
-                string imageFileTypeWhiteList = PageParameter( "imageFileTypeWhiteList" );
-                if ( string.IsNullOrWhiteSpace( imageFileTypeWhiteList ) )
+                var fileTypeWhiteList = "*.*";
+
+                if ( PageParameter( PageParameterKey.BrowserMode ) == "image" )
                 {
-                    imageFileTypeWhiteList = "*.*";
+                    string imageFileTypeWhiteList = GlobalAttributesCache.Get().GetValue( "ContentImageFiletypeWhitelist" );
+                    if ( imageFileTypeWhiteList.IsNotNullOrWhiteSpace() )
+                    {
+                        fileTypeWhiteList = imageFileTypeWhiteList;
+                    }
                 }
 
                 // Directory.GetFiles doesn't support multiple patterns, so we'll do one at a time
-                List<string> fileFilters = imageFileTypeWhiteList.Split( new char[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries )
+                List<string> fileFilters = fileTypeWhiteList.Split( new char[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries )
                     .Select( s => s = "*." + s.TrimStart( new char[] { '*', ' ' } ).TrimStart( '.' ) ) // ensure that the filter starts with '*.'
                     .ToList();
+
                 List<string> fileList = new List<string>();
                 foreach ( var filter in fileFilters )
                 {
@@ -428,12 +515,12 @@ namespace RockWeb.Blocks.Utility
                 var sb = new StringBuilder();
                 sb.AppendLine( "<ul class='js-rocklist rocklist'>" );
 
-                string editFilePage = PageParameter( "editFilePage" );
+                string editFilePage = PageParameter( PageParameterKey.EditFilePage );
 
                 foreach ( var filePath in fileList )
                 {
                     string ext = Path.GetExtension( filePath );
-                    string fileName = Path.GetFileName( filePath );
+                    string fileName = Path.GetFileName( filePath ).Replace( "'", "&#39;" );
                     string relativeFilePath = filePath.Replace( physicalRootFolder, string.Empty );
                     string imagePath = rootFolder.TrimEnd( '/', '\\' ) + "/" + relativeFilePath.TrimStart( '/', '\\' ).Replace( "\\", "/" );
                     string imageUrl = this.ResolveUrl( "~/api/FileBrowser/GetFileThumbnail?relativeFilePath=" + HttpUtility.UrlEncode( imagePath ) );
@@ -441,18 +528,13 @@ namespace RockWeb.Blocks.Utility
                     string editHtml = string.Empty;
                     if ( !RestrictedFileExtension.Any( a => ext.Equals( a, StringComparison.OrdinalIgnoreCase ) ) && !string.IsNullOrWhiteSpace( editFilePage ) )
                     {
-
                         string url = editFilePage + "?RelativeFilePath=" + HttpUtility.UrlEncode( imagePath );
 
-                        editHtml = string.Format( @"
-                        <a data-href='{0}' title='Edit' class='btn btn-xs btn-square btn-default js-edit-file action'>
-                        <i class='fa fa-pencil'></i>
-                        </a>
-                       ", url );
+                        editHtml = $"<a data-href='{url}' title='Edit' class='btn btn-xs btn-square btn-default js-edit-file action'><i class='fa fa-pencil'></i></a>";
                     }
 
                     string nameHtmlFormat = @"
-<li class='js-rocklist-item rocklist-item' data-id='{0}'>
+<li class='js-rocklist-item rocklist-item' data-id='{0}' title='{2}'>
     <div class='rollover-container'>
         <div class='rollover-item actions'>
             <a title='Delete' class='btn btn-xs btn-square btn-danger js-delete-file action'>
@@ -471,7 +553,7 @@ namespace RockWeb.Blocks.Utility
 </li>
 ";
 
-                    // put the file timestamp as part of the url to that changed files are loaded from the server instead of the browser cache
+                    // put the file timestamp as part of the URL to that changed files are loaded from the server instead of the browser cache
                     var fileDateTime = File.GetLastWriteTimeUtc( filePath );
                     imageUrl += "&timeStamp=" + fileDateTime.Ticks.ToString();
 
@@ -566,6 +648,12 @@ namespace RockWeb.Blocks.Utility
                 return;
             }
 
+            if ( IsRestrictedFolder( hfSelectedFolder.Value ) )
+            {
+                // If case they got this far, even though this is a restricted folder, jump out 
+                return;
+            }
+
             try
             {
                 string selectedPhysicalFolder = GetSelectedPhysicalFolder();
@@ -598,6 +686,13 @@ namespace RockWeb.Blocks.Utility
             {
                 return;
             }
+
+            if ( IsRestrictedFolder( hfSelectedFolder.Value ) )
+            {
+                // If case they got this far, even though this is a restricted folder, jump out 
+                return;
+            }
+
             tbOrigFolderName.Description = hfSelectedFolder.Value;
             tbRenameFolderName.PrependText = Path.GetDirectoryName( hfSelectedFolder.Value ) + "\\";
             tbRenameFolderName.Text = string.Empty;
@@ -617,12 +712,36 @@ namespace RockWeb.Blocks.Utility
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void lbArchive_Click( object sender, EventArgs e )
         {
+            if ( !IsZipUploaderEnabled() )
+            {
+                // just in case they got this far, even thought it isn't enabled
+                return;
+            }
+
             if ( string.IsNullOrWhiteSpace( hfSelectedFolder.Value ) )
             {
                 return;
             }
 
+            if ( IsRestrictedFolder( hfSelectedFolder.Value ) )
+            {
+                // If case they got this far, even though this is a restricted folder, jump out 
+                return;
+            }
+
             mdArchive.Show();
+        }
+
+        /// <summary>
+        /// Determines whether [is restricted folder] [the specified folder name].
+        /// </summary>
+        /// <param name="folderName">Name of the folder.</param>
+        /// <returns>
+        ///   <c>true</c> if [is restricted folder] [the specified folder name]; otherwise, <c>false</c>.
+        /// </returns>
+        private bool IsRestrictedFolder( string folderName )
+        {
+            return RestrictedFolders.Contains( hfSelectedFolder.Value.TrimStart( '/', '\\' ), StringComparer.OrdinalIgnoreCase );
         }
 
         /// <summary>
@@ -640,6 +759,12 @@ namespace RockWeb.Blocks.Utility
                 return;
             }
 
+            if ( IsRestrictedFolder( hfSelectedFolder.Value ) )
+            {
+                // If case they got this far, even though this is a restricted folder, jump out 
+                return;
+            }
+
             if ( folders != null )
             {
                 tbMoveOrigFolderName.Description = hfSelectedFolder.Value;
@@ -653,6 +778,7 @@ namespace RockWeb.Blocks.Utility
                         ddlMoveFolderTarget.Items.Add( folder );
                     }
                 }
+
                 ddlMoveFolderTarget.SelectedValue = currentFolder;
 
                 mdMoveFolder.Show();
@@ -676,6 +802,12 @@ namespace RockWeb.Blocks.Utility
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void mdRenameFolder_SaveClick( object sender, EventArgs e )
         {
+            if ( IsRestrictedFolder( hfSelectedFolder.Value ) )
+            {
+                // If case they got this far, even though this is a restricted folder, jump out 
+                return;
+            }
+
             var renameFolderName = tbRenameFolderName.Text;
             if ( IsValidFolderName( renameFolderName ) )
             {
@@ -749,6 +881,19 @@ namespace RockWeb.Blocks.Utility
         protected void mdArchive_SaveClick( object sender, EventArgs e )
         {
             mdArchive.Hide();
+
+            if ( !IsZipUploaderEnabled() )
+            {
+                // just in case they got this far, even thought it isn't enabled
+                return;
+            }
+
+            if ( IsRestrictedFolder( hfSelectedFolder.Value ) )
+            {
+                // If case they got this far, even though this is a restricted folder, jump out 
+                return;
+            }
+
             try
             {
                 var physicalZipFile = this.Request.MapPath( fupZipUpload.UploadedContentFilePath );
@@ -763,11 +908,13 @@ namespace RockWeb.Blocks.Utility
                             foreach ( ZipArchiveEntry file in archive.Entries )
                             {
                                 string completeFileName = Path.Combine( selectedPhysicalFolder, file.FullName );
-                                if ( file.Name == "" )
-                                {// Assuming Empty for Directory
+                                if ( file.Name == string.Empty )
+                                {
+                                    // Assuming Empty for Directory
                                     Directory.CreateDirectory( Path.GetDirectoryName( completeFileName ) );
                                     continue;
                                 }
+
                                 file.ExtractToFile( completeFileName, true );
                             }
                         }
@@ -792,7 +939,6 @@ namespace RockWeb.Blocks.Utility
                 string relativeFolderPath = hfSelectedFolder.Value;
                 this.ShowErrorMessage( ex, "An error occurred when attempting to rename folder " + relativeFolderPath );
             }
-
         }
 
         /// <summary>
@@ -808,7 +954,7 @@ namespace RockWeb.Blocks.Utility
             invalidChars.Add( '~' );
 
             // ensure that folder is a simple folder name (no backslashs, invalidchars, etc)
-            var validFolderName = !( renameFolderName.ToList().Any( a => invalidChars.Contains( a ) ) || renameFolderName.StartsWith( ".." ) );
+            var validFolderName = !( renameFolderName.ToList().Any( a => invalidChars.Contains( a ) ) || renameFolderName.StartsWith( ".." ) || renameFolderName.EndsWith( "." ) );
             return validFolderName;
         }
 
@@ -857,7 +1003,7 @@ namespace RockWeb.Blocks.Utility
         /// Gets the physical folder of the specified virtual folder.
         /// </summary>
         /// <returns></returns>
-        private string GetPhysicalFolder(string relativeFolderPath)
+        private string GetPhysicalFolder( string relativeFolderPath )
         {
             string rootFolder = GetRootFolderPath();
             string physicalRootFolder = this.MapPath( rootFolder );

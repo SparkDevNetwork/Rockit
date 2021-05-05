@@ -51,19 +51,9 @@ namespace RockWeb.Blocks.Utility
 
         #region Attribute Keys
 
-        /// <summary>
-        /// Keys to use for Block Attributes
-        /// </summary>
-        protected static class AttributeKey
+        private static class AttributeKey
         {
-            /// <summary>
-            /// AttributeKey for Show Email Address
-            /// </summary>
             public const string ShowEmailAddress = "ShowEmailAddress";
-
-            /// AttributeKey for Email
-            /// The email
-            /// </summary>
             public const string Email = "Email";
         }
 
@@ -71,10 +61,7 @@ namespace RockWeb.Blocks.Utility
 
         #region PageParameterKeys
 
-        /// <summary>
-        /// Keys to use for Page Parameters
-        /// </summary>
-        protected static class PageParameterKey
+        private static class PageParameterKey
         {
             public const string StarkId = "StarkId";
         }
@@ -83,19 +70,19 @@ namespace RockWeb.Blocks.Utility
 
         #region Fields
 
-        // used for private variables
+        // Used for private variables.
 
         #endregion
 
         #region Properties
 
-        // used for public / protected properties
+        // Used for public / protected properties.
 
         #endregion
 
         #region Base Control Methods
 
-        //  overrides of the base RockBlock methods (i.e. OnInit, OnLoad)
+        // Overrides of the base RockBlock methods (i.e. OnInit, OnLoad)
 
         /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Init" /> event.
@@ -105,7 +92,7 @@ namespace RockWeb.Blocks.Utility
         {
             base.OnInit( e );
 
-            // this event gets fired after block settings are updated. it's nice to repaint the screen if these settings would alter it
+            // This event gets fired after block settings are updated. It's nice to repaint the screen if these settings would alter it.
             this.BlockUpdated += Block_BlockUpdated;
             this.AddConfigurationUpdateTrigger( upnlContent );
         }
@@ -121,9 +108,9 @@ namespace RockWeb.Blocks.Utility
 
             if ( !Page.IsPostBack )
             {
-                // added for your convenience
+                // Added for your convenience.
 
-                // to show the created/modified by date time details in the PanelDrawer do something like this:
+                // To show the created/modified by date time details in the PanelDrawer do something like this:
                 // pdAuditDetails.SetEntity( <YOUROBJECT>, ResolveRockUrl( "~" ) );
             }
         }
@@ -132,7 +119,7 @@ namespace RockWeb.Blocks.Utility
 
         #region Events
 
-        // handlers called by the controls on your block
+        // Handlers called by the controls on your block.
 
         /// <summary>
         /// Handles the BlockUpdated event of the control.
