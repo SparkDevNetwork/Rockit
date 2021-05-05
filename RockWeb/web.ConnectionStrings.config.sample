@@ -1,12 +1,6 @@
-﻿<!-- Copy this file, removing the .example extension. Then fill in your connection details to get started with Rock. -->
+﻿<?xml version="1.0"?>
 <connectionStrings>
-  <add
-    name="RockContext"
-    connectionString="
-      Data Source=localhost;
-      Initial Catalog=database_name;
-      User Id=sql_user_id;
-      password=sql_user_password;
-      MultipleActiveResultSets=true"
-    providerName="System.Data.SqlClient"/>
+
+  <add name="RockContext" connectionString="Data Source=[server_name];Initial Catalog=[database_name]; User Id=[user_name]; password=[password];MultipleActiveResultSets=true" providerName="System.Data.SqlClient"/>
+
 </connectionStrings>
