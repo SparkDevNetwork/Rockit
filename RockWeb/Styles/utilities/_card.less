@@ -47,6 +47,7 @@
 }
 
 .card-title {
+  margin-top: 0;
   margin-bottom: @card-title-spacer-y;
 }
 
@@ -108,6 +109,10 @@
 //
 
 .card-header-tabs {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
   margin-right: (-@card-cap-padding-x / 2);
   margin-bottom: -@card-cap-padding-y;
   margin-left: (-@card-cap-padding-x / 2);
@@ -271,5 +276,52 @@
       margin-bottom: -@card-border-width;
       border-radius: 0;
     }
+  }
+}
+
+.card-sm {
+  .card-body {
+    padding: @card-sm-spacer-y @card-sm-spacer-x;
+  }
+}
+
+.card-schedule {
+  border-radius: @card-schedule-border-radius;
+  min-height: @card-schedule-height;
+  margin-bottom: @card-schedule-margin;
+
+  .card-body {
+    padding-right: 0;
+  }
+
+  .card-title {
+    font-size: @card-schedule-title-size;
+  }
+
+  .schedule-date {
+    font-weight: @font-weight-semibold;
+  }
+
+  .schedule-occurrence,
+  .schedule-occurrence-schedule {
+    display: block;
+  }
+
+  .schedule-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: @card-sm-spacer-x;
+    align-self: center;
+    align-items: center;
+    justify-content: flex-end;
+    flex-basis: @card-schedule-confirmation-width;
+
+    .btn-primary {
+      margin: 4px 0 4px 8px;
+    }
+  }
+
+  &.schedule-unavailable {
+    background: @card-schedule-pending-bg
   }
 }

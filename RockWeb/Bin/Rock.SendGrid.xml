@@ -30,6 +30,19 @@
             The base URL
             </summary>
         </member>
+        <member name="F:Rock.Communication.Transport.SendGridHttp.AttributeKey.MaxParallelization">
+            <summary>
+            The maximum parallelization
+            </summary>
+        </member>
+        <member name="P:Rock.Communication.Transport.SendGridHttp.MaxParallelization">
+            <summary>
+            Gets the maximum parallelization.
+            </summary>
+            <value>
+            The maximum parallelization.
+            </value>
+        </member>
         <member name="P:Rock.Communication.Transport.SendGridHttp.CanTrackOpens">
             <summary>
             Gets a value indicating whether transport has ability to track recipients opening the communication.
@@ -43,6 +56,13 @@
             <summary>
             Send the implementation specific email. This class will call this method and pass the post processed data in a  rock email message which
             can then be used to send the implementation specific message.
+            </summary>
+            <param name="rockEmailMessage">The rock email message.</param>
+            <returns></returns>
+        </member>
+        <member name="M:Rock.Communication.Transport.SendGridHttp.SendEmailAsync(Rock.Communication.RockEmailMessage)">
+            <summary>
+            Sends the email asynchronous.
             </summary>
             <param name="rockEmailMessage">The rock email message.</param>
             <returns></returns>

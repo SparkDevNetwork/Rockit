@@ -1,0 +1,1 @@
+{"version":3,"file":"secondaryBlock.js","sourceRoot":"","sources":["../../../Framework/Controls/secondaryBlock.ts"],"names":[],"mappings":";;;;;;;;;;;;;;YAmBM,KAAK,GAAG,gBAAQ,EAAE,CAAC;iCAEV,qBAAe,CAAC;gBAC3B,IAAI,EAAE,gBAAgB;gBACtB,QAAQ,EAAE;oBACN,SAAS;wBACL,OAAO,KAAK,CAAC,KAAK,CAAC,uBAAuB,CAAC;oBAC/C,CAAC;iBACJ;gBACD,QAAQ,EAAE;;;OAGP;aACN,CAAC"}

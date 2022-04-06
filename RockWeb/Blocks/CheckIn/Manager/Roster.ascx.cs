@@ -105,6 +105,16 @@ namespace RockWeb.Blocks.CheckIn.Manager
         DefaultBooleanValue = false,
         Order = 9 )]
 
+    [AttributeCategoryField(
+        "Check-in Roster Alert Icon Category",
+        Description = "The Person Attribute category to get the Alert Icon attributes from",
+        Key = AttributeKey.CheckInRosterAlertIconCategory,
+        DefaultValue = Rock.SystemGuid.Category.PERSON_ATTRIBUTES_CHECK_IN_ROSTER_ALERT_ICON,
+        EntityType = typeof( Rock.Model.Person ),
+        AllowMultiple = false,
+        Order = 10
+        )]
+
     #endregion Block Attributes
 
     public partial class Roster : Rock.Web.UI.RockBlock
@@ -131,6 +141,8 @@ namespace RockWeb.Blocks.CheckIn.Manager
             public const string EnableStayingButton = "EnableStayingButton";
             public const string EnableNotPresentButton = "EnableNotPresentButton";
             public const string EnableMarkPresentButton = "EnableMarkPresentButton";
+
+            public const string CheckInRosterAlertIconCategory = "CheckInRosterAlertIconCategory";
         }
 
         #endregion Attribute Keys
@@ -211,7 +223,18 @@ namespace RockWeb.Blocks.CheckIn.Manager
         {
             base.OnInit( e );
             this.BlockUpdated += Block_BlockUpdated;
+            gAttendees.GridRebind += gAttendees_GridRebind;
             this.AddConfigurationUpdateTrigger( upnlContent );
+        }
+
+        /// <summary>
+        /// Handles the GridRebind event of the gAttendees control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="GridRebindEventArgs"/> instance containing the event data.</param>
+        private void gAttendees_GridRebind( object sender, GridRebindEventArgs e )
+        {
+            BuildRoster();
         }
 
         /// <summary>
@@ -225,10 +248,10 @@ namespace RockWeb.Blocks.CheckIn.Manager
             if ( !this.IsPostBack )
             {
                 bgStatus.Items.Clear();
-                bgStatus.Items.Add( new ListItem( RosterStatusFilter.All.ConvertToString( true ), RosterStatusFilter.All.ConvertToInt().ToString() ) );
-                bgStatus.Items.Add( new ListItem( RosterStatusFilter.CheckedIn.ConvertToString( true ), RosterStatusFilter.CheckedIn.ConvertToInt().ToString() ) );
-                bgStatus.Items.Add( new ListItem( RosterStatusFilter.Present.ConvertToString( true ), RosterStatusFilter.Present.ConvertToInt().ToString() ) );
-                bgStatus.Items.Add( new ListItem( RosterStatusFilter.CheckedOut.ConvertToString( true ), RosterStatusFilter.CheckedOut.ConvertToInt().ToString() ) );
+                bgStatus.Items.Add( new ListItem( RosterStatusFilter.All.GetDescription(), RosterStatusFilter.All.ConvertToInt().ToString() ) );
+                bgStatus.Items.Add( new ListItem( RosterStatusFilter.CheckedIn.GetDescription(), RosterStatusFilter.CheckedIn.ConvertToInt().ToString() ) );
+                bgStatus.Items.Add( new ListItem( RosterStatusFilter.Present.GetDescription(), RosterStatusFilter.Present.ConvertToInt().ToString() ) );
+                bgStatus.Items.Add( new ListItem( RosterStatusFilter.CheckedOut.GetDescription(), RosterStatusFilter.CheckedOut.ConvertToInt().ToString() ) );
 
                 BuildRoster();
             }
@@ -255,10 +278,10 @@ namespace RockWeb.Blocks.CheckIn.Manager
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void lpLocation_SelectLocation( object sender, EventArgs e )
         {
-            Location location = lpLocation.Location;
-            if ( location != null )
+            var locationId = lpLocation.NamedLocation?.Id;
+            if ( locationId != null )
             {
-                CheckinManagerHelper.SetSelectedLocation( this, lpLocation, location.Id, CurrentCampusId );
+                CheckinManagerHelper.SetSelectedLocation( this, lpLocation, locationId, CurrentCampusId );
             }
             else
             {
@@ -325,6 +348,10 @@ namespace RockWeb.Blocks.CheckIn.Manager
             }
 
             CheckinManagerHelper.SetSelectedLocation( this, lpLocation, locationId, CurrentCampusId );
+            if ( this.Response.IsRequestBeingRedirected )
+            {
+                return;
+            }
 
             InitializeSubPageNav( locationId.Value );
 
@@ -379,7 +406,7 @@ namespace RockWeb.Blocks.CheckIn.Manager
 
             // Desktop only.
             var lBadges = e.Row.FindControl( "lBadges" ) as Literal;
-            lBadges.Text = string.Format( "<div>{0}</div>", attendee.GetBadgesHtml( false ) );
+            lBadges.Text = string.Format( "<div>{0}</div>", attendee.GetBadgesHtml( _attributesForAlertIcons ) );
 
             var lGroupNameAndPath = e.Row.FindControl( "lGroupNameAndPath" ) as Literal;
             if ( lGroupNameAndPath != null && lGroupNameAndPath.Visible )
@@ -394,15 +421,41 @@ namespace RockWeb.Blocks.CheckIn.Manager
             // Desktop only.
             // Show how it has been since they have checked in (and not yet marked present)
             var lElapsedCheckInTime = e.Row.FindControl( "lElapsedCheckInTime" ) as Literal;
+            var lElapsedCheckedOutTime = e.Row.FindControl( "lElapsedCheckedOutTime" ) as Literal;
+            var lElapsedPresentTime = e.Row.FindControl( "lElapsedPresentTime" ) as Literal;
+
             lElapsedCheckInTime.Text = string.Format(
                 "<span title='{0}'>{1}</span>",
                 attendee.CheckInTime.ToShortTimeString(),
                 RockFilters.HumanizeTimeSpan( attendee.CheckInTime, RockDateTime.Now, unit: "Second" ) );
 
+            // Show how it has been since they were marked present
+            if ( attendee.PresentDateTime.HasValue )
+            {
+                lElapsedPresentTime.Text = string.Format(
+                    "<span title='{0}'>{1}</span>",
+                    attendee.PresentDateTime?.ToShortTimeString(),
+                    RockFilters.HumanizeTimeSpan( attendee.PresentDateTime.Value, RockDateTime.Now, unit: "Second" ) );
+            }
+
+            if ( attendee.CheckOutTime.HasValue )
+            {
+                var timeSinceCheckout = DateTime.Now - attendee.CheckOutTime.Value;
+                // Show how it has been since they have checked out
+
+                lElapsedCheckedOutTime.Text = string.Format(
+                    "<span title='{0}'>{1}</span>",
+                    attendee.CheckOutTime.Value.ToShortTimeString(),
+                    RockFilters.HumanizeTimeSpan( attendee.CheckOutTime.Value, RockDateTime.Now, unit: "Second" ) );
+            }
+
+            lElapsedCheckInTime.Visible = _dataBoundRosterStatusFilter == RosterStatusFilter.CheckedIn;
+            lElapsedPresentTime.Visible = _dataBoundRosterStatusFilter == RosterStatusFilter.Present;
+            lElapsedCheckedOutTime.Visible = _dataBoundRosterStatusFilter == RosterStatusFilter.CheckedOut;
+
             // Desktop only.
             var lStatusTag = e.Row.FindControl( "lStatusTag" ) as Literal;
             lStatusTag.Text = attendee.GetStatusIconHtmlTag( false );
-            lElapsedCheckInTime.Visible = _dataBoundRosterStatusFilter == RosterStatusFilter.CheckedIn;
         }
 
         /// <summary>
@@ -487,6 +540,8 @@ namespace RockWeb.Blocks.CheckIn.Manager
             }
         }
 
+        private List<AttributeCache> _attributesForAlertIcons = new List<AttributeCache>();
+
         /// <summary>
         /// Shows the attendees.
         /// </summary>
@@ -494,20 +549,14 @@ namespace RockWeb.Blocks.CheckIn.Manager
         {
             IList<RosterAttendee> attendees = null;
 
-            using ( var rockContext = new RockContext() )
-            {
-                attendees = GetAttendees( rockContext );
-            }
+            // Note, don't wrap this in a Using, we don't want to destroy it just in case there is some lazy loading that will happen (there shouldn't be, but just in case)
+            var rockContext = new RockContext();
+
+            attendees = GetAttendees( rockContext );
 
             var currentStatusFilter = GetStatusFilterValueFromControl();
 
             ToggleColumnVisibility( attendees, currentStatusFilter );
-
-            // Sort by Attendees by Name, then Guid to keep sorting consistent in case names are the same.
-            var attendeesSorted = attendees
-             .OrderBy( a => a.NickName )
-             .ThenBy( a => a.LastName )
-             .ThenBy( a => a.PersonGuid ).ToList();
 
             var lGroupNameAndPathField = gAttendees.ColumnsOfType<RockLiteralField>().FirstOrDefault( a => a.ID == "lGroupNameAndPath" );
             if ( lGroupNameAndPathField != null )
@@ -516,6 +565,46 @@ namespace RockWeb.Blocks.CheckIn.Manager
             }
 
             _dataBoundRosterStatusFilter = currentStatusFilter;
+
+            var checkInRosterAlertIconCategoryGuid = this.GetAttributeValue( AttributeKey.CheckInRosterAlertIconCategory )?.AsGuid();
+            if ( checkInRosterAlertIconCategoryGuid.HasValue )
+            {
+                var categoryId = CategoryCache.GetId( checkInRosterAlertIconCategoryGuid.Value ) ?? 0;
+                _attributesForAlertIcons = new AttributeService( rockContext ).GetByCategoryId( categoryId ).ToAttributeCacheList();
+            }
+            else
+            {
+                _attributesForAlertIcons = new List<AttributeCache>();
+            }
+
+
+            var scheduleIds = attendees.Select( a => a.ScheduleId ).Distinct().ToList();
+
+            var schedulePositions = new ScheduleService( rockContext ).GetByIds( scheduleIds ).ToList().OrderByOrderAndNextScheduledDateTime().Select( a => a.Id ).ToList();
+            List<RosterAttendee> attendeesSorted;
+            gAttendees.SortProperty = gAttendees.SortProperty ?? new SortProperty { Property = "NickName,LastName,PersonGuid", Direction = SortDirection.Ascending };
+            if ( gAttendees.SortProperty.Property == "ServiceTimesScheduleOrder" )
+            {
+                bool descending = gAttendees.SortProperty.Direction == SortDirection.Descending;
+                attendeesSorted = attendees.OrderBy( a =>
+                    {
+                        var positionIndex = schedulePositions.IndexOf( a.ScheduleId );
+                        if ( descending )
+                        {
+                            positionIndex = -positionIndex;
+                        }
+
+                        return positionIndex;
+                    } )
+                    .ThenBy( a => a.NickName )
+                    .ThenBy( a => a.LastName )
+                    .ThenBy( a => a.PersonGuid )
+                    .ToList();
+            }
+            else
+            {
+                attendeesSorted = attendees.AsQueryable().Sort( gAttendees.SortProperty ).ToList();
+            }
 
             gAttendees.DataSource = attendeesSorted;
             gAttendees.DataBind();
@@ -569,32 +658,22 @@ namespace RockWeb.Blocks.CheckIn.Manager
             // Limit to Groups that are configured for the selected location.
             var groupIdsForLocation = new GroupLocationService( rockContext ).Queryable().Where( a => a.LocationId == CurrentLocationId ).Select( a => a.GroupId ).Distinct().ToList();
             attendanceQuery = attendanceQuery.Where( a => groupIdsForLocation.Contains( a.Occurrence.GroupId.Value ) );
+            List<RosterAttendeeAttendance> attendanceList = RosterAttendeeAttendance.Select( attendanceQuery ).ToList();
 
-            var unfilteredAttendanceCheckinAreas = attendanceQuery.Select( a => a.Occurrence.Group.GroupTypeId ).ToList().Select( a => GroupTypeCache.Get( a ) ).ToArray();
+            var unfilteredAttendanceCheckinAreas = attendanceList.Select( a => a.GroupTypeId ).ToList().Select( a => GroupTypeCache.Get( a ) ).ToArray();
 
             RemoveUnneededStatusFilters( unfilteredAttendanceCheckinAreas );
             var currentStatusFilter = GetStatusFilterValueFromControl();
 
-            List<Attendance> attendanceList = attendanceQuery
-                .Include( a => a.AttendanceCode )
-                .Include( a => a.PersonAlias.Person )
-                .Include( a => a.Occurrence.Schedule )
-                .Include( a => a.Occurrence.Group )
-                .Include( a => a.Occurrence.Location )
-                .AsNoTracking()
-                .ToList();
-
             attendanceList = CheckinManagerHelper.FilterByActiveCheckins( currentDateTime, attendanceList );
-            attendanceList = attendanceList.Where( a => a.PersonAlias != null && a.PersonAlias.Person != null ).ToList();
-            var unfilteredAttendees = RosterAttendee.GetFromAttendanceList( attendanceList, checkinAreaFilter );
+            attendanceList = attendanceList.Where( a => a.Person != null ).ToList();
+            UpdateStatusFilterTabs( attendanceList );
 
-            UpdateStatusFilterTabs( unfilteredAttendees );
-
-            List<Attendance> attendanceListForCurrentStatusFilter;
+            List<RosterAttendeeAttendance> attendanceListForCurrentStatusFilter;
 
             if ( !HasPresenceEnabled( unfilteredAttendanceCheckinAreas ) && currentStatusFilter == RosterStatusFilter.Present )
             {
-                // Edge case. If there are attendance records with 'PresentDateTime' null (due to pre v12.3 checkin, or a change in configuration from Enable Presence to Disable Presence), also include CheckedIn if we are filter only for Present.
+                // Edge case. If there are attendance records with 'PresentDateTime' null (due to pre-v12.3 checkin, or a change in configuration from Enable Presence to Disable Presence), also include CheckedIn if we are filter only for Present.
                 attendanceListForCurrentStatusFilter = attendanceList.Where( a => RosterAttendee.AttendanceMeetsRosterStatusFilter( a, RosterStatusFilter.Present ) || RosterAttendee.AttendanceMeetsRosterStatusFilter( a, RosterStatusFilter.CheckedIn ) ).ToList();
             }
             else
@@ -612,12 +691,12 @@ namespace RockWeb.Blocks.CheckIn.Manager
         /// </summary>
         /// <param name="attendanceQuery">The attendance query.</param>
         /// <param name="currentDateTime">The current date time.</param>
-        private void UpdateStatusFilterTabs( IList<RosterAttendee> attendees )
+        private void UpdateStatusFilterTabs( IList<RosterAttendeeAttendance> attendances )
         {
-            var checkedInCount = attendees.Where( x => x.MeetsRosterStatusFilter( RosterStatusFilter.CheckedIn ) ).Count();
-            var presentCount = attendees.Where( x => x.MeetsRosterStatusFilter( RosterStatusFilter.Present ) ).Count();
-            var checkedOutCount = attendees.Where( x => x.MeetsRosterStatusFilter( RosterStatusFilter.CheckedOut ) ).Count();
-            var allCount = attendees.Where( x => x.MeetsRosterStatusFilter( RosterStatusFilter.All ) ).Count();
+            var checkedInCount = attendances.Where( x => RosterAttendee.AttendanceMeetsRosterStatusFilter( x, RosterStatusFilter.CheckedIn ) ).DistinctBy( a => a.PersonId ).Count();
+            var presentCount = attendances.Where( x => RosterAttendee.AttendanceMeetsRosterStatusFilter( x, RosterStatusFilter.Present ) ).DistinctBy( a => a.PersonId ).Count();
+            var checkedOutCount = attendances.Where( x => RosterAttendee.AttendanceMeetsRosterStatusFilter( x, RosterStatusFilter.CheckedOut ) ).DistinctBy( a => a.PersonId ).Count();
+            var allCount = attendances.DistinctBy( a => a.PersonId ).Count();
 
             UpdateStatusFilterTabText( RosterStatusFilter.All, allCount );
             UpdateStatusFilterTabText( RosterStatusFilter.CheckedIn, checkedInCount );
@@ -637,11 +716,11 @@ namespace RockWeb.Blocks.CheckIn.Manager
             {
                 if ( listItem.Selected )
                 {
-                    listItem.Text = string.Format( "{0} <span class='badge badge-info'>{1}</span>", rosterStatusFilter.ConvertToString(), count );
+                    listItem.Text = string.Format( "{0} <span class='badge badge-info'>{1}</span>", rosterStatusFilter.GetDescription(), count );
                 }
                 else
                 {
-                    listItem.Text = string.Format( "{0} <span class='badge badge-'>{1}</span>", rosterStatusFilter.ConvertToString(), count );
+                    listItem.Text = string.Format( "{0} <span class='badge badge-'>{1}</span>", rosterStatusFilter.GetDescription(), count );
                 }
             }
         }
@@ -921,13 +1000,13 @@ namespace RockWeb.Blocks.CheckIn.Manager
                 // Only one schedule to pick from so hide the options and set the wording on the prompt.
                 var singleSchedule = sortedScheduleList[0];
 
-                lConfirmStayingPromptText.Text = string.Format( "Would you like to this person to stay for {0}?", singleSchedule.Name );
+                lConfirmStayingPromptText.Text = string.Format( "Would you like this person to stay for {0}?", singleSchedule.Name );
                 rblScheduleStayingFor.SetValue( singleSchedule.Id );
                 rblScheduleStayingFor.Visible = false;
             }
             else
             {
-                lConfirmStayingPromptText.Text = "Which schedule would you like to this person to stay for:";
+                lConfirmStayingPromptText.Text = "Which schedule would you like this person to stay for:";
                 rblScheduleStayingFor.Visible = true;
             }
 
@@ -1036,7 +1115,7 @@ namespace RockWeb.Blocks.CheckIn.Manager
                     var singleSchedule = sortedScheduleList[0];
 
                     // Only one schedule to pick from so hide the options and set the wording on the prompt.
-                    lConfirmCheckoutAll.Text = string.Format( "Would you like checkout all for {0}?", singleSchedule.Name );
+                    lConfirmCheckoutAll.Text = string.Format( "Would you like to checkout all for {0}?", singleSchedule.Name );
                     cblSchedulesCheckoutAll.SetValue( singleSchedule.Id );
                     cblSchedulesCheckoutAll.Visible = false;
                 }
@@ -1292,13 +1371,14 @@ namespace RockWeb.Blocks.CheckIn.Manager
             bool anyRoomHasEnablePresence = attendees.Any( a => a.RoomHasEnablePresence );
 
             // StatusFilter.All:
-            var mobileIconField = gAttendees.ColumnsOfType<RockLiteralField>().First( c => c.ID == "lMobileIcon" );
             var serviceTimesField = gAttendees.ColumnsOfType<RockBoundField>().First( c => c.DataField == "ServiceTimes" );
-            var statusTagField = gAttendees.ColumnsOfType<RockLiteralField>().First( c => c.ID == "lStatusTag" );
             var btnCancelField = gAttendees.ColumnsOfType<LinkButtonField>().First( c => c.ID == "btnCancel" );
 
             // StatusFilter.Checked-in:
             var lElapsedCheckInTimeField = gAttendees.ColumnsOfType<RockLiteralField>().First( c => c.ID == "lElapsedCheckInTime" );
+            var lElapsedPresentTimeField = gAttendees.ColumnsOfType<RockLiteralField>().First( c => c.ID == "lElapsedPresentTime" );
+            var lElapsedCheckedOutTimeField = gAttendees.ColumnsOfType<RockLiteralField>().First( c => c.ID == "lElapsedCheckedOutTime" );
+
             var btnPresentField = gAttendees.ColumnsOfType<LinkButtonField>().First( c => c.ID == "btnPresent" );
 
             // StatusFilter.Present:
@@ -1309,11 +1389,11 @@ namespace RockWeb.Blocks.CheckIn.Manager
                 && anyRoomHasAllowCheckout
                 && rosterStatusFilter == RosterStatusFilter.Present;
 
-            mobileIconField.Visible = rosterStatusFilter == RosterStatusFilter.All;
             serviceTimesField.Visible = true;
-            statusTagField.Visible = rosterStatusFilter == RosterStatusFilter.All;
 
             lElapsedCheckInTimeField.Visible = rosterStatusFilter == RosterStatusFilter.CheckedIn;
+            lElapsedPresentTimeField.Visible = rosterStatusFilter == RosterStatusFilter.Present;
+            lElapsedCheckedOutTimeField.Visible = rosterStatusFilter == RosterStatusFilter.CheckedOut;
 
             // Only show the CancelField Column if they are on the CheckedIn or Present tab.
             // The actual button's visibility will be determined per row in the btnCancel_OnDatabound event.

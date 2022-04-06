@@ -221,9 +221,8 @@ namespace RockWeb.Blocks.Streaks
                 if ( streakType != null )
                 {
                     var errorMessage = string.Empty;
-                    var occurrenceEngagements = streakTypeService.GetRecentEngagementBits( streakType.Id, person.Id, 24, out errorMessage );
+                    var occurrenceEngagements = streakTypeService.GetRecentEngagementBits( streakType.Id, person.Id, 24, out errorMessage ) ?? new OccurrenceEngagement[0];
                     var stringBuilder = new StringBuilder();
-
                     foreach ( var occurrence in occurrenceEngagements )
                     {
                         var hasEngagement = occurrence != null && occurrence.HasEngagement;
@@ -238,7 +237,7 @@ namespace RockWeb.Blocks.Streaks
 
                     lBiStateGraph.Text = string.Format( @"
                         <div class=""chart-container"">
-                            <ul class=""attendance-chart attendance-chart-sm"">{0}</ul>
+                            <ul class=""trend-chart trend-chart-sm"">{0}</ul>
                         </div>", stringBuilder );
                 }
             }
@@ -577,7 +576,7 @@ namespace RockWeb.Blocks.Streaks
             }
             else
             {
-                query = query.OrderBy( a => a.PersonAlias.Person.LastName ).ThenBy( a => a.PersonAlias.Person.FirstName );
+                query = query.OrderBy( a => a.PersonAlias.Person.LastName ).ThenBy( a => a.PersonAlias.Person.NickName );
             }
 
             var viewModelQuery = query.Select( se => new EnrollmentViewModel
@@ -627,7 +626,7 @@ namespace RockWeb.Blocks.Streaks
         /// <summary>
         /// Represents an enrollment for a row in the grid
         /// </summary>
-        public class EnrollmentViewModel
+        public class EnrollmentViewModel : RockDynamic
         {
             public int Id { get; set; }
             public int PersonId { get; set; }

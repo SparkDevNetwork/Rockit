@@ -10,6 +10,16 @@
 // 1. Contributions
 // -------------------------
 
+// Decrease the size of the currency symbol. Used on Giving Overview KPIs.
+.currency-span {
+  display: inline-block;
+
+  &::first-letter {
+    font-size: .6em;
+    vertical-align: top;
+  }
+}
+
 .contribution-payment .tab-content {
   margin-top: @spacing-md-px;
 }
@@ -66,6 +76,24 @@
 .is-diners li.card-diners,
 .is-jcb li.card-jcb {
   opacity: 1;
+}
+
+// Giving Overview Block Inactive Giver
+.inactive-giving {
+  position: relative;
+  opacity: .85;
+
+  &::before {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    bottom: -8px;
+    left: -8px;
+    z-index: -10;
+    content: " ";
+    background: fade(@ui-2, 100%);
+    border-radius: @border-radius-base;
+  }
 }
 
 // 2. Scheduled Transactions
@@ -278,3 +306,31 @@
     }
   }
 }
+
+.trend-bar {
+  height: 11px;
+  margin-top: 4px;
+
+  li {
+    float: left;
+    height: 100%;
+
+    span {
+      display: flex;
+      height: 100%;
+      margin-right: 2px;
+      background: @persondetails-badge-color;
+    }
+  }
+}
+
+.percentile-giving {
+  @media (min-width: @screen-sm) {
+    border-left: 1px solid @panel-border;
+  }
+
+  @media (min-width: @screen-lg) {
+    padding-left: 6rem;
+  }
+}
+

@@ -21,6 +21,7 @@ using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.Web.UI.WebControls;
+
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -176,7 +177,8 @@ namespace RockWeb.Blocks.Steps
                 .Union( stepType.StepProgram.StepWorkflowTriggers )
                 .Where( x => x.TriggerType == StepWorkflowTrigger.WorkflowTriggerCondition.Manual
                         && x.WorkflowType != null
-                        && ( x.WorkflowType.IsActive ?? false ) )
+                        && ( x.WorkflowType.IsActive ?? false )
+                        && ( !x.StepTypeId.HasValue || x.StepTypeId.Value == stepType.Id ) )
                 .OrderBy( w => w.WorkflowType.Name )
                 .ToList();
 
@@ -481,7 +483,16 @@ namespace RockWeb.Blocks.Steps
         /// <returns></returns>
         private bool CanEdit()
         {
-            return UserCanAdministrate && _step != null;
+            if ( _step != null )
+            {
+                return _step.IsAuthorized( Authorization.EDIT, CurrentPerson ) || _step.IsAuthorized( Authorization.MANAGE_STEPS, CurrentPerson );
+            }
+            else if ( _stepType != null )
+            {
+                return _stepType.IsAuthorized( Authorization.EDIT, CurrentPerson ) || _stepType.IsAuthorized( Authorization.MANAGE_STEPS, CurrentPerson );
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -509,7 +520,7 @@ namespace RockWeb.Blocks.Steps
                 return false;
             }
 
-            if ( !stepType.AllowManualEditing && !UserCanEdit )
+            if ( !stepType.AllowManualEditing )
             {
                 ShowError( "You are not authorized to add or edit a step of this type" );
                 return false;
@@ -575,6 +586,9 @@ namespace RockWeb.Blocks.Steps
                 return;
             }
 
+            var canEdit = CanEdit();
+            btnSave.Visible = canEdit;
+
             SetEditMode( true );
 
             rsspStatus.StepProgramId = stepType.StepProgramId;
@@ -613,9 +627,7 @@ namespace RockWeb.Blocks.Steps
         /// </summary>
         private void BuildDynamicControls( bool editMode )
         {
-            var stepEntityTypeId = EntityTypeCache.GetId( typeof( Step ) );
-            var excludedAttributes = AttributeCache.All()
-                .Where( a => a.EntityTypeId == stepEntityTypeId )
+            var excludedAttributes = AttributeCache.AllForEntityType<Step>()
                 .Where( a => a.Key == "Order" || a.Key == "Active" );
             avcAttributes.ExcludedAttributes = excludedAttributes.ToArray();
 

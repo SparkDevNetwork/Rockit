@@ -15,7 +15,7 @@
             <div class="panel-heading">
                 <h1 class="panel-title"><asp:Literal ID="lCalendarIcon" runat="server" />
                     <asp:Literal ID="lReadOnlyTitle" runat="server" /></h1>
-                <div class="pull-right">
+                <div class="panel-labels">
                     <button id="btnCopyToClipboard" runat="server" disabled="disabled"
                         data-toggle="tooltip" data-placement="top" data-trigger="hover" data-delay="250" title="Copy Feed URL to Clipboard"
                         class="btn btn-info btn-xs btn-copy-to-clipboard"
@@ -35,6 +35,12 @@
                     <p class="description">
                         <asp:Literal ID="lEventCalendarDescription" runat="server"></asp:Literal>
                     </p>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <asp:Literal ID="lDetailsLeft" runat="server" />
+                        </div>
+                    </div>
 
                     <div class="actions">
                         <asp:LinkButton ID="btnEdit" runat="server" AccessKey="e" ToolTip="Alt+e" Text="Edit" CssClass="btn btn-primary" OnClick="btnEdit_Click" CausesValidation="false" />
@@ -64,6 +70,7 @@
                             <Rock:DataTextBox ID="tbIconCssClass" runat="server" SourceTypeName="Rock.Model.EventCalendar, Rock" PropertyName="IconCssClass" Label="Calendar CSS Class" />
                         </div>
                         <div class="col-md-6">
+                            <Rock:RockCheckBox ID="cbIndexCalendar" runat="server" Label="Indexing Enabled" Text="Yes" />
                         </div>
                     </div>
 

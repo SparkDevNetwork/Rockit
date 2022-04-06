@@ -27,8 +27,6 @@ using System.Web.Http;
 using System.Web.Optimization;
 using System.Web.Routing;
 
-using DotLiquid;
-
 using Rock;
 using Rock.Communication;
 using Rock.Data;
@@ -36,6 +34,7 @@ using Rock.Logging;
 using Rock.Model;
 using Rock.Transactions;
 using Rock.Utility;
+using Rock.Utility.Settings;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.WebStartup;
@@ -43,7 +42,7 @@ using Rock.WebStartup;
 namespace RockWeb
 {
     /// <summary>
-    /// 
+    ///
     /// </summary>
     public class Global : System.Web.HttpApplication
     {
@@ -56,6 +55,9 @@ namespace RockWeb
 
         // cache callback object
         private static CacheItemRemovedCallback _onCacheRemove = null;
+
+        public static Thread CompileThemesThread = null;
+        public static Thread BlockTypeCompilationThread = null;
 
         #endregion
 
@@ -169,9 +171,6 @@ namespace RockWeb
 
                 RockApplicationStartupHelper.ShowDebugTimingMessage( "Register Routes" );
 
-                // Perform any Rock startups
-                RunStartups();
-
                 // add call back to keep IIS process awake at night and to provide a timer for the queued transactions
                 AddCallBack();
 
@@ -195,6 +194,10 @@ namespace RockWeb
                 }
 
                 ExceptionLogService.AlwaysLogToFile = false;
+
+                // Perform any Rock startups
+                RunStartups();
+
             }
             catch ( Exception ex )
             {
@@ -227,7 +230,7 @@ namespace RockWeb
         private static void StartCompileThemesThread()
         {
             // compile less files
-            new Thread( () =>
+            CompileThemesThread = new Thread( () =>
             {
                 /* Set to background thread so that this thread doesn't prevent Rock from shutting down. */
                 var stopwatchCompileLess = Stopwatch.StartNew();
@@ -248,7 +251,9 @@ namespace RockWeb
                         System.Diagnostics.Debug.WriteLine( "RockTheme.CompileAll messages: " + messages );
                     }
                 }
-            } ).Start();
+            } );
+
+            CompileThemesThread.Start();
         }
 
         /// <summary>
@@ -272,7 +277,7 @@ namespace RockWeb
         /// </summary>
         private static void StartBlockTypeCompilationThread()
         {
-            new Thread( () =>
+            BlockTypeCompilationThread = new Thread( () =>
             {
                 // Set to background thread so that this thread doesn't prevent Rock from shutting down.
                 Thread.CurrentThread.IsBackground = true;
@@ -292,7 +297,9 @@ namespace RockWeb
                 BlockTypeService.VerifyBlockTypeInstanceProperties( allUsedBlockTypeIds, _threadCancellationTokenSource.Token );
 
                 Debug.WriteLine( string.Format( "[{0,5:#} seconds] All block types Compiled", stopwatchCompileBlockTypes.Elapsed.TotalSeconds ) );
-            } ).Start();
+            } );
+
+            BlockTypeCompilationThread.Start();
         }
 
         /// <summary>
@@ -303,7 +310,7 @@ namespace RockWeb
         protected void Application_EndRequest( object sender, EventArgs e )
         {
             /*
-            4/28/2019 - JME 
+            4/28/2019 - JME
             The goal of the code below is to ensure that all cookies are set to be secured if
             the request is HTTPS. This is a bit tricky as we don't want to always make them
             secured as the server may not support SSL (development or small organizations).
@@ -312,8 +319,8 @@ namespace RockWeb
             Also, if the Request starts as HTTP and then the site redirects to HTTPS because it
             is required the Session cookie will have been created as unsecured. The code that does
             this redirection has been updated to clear the session cookie so it will be recreated
-            as secured.    
-    
+            as secured.
+
             Reason: Life.Church Request to increase security
             */
 
@@ -514,7 +521,8 @@ namespace RockWeb
                 // Send debug info to debug window
                 System.Diagnostics.Debug.WriteLine( string.Format( "shutdownReason:{0}", shutdownReason ) );
 
-                RockApplicationStartupHelper.LogShutdownMessage( "Application Ended: " + shutdownReason );
+                var shutdownMessage = string.Format( "Application Ended: {0} (Process ID: {1})", shutdownReason, Rock.WebFarm.RockWebFarm.ProcessId );
+                RockApplicationStartupHelper.LogShutdownMessage( shutdownMessage );
 
                 // Close out jobs infrastructure if running under IIS
                 bool runJobsInContext = Convert.ToBoolean( ConfigurationManager.AppSettings["RunJobsInIISContext"] );
@@ -533,8 +541,8 @@ namespace RockWeb
                 MarkOnlineUsersOffline();
 
                 // Auto-restart appdomain restarts (triggered by web.config changes, new dlls in the bin folder, etc.)
-                // These types of restarts don't cause the worker process to restart, but they do cause ASP.NET to unload 
-                // the current AppDomain and start up a new one. This will launch a web request which will auto-start Rock 
+                // These types of restarts don't cause the worker process to restart, but they do cause ASP.NET to unload
+                // the current AppDomain and start up a new one. This will launch a web request which will auto-start Rock
                 // in these cases.
                 // https://weblog.west-wind.com/posts/2013/oct/02/use-iis-application-initialization-for-keeping-aspnet-apps-alive
                 var client = new WebClient();
@@ -762,7 +770,7 @@ namespace RockWeb
                             "An error occurred{0} on the {1} site on page: <br>{2}<p>{3}</p>",
                                 person != null ? " for " + person.FullName : string.Empty,
                                 siteName,
-                                Context.Request.Url.OriginalString,
+                                Context.Request.UrlProxySafe().OriginalString,
                                 FormatException( ex, string.Empty ) );
 
                         // setup merge codes for email
@@ -771,7 +779,7 @@ namespace RockWeb
 
                         try
                         {
-                            mergeFields.Add( "Exception", Hash.FromAnonymousObject( ex ) );
+                            mergeFields.Add( "Exception", ex );
                         }
                         catch
                         {
@@ -836,7 +844,7 @@ namespace RockWeb
                     "IISCallBack",
                     60,
                     null,
-                    DateTime.Now.AddSeconds( 60 ),
+                    RockInstanceConfig.SystemDateTime.AddSeconds( 60 ),
                     Cache.NoSlidingExpiration,
                     CacheItemPriority.NotRemovable,
                     _onCacheRemove );
@@ -922,7 +930,7 @@ namespace RockWeb
 
                     var keepAliveUrl = GetKeepAliveUrl();
 
-                    // call a page on the site to keep IIS alive 
+                    // call a page on the site to keep IIS alive
                     if ( !string.IsNullOrWhiteSpace( keepAliveUrl ) )
                     {
                         try

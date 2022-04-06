@@ -1,0 +1,526 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Fluid</name>
+    </assembly>
+    <members>
+        <member name="M:Fluid.Ast.BinaryExpression.EvaluateAsync(Fluid.TemplateContext)">
+            <summary>
+            Evaluates two operands and tries to avoid state machines.
+            </summary>
+        </member>
+        <member name="T:Fluid.Ast.CallbackStatement">
+            <summary>
+            An instance of this class is used to execute some custom code in a template.
+            </summary>
+        </member>
+        <member name="P:Fluid.Ast.FunctionCallArgument.Name">
+            <summary>
+            Gets the name of the argument, or <c>null</c> if not defined.
+            </summary>
+        </member>
+        <member name="M:Fluid.Ast.MemberSegment.ResolveAsync(Fluid.Values.FluidValue,Fluid.TemplateContext)">
+            <summary>
+            Resolves the member of a <see cref="T:Fluid.Values.FluidValue"/> instance.
+            </summary>
+        </member>
+        <member name="T:Fluid.Ast.RenderStatement">
+            <summary>
+            The render tag can only access immutable environments, which means the scope of the context that was passed to the main template, the options' scope, and the model.
+            </summary>
+        </member>
+        <member name="T:Fluid.FilterArguments">
+            <summary>
+            Represents the list of arguments that are passed to a <see cref="T:Fluid.FilterDelegate"/>
+            when invoked.
+            </summary>
+        </member>
+        <member name="M:Fluid.Filters.MiscFilters.Handleize(Fluid.Values.FluidValue,Fluid.FilterArguments,Fluid.TemplateContext)">
+            <summary>
+            Converts from pascal/camel case to lower kebab-case.
+            </summary>
+        </member>
+        <member name="M:Fluid.FluidParser.Compile">
+            <summary>
+            Compiles all expressions.
+            </summary>
+        </member>
+        <member name="T:Fluid.FluidParserOptions">
+            <summary>
+            Parser options.
+            </summary>
+        </member>
+        <member name="P:Fluid.FluidParserOptions.AllowFunctions">
+            <summary>
+            Gets whether functions are allowed in templates. Default is <c>false</c>.
+            </summary>
+        </member>
+        <member name="T:Fluid.FunctionArguments">
+            <summary>
+            Represents the list of arguments of a function.
+            </summary>
+        </member>
+        <member name="P:Fluid.MemberAccessStrategy.IgnoreCasing">
+            <summary>
+            Gets or sets whether the member casing is ignored or not.
+            </summary>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``1(Fluid.MemberAccessStrategy)">
+            <summary>
+            Registers a type and all its public properties.
+            </summary>
+            <typeparam name="T">The type to register.</typeparam>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register(Fluid.MemberAccessStrategy,System.Type)">
+            <summary>
+            Registers a type and all its public properties.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="type">The type to register.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``1(Fluid.MemberAccessStrategy,System.String[])">
+            <summary>
+            Registers a limited set of properties in a type.
+            </summary>
+            <typeparam name="T">The type to register.</typeparam>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="names">The names of the properties in the type to register.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``1(Fluid.MemberAccessStrategy,System.Linq.Expressions.Expression{System.Func{``0,System.Object}}[])">
+            <summary>
+            Registers a limited set of properties in a type.
+            </summary>
+            <typeparam name="T">The type to register.</typeparam>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="names">The property's expressions in the type to register.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register(Fluid.MemberAccessStrategy,System.Type,System.String[])">
+            <summary>
+            Registers a limited set of properties in a type.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="type">The type to register.</param>
+            <param name="names">The names of the properties in the type to register.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``1(Fluid.MemberAccessStrategy,System.String,Fluid.IMemberAccessor)">
+            <summary>
+            Registers a named property when accessing a type using a <see cref="T:Fluid.IMemberAccessor"/>
+            to retrieve the value. The name of the property doesn't have to exist on the object.
+            </summary>
+            <typeparam name="T">The type to register.</typeparam>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="name">The name of the property to intercept.</param>
+            <param name="getter">The <see cref="T:Fluid.IMemberAccessor"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``1(Fluid.MemberAccessStrategy,Fluid.IMemberAccessor)">
+            <summary>
+            Registers a type using a <see cref="T:Fluid.IMemberAccessor"/> to retrieve any of
+            its property values.
+            </summary>
+            <typeparam name="T">The type to register.</typeparam>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="getter">The <see cref="T:Fluid.IMemberAccessor"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register(Fluid.MemberAccessStrategy,System.Type,Fluid.IMemberAccessor)">
+            <summary>
+            Registers a type using a <see cref="T:Fluid.IMemberAccessor"/> to retrieve any of
+            its property values.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="type">The type to register.</param>
+            <param name="getter">The <see cref="T:Fluid.IMemberAccessor"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.Func{``0,System.String,``1})">
+            <summary>
+            Registers a type with a <see cref="T:Func{T, string, TResult}"/> to retrieve any of
+            its property values.
+            </summary>
+            <typeparam name="T">The type to register.</typeparam>
+            <typeparam name="TResult">The type to return.</typeparam>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/> to register.</param>
+            <param name="accessor">The <see cref="T:Func{T, string, TResult}"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.Func{``0,System.String,Fluid.TemplateContext,``1})">
+            <summary>
+            Registers a type with a <see cref="T:Func{T, string, TemplateContext, TResult}"/> to retrieve any of
+            its property values.
+            </summary>
+            <typeparam name="T">The type to register.</typeparam>
+            <typeparam name="TResult">The type to return.</typeparam>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="accessor">The <see cref="T:Func{T, string, TemplateContext, TResult}"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.Func{``0,System.String,System.Threading.Tasks.Task{``1}})">
+            <summary>
+            Registers a type with a <see cref="T:Func{T, string, Task{TResult}}"/> to retrieve any of
+            its property values.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="accessor">The <see cref="T:Func{T, string, Task{Object}}"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.Func{``0,System.String,Fluid.TemplateContext,System.Threading.Tasks.Task{``1}})">
+            <summary>
+            Registers a type with a <see cref="T:Func{T, string, TemplateContext, Task{TResult}}"/> to retrieve any of
+            its property values.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="accessor">The <see cref="T:Func{T, string, TemplateContext, Task{TResult}}"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.String,System.Func{``0,System.Threading.Tasks.Task{``1}})">
+            <summary>
+            Registers a type with a <see cref="T:Func{T, Task{TResult}}"/> to retrieve the given property's value.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="name">The name of the property.</param>
+            <param name="accessor">The <see cref="T:Func{T, Task{TResult}}"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.String,System.Func{``0,Fluid.TemplateContext,System.Threading.Tasks.Task{``1}})">
+            <summary>
+            Registers a type with a <see cref="T:Func{T, TemplateContext, Task{Object}}"/> to retrieve the given property's value.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="name">The name of the property.</param>
+            <param name="accessor">The <see cref="T:Func{T, TemplateContext, Task{Object}}"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.String,System.Func{``0,``1})">
+            <summary>
+            Registers a type with a <see cref="T:System.Func`2"/> to retrieve the property specified.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="name">The name of the property.</param>
+            <param name="accessor">The <see cref="T:System.Func`2"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="M:Fluid.MemberAccessStrategyExtensions.Register``2(Fluid.MemberAccessStrategy,System.String,System.Func{``0,Fluid.TemplateContext,``1})">
+            <summary>
+            Registers a type with a <see cref="T:System.Func`3"/> to retrieve the property specified.
+            </summary>
+            <param name="strategy">The <see cref="T:Fluid.MemberAccessStrategy"/>.</param>
+            <param name="name">The name of the property.</param>
+            <param name="accessor">The <see cref="T:System.Func`3"/> instance used to retrieve the value.</param>
+        </member>
+        <member name="P:Fluid.Scope.Properties">
+            <summary>
+            Gets the own properties of the scope
+            </summary>
+        </member>
+        <member name="P:Fluid.Scope.Parent">
+            <summary>
+            Gets the parent scope if any.
+            </summary>
+        </member>
+        <member name="M:Fluid.Scope.GetValue(System.String)">
+            <summary>
+            Returns the value with the specified name in the chain of scopes, or undefined
+            if it doesn't exist.
+            </summary>
+            <param name="name">The name of the value to return.</param>
+        </member>
+        <member name="T:Fluid.Shims">
+            <summary>
+            Filling missing bits between netstandard2.0 and highers libs and frameworks.
+            </summary>
+        </member>
+        <member name="M:Fluid.TemplateContext.#ctor">
+            <summary>
+            Initializes a new instance of <see cref="T:Fluid.TemplateContext"/>.
+            </summary>
+        </member>
+        <member name="M:Fluid.TemplateContext.#ctor(System.Object,Fluid.TemplateOptions,System.Boolean)">
+            <summary>
+            Initializes a new instance of <see cref="T:Fluid.TemplateContext"/>.
+            </summary>
+            <param name="model">The model.</param>
+            <param name="options">The template options.</param>
+            <param name="allowModelMembers">Whether the members of the model can be accessed by default.</param>
+        </member>
+        <member name="M:Fluid.TemplateContext.#ctor(Fluid.TemplateOptions)">
+            <summary>
+            Initializes a new instance of <see cref="T:Fluid.TemplateContext"/> with the specified <see cref="T:Fluid.TemplateOptions"/>.
+            </summary>
+            <param name="options">The template options.</param>
+        </member>
+        <member name="M:Fluid.TemplateContext.#ctor(System.Object,System.Boolean)">
+            <summary>
+            Initializes a new instance of <see cref="T:Fluid.TemplateContext"/> wih a model and option regiter its properties.
+            </summary>
+            <param name="model">The model.</param>
+            <param name="allowModelMembers">Whether the members of the model can be accessed by default.</param>
+        </member>
+        <member name="P:Fluid.TemplateContext.Options">
+            <summary>
+            Gets the <see cref="T:Fluid.TemplateOptions"/>.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.CultureInfo">
+            <summary>
+            Gets or sets the <see cref="P:Fluid.TemplateContext.CultureInfo"/> instance used to render locale values like dates and numbers.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.Now">
+            <summary>
+            Gets or sets the value to returned by the "now" keyword.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.TimeZone">
+            <summary>
+            Gets or sets the local time zone used when parsing or creating dates without specific ones.
+            </summary>
+        </member>
+        <member name="M:Fluid.TemplateContext.IncrementSteps">
+            <summary>
+            Increments the number of statements the current template is processing.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.LocalScope">
+            <summary>
+            Gets or sets the current scope.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.RootScope">
+            <summary>
+            Gets or sets the root scope.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.AmbientValues">
+            <summary>
+            Used to define custom object on this instance to be used in filters and statements
+            but which are not available from the template.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.Model">
+            <summary>
+            Gets or sets a model object that is used to resolve properties in a template. This object is used if local and
+            global scopes are unsuccessfull.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.AllowModelMembers">
+            <summary>
+            Whether the direct properties of the Model can be accessed without being registered. Default is <code>true</code>.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.Captured">
+            <summary>
+            Gets or sets the delegate to execute when a Capture tag has been evaluated.
+            </summary>
+        </member>
+        <member name="M:Fluid.TemplateContext.EnterChildScope">
+            <summary>
+            Creates a new isolated child scope. After than any value added to this content object will be released once
+            <see cref="M:Fluid.TemplateContext.ReleaseScope" /> is called. The previous scope is linked such that its values are still available.
+            </summary>
+        </member>
+        <member name="M:Fluid.TemplateContext.EnterForLoopScope">
+            <summary>
+            Creates a new for loop scope. After than any value added to this content object will be released once
+            <see cref="M:Fluid.TemplateContext.ReleaseScope" /> is called. The previous scope is linked such that its values are still available.
+            </summary>
+        </member>
+        <member name="M:Fluid.TemplateContext.ReleaseScope">
+            <summary>
+            Exits the current scope that has been created by <see cref="M:Fluid.TemplateContext.EnterChildScope" />
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateContext.ValueNames">
+            <summary>
+            Gets the names of the values.
+            </summary>
+        </member>
+        <member name="M:Fluid.TemplateContext.GetValue(System.String)">
+            <summary>
+            Gets a value from the context.
+            </summary>
+            <param name="name">The name of the value.</param>
+        </member>
+        <member name="M:Fluid.TemplateContext.SetValue(System.String,Fluid.Values.FluidValue)">
+            <summary>
+            Sets a value on the context.
+            </summary>
+            <param name="name">The name of the value.</param>
+            <param name="value">Teh value to set.</param>
+            <returns></returns>
+        </member>
+        <member name="P:Fluid.TemplateOptions.MemberAccessStrategy">
+            <summary>
+            Gets ot sets the members than can be accessed in a template.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.FileProvider">
+            <summary>
+            Gets or sets the <see cref="T:Microsoft.Extensions.FileProviders.IFileProvider"/> used to access files for include and render statements.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.MaxSteps">
+            <summary>
+            Gets or sets the maximum number of steps a script can execute. Leave to 0 for unlimited.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.CultureInfo">
+            <summary>
+            Gets or sets the <see cref="P:Fluid.TemplateOptions.CultureInfo"/> instance used to render locale values like dates and numbers.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.Now">
+            <summary>
+            Gets or sets the value returned by the "now" keyword.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.TimeZone">
+            <summary>
+            Gets or sets the local time zone used when parsing or creating dates without specific ones.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.MaxRecursion">
+            <summary>
+            Gets or sets the maximum depth of recursions a script can execute. 100 by default.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.Filters">
+            <summary>
+            Gets the collection of filters available in the templates.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.Scope">
+            <summary>
+            Gets a scope that is available in all the templates.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.ValueConverters">
+            <summary>
+            Gets the list of value converters.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.Captured">
+            <summary>
+            Gets or sets the delegate to execute when a Capture tag has been evaluated.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.Trimming">
+            <summary>
+            Gets or sets the default trimming rules.
+            </summary>
+        </member>
+        <member name="P:Fluid.TemplateOptions.Greedy">
+            <summary>
+            Gets or sets whether trimming is greedy. Default is true. When set to true, all successive blank chars are trimmed.
+            </summary>
+        </member>
+        <member name="F:Fluid.TrimmingFlags.None">
+            <summary>
+            Default. Tags and outputs are not trimmed unless the '-' is set on the delimiter.
+            </summary>
+        </member>
+        <member name="F:Fluid.TrimmingFlags.TagLeft">
+            <summary>
+            Strip blank characters (including , \t, and \r) from the left of tags ({% %}) until \n (exclusive when greedy option os off).
+            </summary>
+        </member>
+        <member name="F:Fluid.TrimmingFlags.TagRight">
+            <summary>
+            Strip blank characters (including , \t, and \r) from the right of tags ({% %}) until \n (inclusive when greedy option os off).
+            </summary>
+        </member>
+        <member name="F:Fluid.TrimmingFlags.OutputLeft">
+            <summary>
+            Strip blank characters (including , \t, and \r) from the left of values ({{ }}) until \n (exclusive when greedy option os off).
+            </summary>
+        </member>
+        <member name="F:Fluid.TrimmingFlags.OutputRight">
+            <summary>
+            Strip blank characters (including , \t, and \r) from the right of values ({{ }}) until \n (inclusive when greedy option os off).
+            </summary>
+        </member>
+        <member name="T:Fluid.Utils.ObjectPool`1">
+             <summary>
+             Generic implementation of object pooling pattern with predefined pool size limit. The main
+             purpose is that limited number of frequently used objects can be kept in the pool for
+             further recycling.
+            
+             Notes:
+             1) it is not the goal to keep all returned objects. Pool is not meant for storage. If there
+                is no space in the pool, extra returned objects will be dropped.
+            
+             2) it is implied that if object was obtained from a pool, the caller will return it back in
+                a relatively short time. Keeping checked out objects for long durations is ok, but
+                reduces usefulness of pooling. Just new up your own.
+            
+             Not returning objects to the pool in not detrimental to the pool's work, but is a bad practice.
+             Rationale:
+                If there is no intent for reusing the object, do not use pool - just use "new".
+             </summary>
+        </member>
+        <member name="T:Fluid.Utils.ObjectPool`1.Factory">
+            <remarks>
+            Not using System.Func{T} because this file is linked into the (debugger) Formatter,
+            which does not have that type (since it compiles against .NET 2.0).
+            </remarks>
+        </member>
+        <member name="M:Fluid.Utils.ObjectPool`1.Allocate">
+            <summary>
+            Produces an instance.
+            </summary>
+            <remarks>
+            Search strategy is a simple linear probing which is chosen for it cache-friendliness.
+            Note that Free will try to store recycled objects close to the start thus statistically
+            reducing how far we will typically search.
+            </remarks>
+        </member>
+        <member name="M:Fluid.Utils.ObjectPool`1.Free(`0)">
+            <summary>
+            Returns objects to the pool.
+            </summary>
+            <remarks>
+            Search strategy is a simple linear probing which is chosen for it cache-friendliness.
+            Note that Free will try to store recycled objects close to the start thus statistically
+            reducing how far we will typically search in Allocate.
+            </remarks>
+        </member>
+        <member name="T:Fluid.Utils.StringBuilderPool">
+            <summary>
+            The usage is:
+                   var inst = StringBuilderPool.GetInstance();
+                   var sb = inst.builder;
+                   ... Do Stuff...
+                   ... sb.ToString() ...
+                   inst.Free();
+            </summary>
+        </member>
+        <member name="M:Fluid.Utils.StringBuilderPool.CreatePool(System.Int32,System.Int32)">
+            <summary>
+            If someone need to create a private pool
+            </summary>
+        </member>
+        <member name="M:Fluid.Utils.StringBuilderPool.GetInstance">
+            <summary>
+            Returns a StringBuilder from the default pool.
+            </summary>
+        </member>
+        <member name="M:Fluid.Values.FluidValue.FirstOrDefault(Fluid.TemplateContext)">
+            <summary>
+            Returns the first element. Used by the <code>first</code> filter.
+            </summary>
+        </member>
+        <member name="M:Fluid.Values.FluidValue.LastOrDefault(Fluid.TemplateContext)">
+            <summary>
+            Returns the last element. Used by the <code>last</code> filter.
+            </summary>
+        </member>
+        <member name="T:Fluid.Values.NumberValue">
+            Numbers are stored as decimal values to handle the best possible precision.
+            Decimals also have the capacity of retaining their precision across
+            operations:
+            1 * 2 = 2
+            1.0 * 2.0 = 2.00
+        </member>
+        <member name="T:Fluid.Values.ObjectValueBase">
+            <summary>
+            Inherits from this class to implement custom object wrappers.
+            </summary>
+        </member>
+        <member name="P:Fluid.Values.StringValue.Encode">
+            <summary>
+            Gets or sets whether the string is encoded (default) or not when rendered.
+            </summary>
+        </member>
+    </members>
+</doc>

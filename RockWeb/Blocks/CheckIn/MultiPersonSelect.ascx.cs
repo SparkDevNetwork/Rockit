@@ -31,26 +31,97 @@ using Rock.Web.UI.Controls;
 
 namespace RockWeb.Blocks.CheckIn
 {
-    [DisplayName("Person Select (Family Check-in)")]
-    [Category("Check-in")]
-    [Description("Lists people who match the selected family and provides option of selecting multiple.")]
+    [DisplayName( "Person Select (Family Check-in)" )]
+    [Category( "Check-in" )]
+    [Description( "Lists people who match the selected family and provides option of selecting multiple." )]
 
-    [LinkedPage("Auto Select Next Page", "The page to navigate to after selecting people in auto-select mode.", false, "", "", 5 )]
-    [CodeEditorField( "Pre-Selected Options Format", "The format to use when displaying auto-checkin options", CodeEditorMode.Lava, CodeEditorTheme.Rock, 100, false, @"
-<span class='auto-select-schedule'>{{ Schedule.Name }}:</span>
-<span class='auto-select-group'>{{ Group.Name }}</span>
-<span class='auto-select-location'>{{ Location.Name }}</span>
-", "", 6, "OptionFormat" )]
+    #region Attribute Keys
 
-    [TextField( "Title", "Title to display. Use {0} for family name.", false, "{0}", "Text", 7 )]
-    [TextField( "Caption", "", false, "Select People", "Text", 8 )]
-    [TextField( "Option Title", "Title to display on option screen. Use {0} for person's full name.", false, "{0}", "Text", 9 )]
-    [TextField( "Option Sub Title", "Subtitle to display on option screen. Use {0} for person's nickname.", false, "Please select the options that {0} would like to attend.", "Text", 10 )]
-    [TextField( "No Option Message", "", false, "Sorry, there are currently not any available areas that the selected people can check into.", "Text", 11 )]
-    [TextField( "Next Button Text", "", false, "Next", "Text", 12 )]
+    [LinkedPage( "Auto Select Next Page",
+        Key = AttributeKey.AutoSelectNextPage,
+        Description = "The page to navigate to after selecting people in auto-select mode.",
+        IsRequired = false,
+        Order = 5 )]
+
+    [CodeEditorField( "Pre-Selected Options Format",
+        Key = AttributeKey.OptionFormat,
+        Description = "The format to use when displaying auto-checkin options. Merge fields include GroupType, Group, Location, Schedule, LocationCount and DisplayLocationCount (true/false).",
+        EditorMode = CodeEditorMode.Lava,
+        EditorTheme = CodeEditorTheme.Rock,
+        EditorHeight = 100,
+        IsRequired = false,
+        DefaultValue = PreSelectedOptionsFormatDefaultValue,
+        Order = 6 )]
+
+    [TextField( "Caption",
+        Key = AttributeKey.Caption,
+        IsRequired = false,
+        DefaultValue = "Select People",
+        Category = "Text",
+        Order = 7 )]
+
+    [TextField( "Option Title",
+        Key = AttributeKey.OptionTitle,
+        Description = "Title to display on option screen. Use {0} for person's full name.",
+        IsRequired = false,
+        DefaultValue = "{0}",
+        Category = "Text",
+        Order = 8 )]
+
+    [TextField( "Option Sub Title",
+        Key = AttributeKey.OptionSubTitle,
+        Description = "Subtitle to display on option screen. Use {0} for person's nickname.",
+        IsRequired = false,
+        DefaultValue = "Please select the options that {0} would like to attend.",
+        Category = "Text",
+        Order = 9 )]
+
+    [TextField( "No Option Message",
+        Key = AttributeKey.NoOptionMessage,
+        IsRequired = false,
+        DefaultValue = "Sorry, there are currently not any available areas that the selected people can check into.",
+        Category = "Text",
+        Order = 10 )]
+
+    [TextField( "Next Button Text",
+        Key = AttributeKey.NextButtonText,
+        Description = "",
+        IsRequired = false,
+        DefaultValue = "Next",
+        Category = "Text",
+        Order = 11 )]
+
+    #endregion Attribute Keys
 
     public partial class MultiPersonSelect : CheckInBlock
     {
+        /* 2021-05/07 ETD
+         * Use new here because the parent CheckInBlock also has inherited class AttributeKey.
+         */
+        private new static class AttributeKey
+        {
+            public const string AutoSelectNextPage = "AutoSelectNextPage";
+            public const string OptionFormat = "OptionFormat";
+            public const string Caption = "Caption";
+            public const string OptionTitle = "OptionTitle";
+            public const string OptionSubTitle = "OptionSubTitle";
+            public const string NoOptionMessage = "NoOptionMessage";
+            public const string NextButtonText = "NextButtonText";
+        }
+
+        #region Attribute Default Values
+        private const string PreSelectedOptionsFormatDefaultValue = @"
+<span class='auto-select-schedule'>{{ Schedule.Name }}:</span>
+<span class='auto-select-group'>{{ Group.Name }}</span>
+<span class='auto-select-location'>{{ Location.Name }}</span
+{% if DisplayLocationCount == true %}
+<span class='ml-3'>Count: {{ LocationCount }}</span>
+{% endif %} 
+";
+
+
+        #endregion Attribute Default Values
+
         bool _hidePhotos = false;
         bool _autoCheckin = false;
 
@@ -140,12 +211,6 @@ namespace RockWeb.Blocks.CheckIn
 
             RockPage.AddScriptLink( "~/Scripts/CheckinClient/checkin-core.js" );
 
-            var bodyTag = this.Page.Master.FindControl( "bodyTag" ) as HtmlGenericControl;
-            if ( bodyTag != null )
-            {
-                bodyTag.AddCssClass( "checkin-multipersonselect-bg" );
-            }
-
             if ( CurrentWorkflow == null || CurrentCheckInState == null )
             {
                 NavigateToHomePage();
@@ -168,10 +233,10 @@ namespace RockWeb.Blocks.CheckIn
 
                     lbEditFamily.Visible = CurrentCheckInState.Kiosk.RegistrationModeEnabled;
 
-                    lTitle.Text = string.Format( GetAttributeValue( "Title" ), family.ToString() );
-                    lCaption.Text = GetAttributeValue( "Caption" );
+                    lTitle.Text = GetTitleText();
+                    lCaption.Text = GetAttributeValue( AttributeKey.Caption );
                     lCaption2.Text = lCaption.Text;
-                    lbSelect.Text = GetAttributeValue( "NextButtonText" );
+                    lbSelect.Text = GetAttributeValue( AttributeKey.NextButtonText );
 
                     if ( _autoCheckin )
                     {
@@ -235,16 +300,10 @@ namespace RockWeb.Blocks.CheckIn
                     {
                         var selectedOptions = person.GetOptions( true, true );
 
-                        string format = GetAttributeValue( "OptionFormat" );
                         foreach ( var option in selectedOptions )
                         {
-                            var mergeFields = new Dictionary<string, object> {
-                            { "GroupType", option.GroupType },
-                            { "Group", option.Group },
-                            { "Location", option.Location },
-                            { "Schedule", option.Schedule }
-                        };
-                            options.Add( format.ResolveMergeFields( mergeFields ) );
+                            var optionText = GetOptionText( option );
+                            options.Add( optionText );
                         }
 
                         var pnlPersonButton = e.Item.FindControl( "pnlPersonButton" ) as Panel;
@@ -295,6 +354,26 @@ namespace RockWeb.Blocks.CheckIn
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Get the option text.
+        /// </summary>
+        private string GetOptionText( CheckInPersonSummary option )
+        {
+            var format = GetAttributeValue( AttributeKey.OptionFormat );
+            var mergeFields = new Dictionary<string, object>
+            {
+                { "GroupType", option.GroupType },
+                { "Group", option.Group },
+                { "Location", option.Location },
+                { "Schedule", option.Schedule },
+                { "DisplayLocationCount", CurrentCheckInState.CheckInType.DisplayLocationCount },
+                { "LocationCount", KioskLocationAttendance.Get( option.Location.Location.Id ).CurrentCount }
+            };
+
+            var optionText = format.ResolveMergeFields( mergeFields );
+            return optionText;
         }
 
         /// <summary>
@@ -359,7 +438,7 @@ namespace RockWeb.Blocks.CheckIn
                     if ( _autoCheckin )
                     {
                         SaveState();
-                        NavigateToLinkedPage( "AutoSelectNextPage" );
+                        NavigateToLinkedPage( AttributeKey.AutoSelectNextPage );
                     }
                     else
                     {
@@ -471,7 +550,7 @@ namespace RockWeb.Blocks.CheckIn
                 () => CurrentCheckInState.CheckIn.CurrentFamily.GetPeople( true )
                     .SelectMany( p => p.GroupTypes.Where( t => !t.ExcludedByFilter ) )
                     .Count() <= 0,
-                string.Format( "<p>{0}</p>", GetAttributeValue( "NoOptionMessage" ) ) );
+                string.Format( "<p>{0}</p>", GetAttributeValue( AttributeKey.NoOptionMessage ) ) );
         }
 
         protected string GetSelectedClass( bool selected )
@@ -502,16 +581,10 @@ namespace RockWeb.Blocks.CheckIn
                 var options = new List<string>();
                 if ( _autoCheckin && person.PreSelected )
                 {
-                    string format = GetAttributeValue( "OptionFormat" );
                     foreach ( var option in person.GetOptions( true, true ) )
                     {
-                        var mergeFields = new Dictionary<string, object> {
-                            { "GroupType", option.GroupType },
-                            { "Group", option.Group },
-                            { "Location", option.Location },
-                            { "Schedule", option.Schedule }
-                        };
-                        options.Add( format.ResolveMergeFields( mergeFields ) );
+                        var optionText = GetOptionText( option );
+                        options.Add( optionText );
                     }
                 }
 
@@ -535,6 +608,16 @@ namespace RockWeb.Blocks.CheckIn
             return string.Empty;
         }
 
+        private string GetTitleText()
+        {
+            var mergeFields = new Dictionary<string, object>
+            {
+                { LavaMergeFieldName.Family, CurrentCheckInState.CheckIn.CurrentFamily.Group }
+            };
+
+            var multiPersonSelectHeaderLavaTemplate = CurrentCheckInState.CheckInType.MultiPersonSelectHeaderLavaTemplate ?? string.Empty;
+            return multiPersonSelectHeaderLavaTemplate.ResolveMergeFields( mergeFields );
+        }
 
         private void ShowOptions( int personId )
         {
@@ -548,8 +631,8 @@ namespace RockWeb.Blocks.CheckIn
             if ( person != null )
             {
                 hfPersonId.Value = person.Person.Id.ToString();
-                lOptionTitle.Text = string.Format( GetAttributeValue( "OptionTitle" ), person.Person.FullName );
-                lOptionSubTitle.Text = string.Format( GetAttributeValue( "OptionSubTitle" ), person.Person.NickName );
+                lOptionTitle.Text = string.Format( GetAttributeValue( AttributeKey.OptionTitle ), person.Person.FullName );
+                lOptionSubTitle.Text = string.Format( GetAttributeValue( AttributeKey.OptionSubTitle ), person.Person.NickName );
 
                 BindOptions();
 
@@ -581,14 +664,7 @@ namespace RockWeb.Blocks.CheckIn
             var option = dataItem as CheckInPersonSummary;
             if ( option != null )
             {
-                string format = GetAttributeValue( "OptionFormat" );
-                var mergeFields = new Dictionary<string, object> {
-                            { "GroupType", option.GroupType },
-                            { "Group", option.Group },
-                            { "Location", option.Location },
-                            { "Schedule", option.Schedule }
-                        };
-                return format.ResolveMergeFields( mergeFields );
+                return GetOptionText( option );
             }
 
             return string.Empty;

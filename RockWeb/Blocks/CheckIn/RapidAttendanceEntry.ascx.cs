@@ -63,7 +63,7 @@ namespace RockWeb.Blocks.CheckIn
     [GroupField(
         "Parent Group",
         Key = AttributeKey.ParentGroup,
-        Description = "If set, contrains the group picker to only list groups that are under this group.",
+        Description = "If set, constrains the group picker to only list groups that are under this group.",
         Category = "Attendance",
         IsRequired = false,
         Order = 2 )]
@@ -364,7 +364,7 @@ namespace RockWeb.Blocks.CheckIn
 
         #endregion Attribute Default values
 
-        #region Atrribute Keys
+        #region Attribute Keys
 
         /// <summary>
         /// A defined list of attribute keys used by this block.
@@ -400,7 +400,7 @@ namespace RockWeb.Blocks.CheckIn
             public const string EnableCategorySelection = "CategorySelection";
         }
 
-        #endregion Atrribute Keys
+        #endregion Attribute Keys
 
         #region Base Method Overrides
 
@@ -2308,8 +2308,15 @@ namespace RockWeb.Blocks.CheckIn
                 {
                     gpGradePicker.SelectedValue = null;
                 }
-                pnlEmail.Visible = GetAttributeValue( AttributeKey.ChildAllowEmailEdit ).AsBoolean();
+
                 rblCommunicationPreference.Visible = false;
+                var isChildAllowEmailEdit = GetAttributeValue( AttributeKey.ChildAllowEmailEdit ).AsBoolean();
+                pnlEmail.Visible = isChildAllowEmailEdit;
+                if ( isChildAllowEmailEdit )
+                {
+                    tbEmail.Text = person.Email;
+                    cbIsEmailActive.Checked = person.IsEmailActive;
+                }
             }
 
             BindPhoneNumbers( isAdult, person );

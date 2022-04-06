@@ -15,9 +15,8 @@
 // </copyright>
 //
 using System;
-using System.Collections.Generic;
 using System.Web.UI;
-using Rock.Logging;
+
 using Rock.Web.UI;
 
 namespace RockWeb.Blocks.Administration
@@ -29,8 +28,19 @@ namespace RockWeb.Blocks.Administration
     [System.ComponentModel.Category( "Administration" )]
     [System.ComponentModel.Description( "Block to view system logs." )]
 
-    public partial class LogViewer : RockBlock, ICustomGridColumns
+    public partial class LogViewer : RockBlock, ICustomGridColumns, ISecondaryBlock
     {
+        public void SetVisible( bool visible )
+        {
+            if ( visible && !pnlLogs.Visible )
+            {
+                // if setting back to visible, make sure the log grid is refreshed
+                BindGrid();
+            }
+
+            pnlLogs.Visible = visible;
+        }
+
         #region Control Methods
 
         /// <summary>
@@ -98,6 +108,7 @@ namespace RockWeb.Blocks.Administration
             {
                 rGrid.EmptyDataText = "The end of the log entries have been reached. <a href=''>Start Over.</a>";
             }
+
             rGrid.VirtualItemCount = logReader.RecordCount;
             rGrid.DataSource = events;
             rGrid.DataBind();

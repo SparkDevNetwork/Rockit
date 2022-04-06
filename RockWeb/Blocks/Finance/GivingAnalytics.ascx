@@ -13,7 +13,7 @@
 </script>
 
 <style>
-    .filter-options .rock-check-box-list label {
+    .clickable-label label {
         cursor: pointer;
     }
 </style>
@@ -30,12 +30,12 @@
 
                 <div class="panel-labels">
 
-                    <a href="#" onclick="$('.js-slidingdaterange-help').toggle()" class="btn btn-xs btn-square btn-link margin-l-sm">
-                        <i class='fa fa-question-circle'></i>
+                    <a href="#" onclick="$('.js-slidingdaterange-help').slideToggle()" class="btn btn-default btn-xs btn-square">
+                        <i class='fa fa-question'></i>
                     </a>
                     <button id="btnCopyToClipboard" runat="server" disabled="disabled"
                         data-toggle="tooltip" data-placement="top" data-trigger="hover" data-delay="250" title="Copy Report Link to Clipboard"
-                        class="btn btn-xs btn-square btn-default margin-l-sm btn-copy-to-clipboard"
+                        class="btn btn-xs btn-square btn-default btn-copy-to-clipboard"
                         onclick="$(this).attr('data-original-title', 'Copied').tooltip('show').attr('data-original-title', 'Copy Link to Clipboard');return false;">
                         <i class='fa fa-clipboard'></i>
                     </button>
@@ -43,8 +43,9 @@
                 <div class="rock-fullscreen-toggle js-fullscreen-trigger"></div>
             </div>
 
-            <div class="panel-info">
-                <div class="alert alert-info js-slidingdaterange-help margin-b-none" style="display: none">
+            <div class="panel-collapsable p-0">
+                <div class="panel-drawer js-slidingdaterange-help border-bottom border-panel p-3" style="display: none">
+                    <h5 class="mt-0 mb-4">Sliding Date Range Help</h5>
                     <asp:Literal ID="lSlidingDateRangeHelp" runat="server" />
                 </div>
             </div>
@@ -60,7 +61,7 @@
                         <Rock:HiddenFieldWithClass ID="hfAdvancedVisible" runat="server" CssClass="js-advanced-visible" Value="false" />
                         <div id="divAdvancedSettings" runat="server" class="js-advanced-settings clearfix" >
                             <Rock:NumberRangeEditor ID="nreAmount" runat="server" CssClass="input-width-sm" NumberType="Currency" Label="Total Amount" />
-                            <Rock:DataViewItemPicker ID="dvpDataView" runat="server" Label="Limit by Data View" AutoPostBack="true" OnSelectedIndexChanged="dvpDataView_SelectedIndexChanged" EnhanceForLongLists="true" />
+                            <Rock:DataViewItemPicker ID="dvpDataView" runat="server" Label="Limit by Data View" AutoPostBack="true" OnValueChanged="dvpDataView_ValueChanged" EnhanceForLongLists="true" />
                             <Rock:RockControlWrapper ID="rcwAccounts" runat="server" Label="Available Accounts">
                             <div class="row">
                                 <div class="col-sm-5">
@@ -73,8 +74,8 @@
                             </Rock:RockControlWrapper>
                             <Rock:DefinedValuesPicker ID="dvpTransactionType" runat="server" Label="Transaction Types" RepeatDirection="Vertical" />
                         </div>
-                        <Rock:DefinedValuesPicker ID="dvpCurrencyTypes" runat="server" FormGroupCssClass="currency-list js-currency-list" Label="Currency Types" RepeatDirection="Vertical" />
-                        <Rock:DefinedValuesPicker ID="dvpTransactionSource" runat="server" FormGroupCssClass="source-list js-source-list" Label="Transaction Source" RepeatDirection="Vertical" />
+                        <Rock:DefinedValuesPicker ID="dvpCurrencyTypes" runat="server" FormGroupCssClass="currency-list clickable-label js-select-all" Label="Currency Types" RepeatDirection="Vertical" />
+                        <Rock:DefinedValuesPicker ID="dvpTransactionSource" runat="server" FormGroupCssClass="source-list clickable-label js-select-all" Label="Transaction Source" RepeatDirection="Vertical" />
                         <asp:PlaceHolder ID="phAccounts" runat="server" />
 
                     </div>
@@ -97,8 +98,8 @@
                                 </div>
                             </div>
                             <div class="col-sm-4">
-                                <div class="actions text-right">
-                                    <asp:LinkButton ID="btnApply" runat="server" CssClass="btn btn-primary" ToolTip="Update the chart" OnClick="btnApply_Click"><i class="fa fa-refresh"></i> Update</asp:LinkButton>
+                                <div class="panel-actions text-right">
+                                    <asp:LinkButton ID="btnApply" runat="server" CssClass="btn btn-primary pull-right" ToolTip="Update the chart" OnClick="btnApply_Click"><i class="fa fa-refresh"></i> Update</asp:LinkButton>
                                 </div>
                             </div>
                         </div>
@@ -219,9 +220,9 @@
                                         </asp:Panel>
                                     </Rock:RockControlWrapper>
 
-                                    <Rock:RockRadioButtonList ID="rblDataViewAction" runat="server" Label="Dataview Results" RepeatDirection="Vertical" Visible="false">
-                                        <asp:ListItem Text="Only show people from dataview that have giving data" Value="Limit" />
-                                        <asp:ListItem Text="Include all people from dataview" Value="All" />
+                                    <Rock:RockRadioButtonList ID="rblDataViewAction" runat="server" Label="Data View Results" RepeatDirection="Vertical" Visible="false">
+                                        <asp:ListItem Text="Only show people from Data View that have giving data" Value="Limit" />
+                                        <asp:ListItem Text="Include all people from Data View" Value="All" />
                                     </Rock:RockRadioButtonList>
 
                                     <div class="actions margin-b-md">
@@ -300,8 +301,8 @@
                 });
 
                 // Set checkbox labels to toggle child checkboxes when clicked
-                $('div.rock-check-box-list').find('label.control-label').prop('data-selected', false);
-                $('div.rock-check-box-list').find('label.control-label').on('click', function (e) {
+                $('.js-select-all').find('label.control-label').prop('data-selected', false);
+                $('.js-select-all').find('label.control-label').on('click', function (e) {
                     var selected = $(this).prop('data-selected')
                     $(this).siblings().find('input:checkbox').prop('checked', !selected);
                     $(this).prop('data-selected', !selected);
