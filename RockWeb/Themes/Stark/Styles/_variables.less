@@ -34,7 +34,7 @@
 @text-muted:             @gray-light; // The muted color for text #color #color
 @text-selection-bg:      #afd074; // Text selection background color (used when people select text with the mouse). #color
 @text-selection-color:   #fff;    // Text selection text color (used when people select text with the mouse). #color
-@font-family-sans-serif: "OpenSans", "Helvetica Neue", Helvetica, Arial, sans-serif; // The base font to use for text. Be sure when defining this font that the various weights are configured.
+@font-family-sans-serif: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; // The base font to use for text. Be sure when defining this font that the various weights are configured.
 @font-size-base:          14px; // The default text size.
 @line-height-base:        1.428571429; // The default line height.
 //--
@@ -204,9 +204,9 @@
 @grid-footer-font-size: 10px;
 @grid-footer-font-weight: 300;
 //--
-@grid-footer-button-bg: darken(@grid-footer-bg, 5%);
-@grid-footer-button-text-color: @text-color;
-@grid-footer-button-border: darken(@grid-footer-bg, 20%);
+@grid-footer-button-bg:                 @btn-default-bg;
+@grid-footer-button-text-color:         @btn-default-color;
+@grid-footer-button-border:             @btn-default-border;
 
 //// Table Styles
 @table-bg: @grid-row-even-bg;

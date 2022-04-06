@@ -116,10 +116,10 @@
             </summary>
         </member>
         <member name="T:Rock.MyWell.MyWellGateway">
-            <summary>
+             <summary>
             
-            </summary>
-            <seealso cref="T:Rock.Financial.GatewayComponent" />
+             </summary>
+             <seealso cref="T:Rock.Financial.GatewayComponent" />
         </member>
         <member name="T:Rock.MyWell.MyWellGateway.AttributeKey">
             <summary>
@@ -151,6 +151,12 @@
             The ach transaction fee coverage amount
             </summary>
         </member>
+        <member name="F:Rock.MyWell.MyWellGateway.AttributeKey.CardSyncWebhookSignature">
+            <summary>
+            The card sync webhook signature
+            See https://sandbox.gotnpgateway.com/docs/webhooks/#security
+            </summary>
+        </member>
         <member name="M:Rock.MyWell.MyWellGateway.GetGatewayUrl(Rock.Model.FinancialGateway)">
             <summary>
             Gets the gateway URL.
@@ -174,6 +180,27 @@
             <value>
             The private API key.
             </value>
+        </member>
+        <member name="M:Rock.MyWell.MyWellGateway.GetCardSyncSignature(Rock.Model.FinancialGateway)">
+            <summary>
+            Gets the CardSync signature.
+            </summary>
+            <param name="financialGateway">The financial gateway.</param>
+            <returns>System.String.</returns>
+        </member>
+        <member name="M:Rock.MyWell.MyWellGateway.VerifySignature(Rock.Model.FinancialGateway,System.String,System.String)">
+            <summary>
+            Verifies the signature of a POST to a webhook,
+            </summary>
+            <param name="financialGateway">The financial gateway.</param>
+            <param name="postedSignature">The posted signature.</param>
+            <param name="postedBody">The posted body.</param>
+            <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
+        </member>
+        <member name="M:Rock.MyWell.MyWellGateway.Base64UrlDecode(System.String)">
+            <summary>
+            Decodes an RFC4648 Base64 URL encoded string.
+            </summary>
         </member>
         <member name="P:Rock.MyWell.MyWellGateway.MostRecentException">
             <summary>
@@ -300,7 +327,7 @@
         <member name="M:Rock.MyWell.MyWellGateway.UpdateCustomerAddress(System.String,System.String,Rock.Financial.ReferencePaymentInfo)">
             <summary>
             Updates the customer address.
-            https://sandbox.gotnpgateway.com/docs/api/#update-a-specific-customer-address
+            https://sandbox.gotnpgateway.com/docs/api/#update-address-token-deprecated
             </summary>
             <param name="gatewayUrl">The gateway URL.</param>
             <param name="apiKey">The API key.</param>
@@ -414,6 +441,17 @@
             <param name="subscriptionParameters">The subscription parameters.</param>
             <returns></returns>
         </member>
+        <member name="M:Rock.MyWell.MyWellGateway.SetSubscriptionStatus(System.String,System.String,System.String,Rock.MyWell.MyWellSubscriptionStatus)">
+            <summary>
+            Sets the subscription status.
+            Undocumented - Email from MyWell on 6/10/2021 told us about it
+            </summary>
+            <param name="gatewayUrl">The gateway URL.</param>
+            <param name="apiKey">The API key.</param>
+            <param name="subscriptionId">The subscription identifier.</param>
+            <param name="subscriptionStatus">The subscription status.</param>
+            <returns></returns>
+        </member>
         <member name="M:Rock.MyWell.MyWellGateway.UpdateSubscription(System.String,System.String,System.String,Rock.MyWell.SubscriptionRequestParameters)">
             <summary>
             Updates the subscription.
@@ -455,10 +493,10 @@
             <returns></returns>
         </member>
         <member name="T:Rock.MyWell.MyWellGateway.ReferencePaymentInfoRequired">
-            <summary>
+             <summary>
             
-            </summary>
-            <seealso cref="T:System.Exception" />
+             </summary>
+             <seealso cref="T:System.Exception" />
         </member>
         <member name="M:Rock.MyWell.MyWellGateway.ReferencePaymentInfoRequired.#ctor">
             <summary>
@@ -588,7 +626,7 @@
         </member>
         <member name="T:Rock.MyWell.CreateCustomerRequest">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#create-a-new-customer
+            https://sandbox.gotnpgateway.com/docs/api/#create-customer-deprecated
             </summary>
         </member>
         <member name="P:Rock.MyWell.CreateCustomerRequest.Description">
@@ -625,7 +663,8 @@
         </member>
         <member name="T:Rock.MyWell.CustomerResponse">
             <summary>
-            from https://sandbox.gotnpgateway.com/docs/api/#create-a-new-customer and https://sandbox.gotnpgateway.com/docs/api/#get-a-specific-customer
+            from https://sandbox.gotnpgateway.com/docs/api/#create-customer-deprecated
+            and https://sandbox.gotnpgateway.com/docs/api/#get-customer-by-id-deprecated
             </summary>
         </member>
         <member name="P:Rock.MyWell.CustomerResponse.Data">
@@ -638,7 +677,8 @@
         </member>
         <member name="T:Rock.MyWell.CustomerResponseData">
             <summary>
-            from https://sandbox.gotnpgateway.com/docs/api/#create-a-new-customer and https://sandbox.gotnpgateway.com/docs/api/#get-a-specific-customer
+            from https://sandbox.gotnpgateway.com/docs/api/#create-customer-deprecated
+            and https://sandbox.gotnpgateway.com/docs/api/#get-customer-by-id-deprecated
             </summary>
         </member>
         <member name="P:Rock.MyWell.CustomerResponseData.Id">
@@ -691,12 +731,12 @@
         </member>
         <member name="T:Rock.MyWell.UpdateCustomerAddressRequest">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#update-a-specific-customer-address
+            https://sandbox.gotnpgateway.com/docs/api/#update-address-token-deprecated
             </summary>
         </member>
         <member name="T:Rock.MyWell.UpdateCustomerAddressResponse">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#update-a-specific-customer-address
+            https://sandbox.gotnpgateway.com/docs/api/#update-address-token-deprecated
             </summary>
         </member>
         <member name="T:Rock.MyWell.PaymentMethodRequest">
@@ -1324,7 +1364,7 @@
         </member>
         <member name="T:Rock.MyWell.CreateTransaction">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#processing-a-transaction
+            https://sandbox.gotnpgateway.com/docs/api/#process-a-transaction
             </summary>
         </member>
         <member name="P:Rock.MyWell.CreateTransaction.Type">
@@ -1785,7 +1825,7 @@
         </member>
         <member name="T:Rock.MyWell.CreatePlanParameters">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#create-a-plan
+            https://sandbox.gotnpgateway.com/docs/api/#create-plan
             </summary>
         </member>
         <member name="P:Rock.MyWell.CreatePlanParameters.Name">
@@ -1931,8 +1971,8 @@
         </member>
         <member name="T:Rock.MyWell.SubscriptionRequestParameters">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#create-a-subscription and
-            https://sandbox.gotnpgateway.com/docs/api/#update-a-subscription
+            https://sandbox.gotnpgateway.com/docs/api/#create-subscription and
+            https://sandbox.gotnpgateway.com/docs/api/#update-subscription
             </summary>
         </member>
         <member name="P:Rock.MyWell.SubscriptionRequestParameters.PlanId">
@@ -1972,9 +2012,41 @@
             The identifier.
             </value>
         </member>
+        <member name="P:Rock.MyWell.SubscriptionCustomer.PaymentMethodType">
+            <summary>
+            Gets or sets the type of the payment method.
+            </summary>
+            <value>
+            The type of the payment method.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionCustomer.PaymentMethodId">
+            <summary>
+            Gets or sets the payment method identifier.
+            </summary>
+            <value>
+            The payment method identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionCustomer.BillingAddressId">
+            <summary>
+            Gets or sets the billing address identifier.
+            </summary>
+            <value>
+            The billing address identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionCustomer.ShippingAddressId">
+            <summary>
+            Gets or sets the shipping address identifier.
+            </summary>
+            <value>
+            The shipping address identifier.
+            </value>
+        </member>
         <member name="T:Rock.MyWell.SubscriptionResponse">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#create-a-subscription
+            https://sandbox.gotnpgateway.com/docs/api/#create-subscription
             </summary>
         </member>
         <member name="P:Rock.MyWell.SubscriptionResponse.Data">
@@ -1987,7 +2059,7 @@
         </member>
         <member name="T:Rock.MyWell.SubscriptionData">
             <summary>
-            https://sandbox.gotnpgateway.com/docs/api/#create-a-subscription
+            https://sandbox.gotnpgateway.com/docs/api/#create-subscription
             </summary>
         </member>
         <member name="P:Rock.MyWell.SubscriptionData.Id">
@@ -1998,12 +2070,36 @@
             The identifier.
             </value>
         </member>
-        <member name="P:Rock.MyWell.SubscriptionData.Name">
+        <member name="P:Rock.MyWell.SubscriptionData.PlanId">
             <summary>
-            Gets or sets the name.
+            Gets or sets the plan identifier.
             </summary>
             <value>
-            The name.
+            The plan identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.PlanName">
+            <summary>
+            Gets or sets the name of the plan.
+            </summary>
+            <value>
+            The name of the plan.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.SubscriptionStatusRaw">
+            <summary>
+            Gets or sets the raw subscription status.
+            </summary>
+            <value>
+            The raw subscription status.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.SubscriptionStatus">
+            <summary>
+            Gets the subscription status, converted from <seealso cref="P:Rock.MyWell.SubscriptionData.SubscriptionStatusRaw"/>
+            </summary>
+            <value>
+            The subscription status.
             </value>
         </member>
         <member name="P:Rock.MyWell.SubscriptionData.Description">
@@ -2012,6 +2108,22 @@
             </summary>
             <value>
             The description.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.CustomerName">
+            <summary>
+            Gets or sets the name of the customer.
+            </summary>
+            <value>
+            The name of the customer.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.Shared">
+            <summary>
+            Gets or sets a value indicating whether this <see cref="T:Rock.MyWell.SubscriptionData"/> is shared.
+            </summary>
+            <value>
+              <c>true</c> if shared; otherwise, <c>false</c>.
             </value>
         </member>
         <member name="P:Rock.MyWell.SubscriptionData.Customer">
@@ -2036,6 +2148,38 @@
             </summary>
             <value>
             The amount cents.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.Currency">
+            <summary>
+            Gets or sets the currency.
+            </summary>
+            <value>
+            The currency.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.ProcessorId">
+            <summary>
+            Gets or sets the processor identifier.
+            </summary>
+            <value>
+            The processor identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.TotalAdds">
+            <summary>
+            Gets or sets the total adds.
+            </summary>
+            <value>
+            The total adds.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.TotalDiscounts">
+            <summary>
+            Gets or sets the total discounts.
+            </summary>
+            <value>
+            The total discounts.
             </value>
         </member>
         <member name="P:Rock.MyWell.SubscriptionData.BillingCycleInterval">
@@ -2076,6 +2220,22 @@
             </summary>
             <value>
             The next bill date.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.AddOns">
+            <summary>
+            Gets or sets the add ons.
+            </summary>
+            <value>
+            The add ons.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.SubscriptionData.Discounts">
+            <summary>
+            Gets or sets the discounts.
+            </summary>
+            <value>
+            The discounts.
             </value>
         </member>
         <member name="P:Rock.MyWell.SubscriptionData.CreatedDateTimeUTC">
@@ -2194,7 +2354,7 @@
             <summary>
             Maximum records to return (0-100, optional)
             Gets or sets the limit (MyWell default is 10, but we can set it to 0 to get all of them )
-            https://sandbox.gotnpgateway.com/docs/api/#query-transactions
+            https://sandbox.gotnpgateway.com/docs/api/#search-transactions
             </summary>
             <value>
             The limit.
@@ -2203,7 +2363,7 @@
         <member name="P:Rock.MyWell.QueryTransactionStatusRequest.Offset">
             <summary>
             Number of records to offset the return by (optional)
-            https://sandbox.gotnpgateway.com/docs/api/#query-transactions
+            https://sandbox.gotnpgateway.com/docs/api/#search-transactions
             </summary>
             <value>
             The offset.
@@ -2211,7 +2371,7 @@
         </member>
         <member name="T:Rock.MyWell.QuerySearchString">
             <summary>
-            see https://sandbox.gotnpgateway.com/docs/api/#query-transactions
+            see https://sandbox.gotnpgateway.com/docs/api/#search-transactions
             </summary>
         </member>
         <member name="P:Rock.MyWell.QuerySearchString.ComparisonOperator">
@@ -2252,7 +2412,7 @@
         </member>
         <member name="T:Rock.MyWell.QuerySearchInt">
             <summary>
-            see https://sandbox.gotnpgateway.com/docs/api/#query-transactions
+            see https://sandbox.gotnpgateway.com/docs/api/#search-transactions
             </summary>
         </member>
         <member name="P:Rock.MyWell.QuerySearchInt.ComparisonOperator">
@@ -2553,7 +2713,7 @@
         <member name="P:Rock.MyWell.TransactionQueryResultData.Status">
             <summary>
             Gets or sets the status.
-            https://sandbox.gotnpgateway.com/docs/api/#query-transactions.
+            https://sandbox.gotnpgateway.com/docs/api/#search-transactions.
             possible values include: unknown, declined, authorized, pending_settlement, settled, voided, reversed, refunded
             </summary>
             <value>
@@ -2672,6 +2832,163 @@
             The other data.
             </value>
         </member>
+        <member name="T:Rock.MyWell.CardSyncWebhookResponse">
+            <summary>
+            
+            </summary>
+            <seealso cref="T:Rock.MyWell.BaseResponseData" />
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookResponse.AccountType">
+            <summary>
+            Gets or sets the type of the account.
+            </summary>
+            <value>
+            The type of the account.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookResponse.AccountTypeId">
+            <summary>
+            Gets or sets the account type identifier.
+            </summary>
+            <value>
+            The account type identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookResponse.TransactionId">
+            <summary>
+            Gets or sets the transaction identifier.
+            </summary>
+            <value>
+            The transaction identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookResponse.action_at">
+            <summary>
+            Gets or sets the action at.
+            </summary>
+            <value>
+            The action at.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookResponse.PaymentMethodData">
+            <summary>
+            Gets or sets the payment method data.
+            </summary>
+            <value>
+            The payment method data.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookResponse.type">
+            <summary>
+            Gets or sets the type.
+            </summary>
+            <value>
+            The type.
+            </value>
+        </member>
+        <member name="T:Rock.MyWell.CardSyncWebhookPaymentMethod">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.CardId">
+            <summary>
+            Gets or sets the card identifier.
+            </summary>
+            <value>
+            The card identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.digest">
+            <summary>
+            Gets or sets the digest.
+            </summary>
+            <value>
+            The digest.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.ExpirationDate">
+            <summary>
+            Gets or sets the expiration date.
+            </summary>
+            <value>
+            The expiration date.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.Flags">
+            <summary>
+            Gets or sets the flags.
+            </summary>
+            <value>
+            The flags.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.GenericCardLevel">
+            <summary>
+            Gets or sets the generic card level.
+            </summary>
+            <value>
+            The generic card level.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.instrument_type">
+            <summary>
+            Gets or sets the type of the instrument.
+            </summary>
+            <value>
+            The type of the instrument.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.MaskedNumber">
+            <summary>
+            Gets or sets the masked number.
+            </summary>
+            <value>
+            The masked number.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.processor_id">
+            <summary>
+            Gets or sets the processor identifier.
+            </summary>
+            <value>
+            The processor identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.RecordId">
+            <summary>
+            Gets or sets the record identifier (The CustomerId)
+            </summary>
+            <value>
+            The record identifier.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod.Status">
+            <summary>
+            Gets or sets the status.
+            </summary>
+            <value>
+            The status.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.CardSyncWebhookPaymentMethod._additionalData">
+            <summary>
+            Newtonsoft.Json.JsonExtensionData instructs the Newtonsoft.Json.JsonSerializer to deserialize properties with no
+            matching class member into the specified collection
+            </summary>
+            <value>
+            The other data.
+            </value>
+        </member>
+        <member name="P:Rock.MyWell.TransactionWebhookResponseData._additionalData">
+            <summary>
+            Newtonsoft.Json.JsonExtensionData instructs the Newtonsoft.Json.JsonSerializer to deserialize properties with no
+            matching class member into the specified collection
+            </summary>
+            <value>
+            The other data.
+            </value>
+        </member>
         <member name="T:Rock.MyWell.FriendlyMessageHelper">
             <summary>
             
@@ -2710,7 +3027,7 @@
         </member>
         <member name="T:Rock.MyWell.MyWellGatewayUTCIsoDateTimeConverter">
             <summary>
-            see DateFormats specs from https://sandbox.gotnpgateway.com/docs/api/#query-transactions
+            see DateFormats specs from https://sandbox.gotnpgateway.com/docs/api/#search-transactions
             this is mostly just needed for JSON Payloads that are POST'd to the gateway
             </summary>
             <seealso cref="T:Newtonsoft.Json.Converters.IsoDateTimeConverter" />
@@ -2801,6 +3118,54 @@
             <summary>
             The ach
             </summary>
+        </member>
+        <member name="T:Rock.MyWell.MyWellSubscriptionStatus">
+            <summary>
+            MyWell Subscription Status Enum
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.MyWellSubscriptionStatus.active">
+            <summary>
+            Active
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.MyWellSubscriptionStatus.completed">
+            <summary>
+            Completed
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.MyWellSubscriptionStatus.paused">
+            <summary>
+            Paused
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.MyWellSubscriptionStatus.canceled">
+            <summary>
+            canceled
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.MyWellSubscriptionStatus.failed">
+            <summary>
+            failed
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.MyWellSubscriptionStatus.past_due">
+            <summary>
+            Past Due
+            </summary>
+        </member>
+        <member name="T:Rock.MyWell.MyWellSubscriptionStatusHelper">
+            <summary>
+            
+            </summary>
+            <seealso cref="T:Newtonsoft.Json.Converters.StringEnumConverter" />
+        </member>
+        <member name="M:Rock.MyWell.MyWellSubscriptionStatusHelper.ConvertFromString(System.String)">
+            <summary>
+            Converts from string.
+            </summary>
+            <param name="value">The value.</param>
+            <returns></returns>
         </member>
         <member name="T:Rock.MyWell.MyWellGatewayException">
             <summary>

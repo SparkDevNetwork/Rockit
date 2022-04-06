@@ -24,6 +24,7 @@ using Rock.Communication;
 using Rock.Constants;
 using Rock.Data;
 using Rock.Model;
+using Rock.Security;
 using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
@@ -297,6 +298,34 @@ namespace RockWeb.Blocks.Communication
 
                 cbCssInliningEnabled.Checked = emailTemplate.CssInliningEnabled;
 
+                // render UI based on Authorized and IsSystem
+                var readOnly = false;
+
+                if ( !emailTemplate.IsAuthorized( Authorization.EDIT, CurrentPerson ) )
+                {
+                    readOnly = true;
+                    nbEditModeMessage.Text = EditModeMessage.NotAuthorizedToEdit( CommunicationTemplate.FriendlyTypeName );
+                    nbEditModeMessage.Visible = true;
+                }
+
+                tbTitle.ReadOnly = readOnly;
+                cbIsActive.Enabled = !readOnly;
+                cpCategory.Enabled = !readOnly;
+                tbFromName.ReadOnly = readOnly;
+                tbTo.ReadOnly = readOnly;
+                tbFrom.ReadOnly = readOnly;
+                tbCc.ReadOnly = readOnly;
+                tbBcc.ReadOnly = readOnly;
+                tbSubject.ReadOnly = readOnly;
+
+                mfpSMSMessage.Visible = !readOnly;
+                dvpSMSFrom.Enabled = !readOnly;
+                tbSMSTextMessage.ReadOnly = readOnly;
+                ceEmailTemplate.ReadOnly = readOnly;
+
+                ( phPushNotification.Controls[0] as PushNotification ).Enabled = !readOnly;
+
+                btnSave.Enabled = !readOnly;
                 showMessagePreview = true;
             }
             else
@@ -340,7 +369,7 @@ namespace RockWeb.Blocks.Communication
         }
 
         /// <summary>
-        /// Sets the Email Message view mode to Prewiew or Advanced.
+        /// Sets the Email Message view mode to Preview or Advanced.
         /// </summary>
         /// <param name="isEnabled">If true, Preview mode will be enabled.</param>
         private void SetEmailMessagePreviewModeEnabled( bool isEnabled )
@@ -450,7 +479,7 @@ namespace RockWeb.Blocks.Communication
             ceEmailTemplate.Text = CommunicationTemplateHelper.GetUpdatedTemplateHtml( ceEmailTemplate.Text, imgTemplateLogo.BinaryFileId, lavaFieldsTemplateDictionaryFromControls, lavaFieldsDefaultDictionary );
 
             var lavaFieldsTemplateDictionary = CommunicationTemplateHelper.GetLavaFieldsTemplateDictionaryFromTemplateHtml( ceEmailTemplate.Text );
-            hfLavaFieldsState.Value = lavaFieldsTemplateDictionary.ToJson( Newtonsoft.Json.Formatting.None );
+            hfLavaFieldsState.Value = lavaFieldsTemplateDictionary.ToJson( indentOutput: false );
             btnUpdateTemplatePreview.Visible = lavaFieldsTemplateDictionary.Any();
             CommunicationTemplateHelper.CreateDynamicLavaValueControls( lavaFieldsTemplateDictionary, lavaFieldsDefaultDictionary, phLavaFieldsControls );
 

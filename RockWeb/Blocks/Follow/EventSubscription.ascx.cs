@@ -1,11 +1,11 @@
 ﻿// <copyright>
-// Copyright 2013 by the Spark Development Network
+// Copyright by the Spark Development Network
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Rock Community License (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+// http://www.rockrms.com/license
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-//
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -22,27 +22,25 @@ using System.Linq;
 using System.Web.UI.WebControls;
 
 using Rock;
-using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
-using Rock.Web.Cache;
 using Rock.Web.UI;
 using Rock.Web.UI.Controls;
 
 namespace RockWeb.Blocks.Follow
 {
     /// <summary>
-    /// "Block for users to select which following events they would like to subscribe to."
+    /// Block for users to select which following events they would like to subscribe to.
     /// </summary>
     [DisplayName( "Event Subscription" )]
     [Category( "Follow" )]
     [Description( "Block for users to select which following events they would like to subscribe to." )]
     public partial class EventSubscription : RockBlock
     {
-
         #region Fields
 
+        // private global rockContext that is specifically for binding in ItemDataBound
         private RockContext _rockContext = null;
         protected List<int> _currentSubscriptions = new List<int>();
 
@@ -104,23 +102,30 @@ namespace RockWeb.Blocks.Follow
             var followedEntityType = e.Item.DataItem as EntityType;
             if ( rptEvent != null && followedEntityType != null )
             {
-                var qry = new FollowingEventTypeService( _rockContext )
+                var authorizedFollowingEventTypes = new List<FollowingEventType>();
+                foreach ( var feType in new FollowingEventTypeService( _rockContext )
                     .Queryable().AsNoTracking()
                     .Where( f =>
                         f.FollowedEntityTypeId.HasValue &&
                         f.FollowedEntityTypeId.Value == followedEntityType.Id &&
                         f.IsActive )
-                    .OrderBy( f => f.Name );
+                    .OrderBy( f => f.Name ) )
+                {
+                    if ( feType.IsAuthorized( Authorization.VIEW, CurrentPerson ) )
+                    {
+                        authorizedFollowingEventTypes.Add( feType );
+                    }
+                }
 
-                rptEvent.DataSource = qry
+                rptEvent.DataSource = authorizedFollowingEventTypes
                     .Select( f => new
-                        {
-                            f.Id,
-                            f.IsNoticeRequired,
-                            Name = f.IsNoticeRequired ? f.Name + " <span class='label label-info'>required</span>" : f.Name,
-                            f.Description,
-                            Selected = f.IsNoticeRequired || _currentSubscriptions.Contains( f.Id )
-                        } )
+                    {
+                        f.Id,
+                        f.IsNoticeRequired,
+                        Name = f.IsNoticeRequired ? f.Name + " <span class='label label-info'>required</span>" : f.Name,
+                        f.Description,
+                        Selected = f.IsNoticeRequired || _currentSubscriptions.Contains( f.Id )
+                    } )
                     .ToList();
                 rptEvent.DataBind();
             }
@@ -201,8 +206,8 @@ namespace RockWeb.Blocks.Follow
 
             var qry = new FollowingEventTypeService( _rockContext )
                 .Queryable().AsNoTracking()
-                .Where( e => 
-                    e.IsActive && 
+                .Where( e =>
+                    e.IsActive &&
                     e.FollowedEntityType != null )
                 .Select( e => e.FollowedEntityType )
                 .OrderBy( e => e.Name )
@@ -213,6 +218,5 @@ namespace RockWeb.Blocks.Follow
         }
 
         #endregion
-
-}
+    }
 }

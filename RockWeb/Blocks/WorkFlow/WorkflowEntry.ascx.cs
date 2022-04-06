@@ -25,6 +25,7 @@ using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
+using Rock.Transactions;
 using Rock.Web;
 using Rock.Web.Cache;
 using Rock.Web.UI;
@@ -77,7 +78,29 @@ namespace RockWeb.Blocks.WorkFlow
         Order = 4
         )]
 
-    #endregion
+    [BooleanField(
+        "Disable Passing WorkflowTypeId",
+        Description = "If set, it prevents the use of a Workflow Type Id (WorkflowTypeId=) from being passed in and only accepts a WorkflowTypeGuid.  " +
+        "To use this block setting on your external site, you will need to create a new page and add the Workflow Entry block to it.  " +
+        "You may also add a new route so that URLs are in the pattern .../{PageRoute}/{WorkflowTypeGuid}.  " +
+        "If your workflow uses a form, you will also need to adjust email content to ensure that your URLs are correct.",
+        Key = AttributeKey.DisablePassingWorkflowTypeId,
+        DefaultBooleanValue = false,
+        Order = 5 )]
+
+    [BooleanField(
+        "Log Interaction when Form is Viewed",
+        Key = AttributeKey.LogInteractionOnView,
+        DefaultBooleanValue = false,
+        Order = 6 )]
+
+    [BooleanField(
+        "Log Interaction when Form is Completed",
+        Key = AttributeKey.LogInteractionOnCompletion,
+        DefaultBooleanValue = false,
+        Order = 7 )]
+
+    #endregion Block Attributes
 
     public partial class WorkflowEntry : Rock.Web.UI.RockBlock, IPostBackEventHandler
     {
@@ -93,6 +116,9 @@ namespace RockWeb.Blocks.WorkFlow
             public const string BlockTitleTemplate = "BlockTitleTemplate";
             public const string BlockTitleIconCssClass = "BlockTitleIconCssClass";
             public const string DisablePassingWorkflowId = "DisablePassingWorkflowId";
+            public const string DisablePassingWorkflowTypeId = "DisablePassingWorkflowTypeId";
+            public const string LogInteractionOnView = "LogInteractionOnView";
+            public const string LogInteractionOnCompletion = "LogInteractionOnCompletion";
         }
 
         #endregion Attribute Keys
@@ -108,21 +134,23 @@ namespace RockWeb.Blocks.WorkFlow
             public const string WorkflowGuid = "WorkflowGuid";
             public const string WorkflowName = "WorkflowName";
             public const string ActionId = "ActionId";
-
             public const string WorkflowTypeId = "WorkflowTypeId";
+            public const string WorkflowTypeGuid = "WorkflowTypeGuid";
             public const string Command = "Command";
             public const string GroupId = "GroupId";
             public const string PersonId = "PersonId";
+            public const string InteractionStartDateTime = "InteractionStartDateTime";
         }
 
         #endregion PageParameter Keys
 
         private static class ViewStateKey
         {
-            public const string WorkflowTypeId = "WorkflowTypeId";
+            public const string WorkflowTypeGuid = "WorkflowTypeGuid";
             public const string ActionTypeId = "ActionTypeId";
             public const string WorkflowId = "WorkflowId";
             public const string WorkflowTypeDeterminedByBlockAttribute = "WorkflowTypeDeterminedByBlockAttribute";
+            public const string InteractionStartDateTime = "InteractionStartDateTime";
         }
 
         #region Fields
@@ -137,20 +165,20 @@ namespace RockWeb.Blocks.WorkFlow
 
         private WorkflowActionTypeCache _actionType = null;
 
-        #endregion
+        #endregion Fields
 
         #region Properties
 
         /// <summary>
-        /// Gets or sets the workflow type identifier.
+        /// Gets or sets the workflow type guid.
         /// </summary>
         /// <value>
-        /// The workflow type identifier.
+        /// The workflow type guid.
         /// </value>
-        public int? WorkflowTypeId
+        public string WorkflowTypeGuid
         {
-            get { return ViewState[ViewStateKey.WorkflowTypeId] as int?; }
-            set { ViewState[ViewStateKey.WorkflowTypeId] = value; }
+            get { return ViewState[ViewStateKey.WorkflowTypeGuid] as string; }
+            set { ViewState[ViewStateKey.WorkflowTypeGuid] = value; }
         }
 
         /// <summary>
@@ -189,7 +217,19 @@ namespace RockWeb.Blocks.WorkFlow
             set { ViewState[ViewStateKey.ActionTypeId] = value; }
         }
 
-        #endregion
+        /// <summary>
+        /// Gets or sets the interaction start date time.
+        /// </summary>
+        /// <value>
+        /// The interaction start date time.
+        /// </value>
+        public DateTime? InteractionStartDateTime
+        {
+            get { return ViewState[ViewStateKey.InteractionStartDateTime] as DateTime?; }
+            set { ViewState[ViewStateKey.InteractionStartDateTime] = value; }
+        }
+
+        #endregion Properties
 
         #region Base Control Methods
 
@@ -236,6 +276,8 @@ namespace RockWeb.Blocks.WorkFlow
             {
                 if ( HydrateObjects() )
                 {
+                    InitializeInteractions();
+
                     BuildWorkflowActionForm( true );
                     ProcessActionRequest();
                 }
@@ -265,7 +307,7 @@ namespace RockWeb.Blocks.WorkFlow
             return breadCrumbs;
         }
 
-        #endregion
+        #endregion Base Control Methods
 
         #region Events
 
@@ -285,6 +327,20 @@ namespace RockWeb.Blocks.WorkFlow
         /// <param name="eventArgument">A <see cref="T:System.String" /> that represents an optional event argument to be passed to the event handler.</param>
         public void RaisePostBackEvent( string eventArgument )
         {
+            if ( tbRockFullName.Text.IsNotNullOrWhiteSpace() )
+            {
+                /* 03/22/2021 MDP
+
+                see https://app.asana.com/0/1121505495628584/1200018171012738/f on why this is done
+
+                */
+
+                nbRockFullName.Visible = true;
+                nbRockFullName.NotificationBoxType = NotificationBoxType.Validation;
+                nbRockFullName.Text = "Invalid Form Value";
+                return;
+            }
+
             using ( var personEntryRockContext = new RockContext() )
             {
                 GetWorkflowFormPersonEntryValues( personEntryRockContext );
@@ -294,7 +350,7 @@ namespace RockWeb.Blocks.WorkFlow
             CompleteFormAction( eventArgument );
         }
 
-        #endregion
+        #endregion Events
 
         #region Methods
 
@@ -314,10 +370,16 @@ namespace RockWeb.Blocks.WorkFlow
                 ncWorkflowNotes.NoteOptions.SetNoteTypes( noteTypes );
             }
 
+            // Get the block setting to disable passing WorkflowTypeID set.
+            bool allowPassingWorkflowTypeId = !this.GetAttributeValue( AttributeKey.DisablePassingWorkflowTypeId ).AsBoolean();
+
             if ( workflowType == null )
             {
                 ShowNotes( false );
-                ShowMessage( NotificationBoxType.Danger, "Configuration Error", "Workflow type was not configured or specified correctly." );
+
+                // Include an additional message if the block setting to 'disable passing WorkflowTypeId' is true.
+                string additionalMessage = allowPassingWorkflowTypeId ? string.Empty : "  Please verify the block settings for this Workflow Entry.";
+                ShowMessage( NotificationBoxType.Danger, "Configuration Error", "Workflow type was not configured or specified correctly." + additionalMessage );
                 return false;
             }
 
@@ -562,8 +624,10 @@ namespace RockWeb.Blocks.WorkFlow
                     ShowMessage( NotificationBoxType.Warning, string.Empty, workflowType.NoActionMessage.ResolveMergeFields( mergeFields, CurrentPerson ) );
                 }
             }
-
+           
+            // If we are returning False (Workflow is not active), make sure the form and notes are not shown
             ShowNotes( false );
+            pnlForm.Visible = false;
             return false;
         }
 
@@ -585,40 +649,62 @@ namespace RockWeb.Blocks.WorkFlow
         /// </summary>
         private WorkflowTypeCache GetWorkflowType()
         {
-            // Get the workflow type id (initial page request)
-            if ( !WorkflowTypeId.HasValue )
+            // Get the block setting to disable passing WorkflowTypeID.
+            bool allowPassingWorkflowTypeId = !this.GetAttributeValue( AttributeKey.DisablePassingWorkflowTypeId ).AsBoolean();
+            WorkflowTypeCache _workflowType = null;
+
+            // If the ViewState value for WorkflowTypeGuid is empty, try to set it.
+            if ( WorkflowTypeGuid.AsGuid().IsEmpty() )
             {
-                // Get workflow type set by attribute value
-                Guid workflowTypeguid = GetAttributeValue( AttributeKey.WorkflowType ).AsGuid();
+                // Get workflow type set by attribute value of this block.
+                Guid workflowTypeGuidFromAttribute = GetAttributeValue( AttributeKey.WorkflowType ).AsGuid();
 
-                WorkflowTypeCache _workflowType = null;
-                if ( !workflowTypeguid.IsEmpty() )
+                if ( !workflowTypeGuidFromAttribute.IsEmpty() )
                 {
-                    _workflowType = WorkflowTypeCache.Get( workflowTypeguid );
-                }
-
-                // If an attribute value was not provided, check for query/route value
-                if ( _workflowType != null )
-                {
-                    WorkflowTypeId = _workflowType.Id;
+                    _workflowType = WorkflowTypeCache.Get( workflowTypeGuidFromAttribute );
                     WorkflowTypeDeterminedByBlockAttribute = true;
                 }
-                else
+
+                if ( _workflowType.IsNull() )
                 {
-                    WorkflowTypeId = PageParameter( PageParameterKey.WorkflowTypeId ).AsIntegerOrNull();
+                    // If an attribute value was not provided, check for query parameter or route value.
                     WorkflowTypeDeterminedByBlockAttribute = false;
+                    if ( allowPassingWorkflowTypeId )
+                    {
+                        // Try to find a WorkflowTypeID from either the query or route, via the PageParameter.
+                        int? workflowTypeId = PageParameter( PageParameterKey.WorkflowTypeId ).AsIntegerOrNull();
+                        if ( workflowTypeId.HasValue )
+                        {
+                            _workflowType = WorkflowTypeCache.Get( workflowTypeId.Value );
+                        }
+                    }
+
+                    if ( _workflowType.IsNull() )
+                    {
+                        // If the workflowType is still not set, try to find a WorkflowTypeGuid from either the query or route, via the PageParameter.
+                        var workflowTypeGuidFromURL = PageParameter( PageParameterKey.WorkflowTypeGuid ).AsGuid();
+                        WorkflowTypeGuid = PageParameter( PageParameterKey.WorkflowTypeGuid );
+                        if ( !workflowTypeGuidFromURL.IsEmpty() )
+                        {
+                            _workflowType = WorkflowTypeCache.Get( workflowTypeGuidFromURL );
+                        }
+                    }
                 }
             }
 
-            // Get the workflow type
-            if ( WorkflowTypeId.HasValue )
+            // If the ViewState WorkflowTypeGuid is still empty
+            if ( WorkflowTypeGuid.IsNull() )
             {
-                return WorkflowTypeCache.Get( WorkflowTypeId.Value );
+                // If the workflowType is not set, set the ViewState WorkflowTypeGuid to empty, otherwise set it to the Guid of the workflowType.
+                WorkflowTypeGuid = _workflowType.IsNull() ? string.Empty : _workflowType.Guid.ToString();
             }
             else
             {
-                return null;
+                // Get the WorkflowType via the ViewState WorkflowTypeGuid.
+                _workflowType = WorkflowTypeCache.Get( WorkflowTypeGuid );
             }
+
+            return _workflowType;
         }
 
         /// <summary>
@@ -661,7 +747,7 @@ namespace RockWeb.Blocks.WorkFlow
             pnlPersonEntry.Visible = form.AllowPersonEntry;
             if ( form.AllowPersonEntry )
             {
-                BuildPersonEntryForm( form, setValues, mergeFields );
+                BuildPersonEntryForm( _action, form, setValues, mergeFields );
             }
 
             phAttributes.Controls.Clear();
@@ -674,22 +760,40 @@ namespace RockWeb.Blocks.WorkFlow
                 }
 
                 var attribute = AttributeCache.Get( formAttribute.AttributeId );
+                var value = attribute.DefaultValue;
 
-                string value = attribute.DefaultValue;
-                if ( _workflow != null && _workflow.AttributeValues.ContainsKey( attribute.Key ) && _workflow.AttributeValues[attribute.Key] != null )
+                // Get the identifiers for both Workflow and WorkflowActivity EntityTypes.
+                var workflowEntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.WORKFLOW.AsGuid() );
+                var workflowActivityEntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.WORKFLOW_ACTIVITY.AsGuid() );
+
+                if ( _workflow != null && _workflow.AttributeValues.ContainsKey( attribute.Key ) && _workflow.AttributeValues[attribute.Key] != null && attribute.EntityTypeId == workflowEntityTypeId )
                 {
-                    // if the key is in the workflow's attributes get the value from that
+                    // If the key is in the Workflow's Attributes, get the value from that.
                     value = _workflow.AttributeValues[attribute.Key].Value;
                 }
-                else if ( _activity != null && _activity.AttributeValues.ContainsKey( attribute.Key ) && _activity.AttributeValues[attribute.Key] != null )
+                else if ( _activity != null && _activity.AttributeValues.ContainsKey( attribute.Key ) && _activity.AttributeValues[attribute.Key] != null && attribute.EntityTypeId == workflowActivityEntityTypeId )
                 {
-                    // if the key is in the activity's attributes get the value from that
+                    // If the key is in the Workflow Activity's Attributes, get the value from that.
                     value = _activity.AttributeValues[attribute.Key].Value;
                 }
 
+                var fieldVisibilityWrapper = new FieldVisibilityWrapper
+                {
+                    ID = "_fieldVisibilityWrapper_attribute_" + formAttribute.Id.ToString(),
+                    FormFieldId = formAttribute.AttributeId,
+                    FieldVisibilityRules = formAttribute.FieldVisibilityRules
+                };
+
+                fieldVisibilityWrapper.EditValueUpdated += ( object sender, FieldVisibilityWrapper.FieldEventArgs args ) =>
+                {
+                    FieldVisibilityWrapper.ApplyFieldVisibilityRules( phAttributes );
+                };
+
+                phAttributes.Controls.Add( fieldVisibilityWrapper );
+
                 if ( !string.IsNullOrWhiteSpace( formAttribute.PreHtml ) )
                 {
-                    phAttributes.Controls.Add( new LiteralControl( formAttribute.PreHtml.ResolveMergeFields( mergeFields ) ) );
+                    fieldVisibilityWrapper.Controls.Add( new LiteralControl( formAttribute.PreHtml.ResolveMergeFields( mergeFields ) ) );
                 }
 
                 if ( formAttribute.IsReadOnly )
@@ -710,7 +814,7 @@ namespace RockWeb.Blocks.WorkFlow
 
                     if ( formAttribute.HideLabel )
                     {
-                        phAttributes.Controls.Add( new LiteralControl( formattedValue ) );
+                        fieldVisibilityWrapper.Controls.Add( new LiteralControl( formattedValue ) );
                     }
                     else
                     {
@@ -729,7 +833,7 @@ namespace RockWeb.Blocks.WorkFlow
                             lAttribute.Text = formattedValue;
                         }
 
-                        phAttributes.Controls.Add( lAttribute );
+                        fieldVisibilityWrapper.Controls.Add( lAttribute );
                     }
                 }
                 else
@@ -744,14 +848,28 @@ namespace RockWeb.Blocks.WorkFlow
                         LabelText = formAttribute.HideLabel ? string.Empty : attribute.Name
                     };
 
-                    attribute.AddControl( phAttributes.Controls, attributeControlOptions );
+                    var editControl = attribute.AddControl( fieldVisibilityWrapper.Controls, attributeControlOptions );
+                    fieldVisibilityWrapper.EditControl = editControl;
+
+                    var hasDependantVisibilityRule = form.FormAttributes.Any( a => a.FieldVisibilityRules.RuleList.Any( r => r.ComparedToFormFieldGuid == attribute.Guid ) );
+                    if ( hasDependantVisibilityRule && attribute.FieldType.Field.HasChangeHandler( editControl ) )
+                    {
+                        attribute.FieldType.Field.AddChangeHandler(
+                            editControl,
+                            () =>
+                            {
+                                fieldVisibilityWrapper.TriggerEditValueUpdated( editControl, new FieldVisibilityWrapper.FieldEventArgs( attribute, editControl ) );
+                            } );
+                    }
                 }
 
                 if ( !string.IsNullOrWhiteSpace( formAttribute.PostHtml ) )
                 {
-                    phAttributes.Controls.Add( new LiteralControl( formAttribute.PostHtml.ResolveMergeFields( mergeFields ) ) );
+                    fieldVisibilityWrapper.Controls.Add( new LiteralControl( formAttribute.PostHtml.ResolveMergeFields( mergeFields ) ) );
                 }
             }
+
+            FieldVisibilityWrapper.ApplyFieldVisibilityRules( phAttributes );
 
             if ( form.AllowNotes.HasValue && form.AllowNotes.Value && _workflow != null && _workflow.Id != 0 )
             {
@@ -802,7 +920,7 @@ namespace RockWeb.Blocks.WorkFlow
 
                 buttonMergeFields.Add( "ButtonClick", buttonClickScript );
 
-                var buttonLinkScript = Page.ClientScript.GetPostBackClientHyperlink( this, buttonText );
+                var buttonLinkScript = Page.ClientScript.GetPostBackClientHyperlink( this, button.ActionName );
                 buttonMergeFields.Add( "ButtonLink", buttonLinkScript );
 
                 buttonHtml = buttonHtml.ResolveMergeFields( buttonMergeFields );
@@ -815,10 +933,11 @@ namespace RockWeb.Blocks.WorkFlow
         /// <summary>
         /// Builds the person entry form.
         /// </summary>
+        /// <param name="action">The current action related to the form.</param>
         /// <param name="form">The form.</param>
         /// <param name="setValues">if set to <c>true</c> [set values].</param>
         /// <param name="mergeFields">The merge fields.</param>
-        private void BuildPersonEntryForm( WorkflowActionFormCache form, bool setValues, Dictionary<string, object> mergeFields )
+        private void BuildPersonEntryForm( WorkflowAction action, WorkflowActionFormCache form, bool setValues, Dictionary<string, object> mergeFields )
         {
             pnlPersonEntry.Visible = form.AllowPersonEntry;
             if ( !form.AllowPersonEntry )
@@ -834,8 +953,32 @@ namespace RockWeb.Blocks.WorkFlow
 
             lPersonEntryPreHtml.Text = form.PersonEntryPreHtml.ResolveMergeFields( mergeFields );
 
-            // NOTE: If there is only one Campus in the system, this control be always be hidden
-            cpPersonEntryCampus.Visible = form.PersonEntryCampusIsVisible;
+            if ( form.PersonEntryCampusIsVisible )
+            {
+                // NOTE: If there is only one Campus in the system, this control be always be hidden
+                cpPersonEntryCampus.Visible = true;
+
+                /* 7/15/2020 - MDP
+                 The list of campus should include Inactive, but limited to
+                 the configured CampusStatus and/or CampusType.
+                 See https://app.asana.com/0/1121505495628584/1200153314028124/f
+                 */
+
+                cpPersonEntryCampus.IncludeInactive = true;
+                if ( form.PersonEntryCampusStatusValueId.HasValue )
+                {
+                    cpPersonEntryCampus.CampusStatusFilter = new List<int> { form.PersonEntryCampusStatusValueId.Value };
+                }
+
+                if ( form.PersonEntryCampusTypeValueId.HasValue )
+                {
+                    cpPersonEntryCampus.CampusTypesFilter = new List<int> { form.PersonEntryCampusTypeValueId.Value };
+                }
+            }
+            else
+            {
+                cpPersonEntryCampus.Visible = false;
+            }
 
             SetPersonEditorOptions( pePerson1, form );
             SetPersonEditorOptions( pePerson2, form );
@@ -890,59 +1033,23 @@ namespace RockWeb.Blocks.WorkFlow
 
             if ( setValues )
             {
-                SetPersonEntryValues( form );
+                SetPersonEntryValues( action, form );
             }
         }
 
         /// <summary>
         /// Sets the person entry values.
         /// </summary>
-        /// <param name="form">The form.</param>
-        private void SetPersonEntryValues( WorkflowActionFormCache form )
+        /// <param name="action">The current action related to the form.</param>
+        /// <param name="form">The form details.</param>
+        private void SetPersonEntryValues( WorkflowAction action, WorkflowActionFormCache form )
         {
             var rockContext = new RockContext();
             Person personEntryPerson = null;
             Person personEntrySpouse = null;
             int? personEntryFamilyId = null;
 
-            if ( form.PersonEntryAutofillCurrentPerson && CurrentPersonId.HasValue )
-            {
-                var personService = new PersonService( rockContext );
-                personEntryPerson = personService.Get( CurrentPersonId.Value );
-                personEntrySpouse = personEntryPerson.GetSpouse();
-            }
-            else
-            {
-                // Not using the current person, so initialize with the current value of PersonEntryPersonAttributeGuid (normally this would be null unless then also had a PersonEntry form on previous Activities)
-                if ( form.PersonEntryPersonAttributeGuid.HasValue )
-                {
-                    AttributeCache personEntryPersonAttribute = form.FormAttributes.Where( a => a.Attribute.Guid == form.PersonEntryPersonAttributeGuid.Value ).Select( a => a.Attribute ).FirstOrDefault();
-
-                    var personAliasGuid = GetWorkflowAttributeEntityAttributeValue( personEntryPersonAttribute ).AsGuidOrNull();
-
-                    if ( personAliasGuid.HasValue )
-                    {
-                        // the workflow already set a value for the FormEntry person, so use that
-                        var personAliasService = new PersonAliasService( rockContext );
-                        personEntryPerson = personAliasService.GetPerson( personAliasGuid.Value );
-                    }
-                }
-
-                // Not using the current person, so initialize with the current value PersonEntrySpouseAttributeGuid (normally this would be null unless then also had a PersonEntry form on previous Activities)
-                if ( form.PersonEntrySpouseAttributeGuid.HasValue )
-                {
-                    AttributeCache personEntrySpouseAttribute = form.FormAttributes.Where( a => a.Attribute.Guid == form.PersonEntrySpouseAttributeGuid.Value ).Select( a => a.Attribute ).FirstOrDefault();
-
-                    var spousePersonAliasGuid = GetWorkflowAttributeEntityAttributeValue( personEntrySpouseAttribute ).AsGuidOrNull();
-
-                    if ( spousePersonAliasGuid.HasValue )
-                    {
-                        // the workflow already set a value for the FormEntry person, so use that
-                        var personAliasService = new PersonAliasService( rockContext );
-                        personEntrySpouse = personAliasService.GetPerson( spousePersonAliasGuid.Value );
-                    }
-                }
-            }
+            action.GetPersonEntryPeople( rockContext, CurrentPersonId, out personEntryPerson, out personEntrySpouse );
 
             if ( personEntryPerson != null )
             {
@@ -952,7 +1059,6 @@ namespace RockWeb.Blocks.WorkFlow
             }
             else
             {
-
                 // default to Married if this is a new person
                 var maritalStatusMarriedValueId = DefinedValueCache.GetId( Rock.SystemGuid.DefinedValue.PERSON_MARITAL_STATUS_MARRIED.AsGuid() );
                 dvpMaritalStatus.SetValue( maritalStatusMarriedValueId );
@@ -1014,10 +1120,6 @@ namespace RockWeb.Blocks.WorkFlow
 
             personBasicEditor.RequireBirthdate = form.PersonEntryBirthdateEntryOption == WorkflowActionFormPersonEntryOption.Required;
             personBasicEditor.ShowBirthdate = form.PersonEntryBirthdateEntryOption != WorkflowActionFormPersonEntryOption.Hidden;
-
-            // workflow doesn't have a setting for requiring/showing gender
-            personBasicEditor.RequireGender = true;
-            personBasicEditor.ShowGender = true;
 
             // we have a another MaritalStatus picker that will apply to both Person and Person's Spouse
             personBasicEditor.ShowMaritalStatus = false;
@@ -1307,25 +1409,66 @@ namespace RockWeb.Blocks.WorkFlow
         private static Person CreateOrUpdatePersonFromPersonEditor( int? existingPersonId, Group limitMatchToFamily, PersonBasicEditor personEditor, RockContext rockContext )
         {
             var personService = new PersonService( rockContext );
-            Person personEntryPerson = null;
             if ( existingPersonId.HasValue )
             {
-                // Update Person from personEditor
-                personEntryPerson = personService.Get( existingPersonId.Value );
-                personEditor.UpdatePerson( personEntryPerson, rockContext );
-                return personEntryPerson;
+                var existingPerson = personService.Get( existingPersonId.Value );
+                var firstNameMatchesExistingFirstOrNickName = personEditor.FirstName.Equals( existingPerson.FirstName, StringComparison.OrdinalIgnoreCase )
+                    || personEditor.FirstName.Equals( existingPerson.NickName, StringComparison.OrdinalIgnoreCase );
+                var lastNameMatchesExistingLastName = personEditor.LastName.Equals( existingPerson.LastName, StringComparison.OrdinalIgnoreCase );
+                bool useExistingPerson;
+                if ( firstNameMatchesExistingFirstOrNickName && lastNameMatchesExistingLastName )
+                {
+                    // if the existing person (the one that was used to auto-fill the fields) has the same FirstName and LastName as what is in the PersonEditor,
+                    // then we can safely assume they mean to update the existing person
+                    useExistingPerson = true;
+                }
+                else
+                {
+                    /*  10-07-2021 MDP
+
+                    Special Logic if AutoFill CurrentPerson is enabled, but the Person Name fields were changed:
+
+                    If the existing person (the one that used to auto-fill the fields) changed the FirstName or LastName PersonEditor,
+                    then assume they mean they mean to create (or match) a new person. Note that if this happens, this matched or new person won't
+                    be added to Ted Decker's family. PersonEntry isn't smart enough to figure that out and isn't intended to be a family editor. Here are a few examples
+                    to clarify what this means:
+
+                    Example 1: If Ted Decker is auto-filled because Ted Decker is logged in, but he changes the fields to Noah Decker, then we'll see if we have enough to make a match
+                    to the existing Noah Decker. However, a match to the existing Noah Decker would need to match Noah's email and/or cell phone too, so it could easily create a new Noah Decker.
+
+                    Example 2: If Ted Decker is auto-filled because Ted Decker is logged in, but he changes the fields to NewBaby Decker, we'll have to do the same thing as Example 1
+                    even though Ted might be thinking he is adding his new baby to the family. So NewBaby Decker will probably be a new person in a new family.
+
+                    Example 3: If Ted Decker is auto-filled because Ted Decker is logged in, but he changes the fields to Bob Smith (Ted's Neighbor), we also do the same thing as Example 1. However,
+                    in this case, we are mostly doing what Ted expected to happen.
+
+                    Summary. PersonEntry is not a family editor, it just collects data to match or create a person (and spouse if enabled).
+
+                    Note: The logic for Spouse entry is slightly different. See notes below...
+
+                    */
+
+                    useExistingPerson = false;
+                }
+
+                if ( useExistingPerson )
+                {
+                    // Update Person from personEditor
+                    personEditor.UpdatePerson( existingPerson, rockContext );
+                    return existingPerson;
+                }
             }
 
             // Match or Create Person from personEditor
             var personMatchQuery = new PersonService.PersonMatchQuery( personEditor.FirstName, personEditor.LastName, personEditor.Email, personEditor.MobilePhoneNumber )
             {
-                Gender = personEditor.PersonGender,
-                BirthDate = personEditor.PersonBirthDate,
-                SuffixValueId = personEditor.PersonSuffixValueId
+                Gender = personEditor.ShowGender ? personEditor.PersonGender : null,
+                BirthDate = personEditor.ShowBirthdate ? personEditor.PersonBirthDate : null,
+                SuffixValueId = personEditor.ShowSuffix ? personEditor.PersonSuffixValueId : null
             };
 
             bool updatePrimaryEmail = false;
-            personEntryPerson = personService.FindPerson( personMatchQuery, updatePrimaryEmail );
+            var matchedPerson = personService.FindPerson( personMatchQuery, updatePrimaryEmail );
 
             /*
             2020-11-06 MDP
@@ -1367,26 +1510,33 @@ namespace RockWeb.Blocks.WorkFlow
 
              */
 
-            if ( personEntryPerson != null && limitMatchToFamily != null )
+            if ( matchedPerson != null && limitMatchToFamily != null )
             {
-                if ( personEntryPerson.PrimaryFamilyId != limitMatchToFamily.Id )
+                if ( matchedPerson.PrimaryFamilyId != limitMatchToFamily.Id )
                 {
-                    personEntryPerson = null;
+                    matchedPerson = null;
                 }
             }
 
-            if ( personEntryPerson != null )
+            if ( matchedPerson != null )
             {
+                // If we are using a matched person let the PersonEditor which PersonId we are editing
+                personEditor.SetPersonId( matchedPerson.Id );
+
                 // if a match was found, update that person
-                personEditor.UpdatePerson( personEntryPerson, rockContext );
+                personEditor.UpdatePerson( matchedPerson, rockContext );
+                return matchedPerson;
             }
             else
             {
-                personEntryPerson = new Person();
-                personEditor.UpdatePerson( personEntryPerson, rockContext );
-            }
+                var newPerson = new Person();
 
-            return personEntryPerson;
+                // If we are using a matched person let the PersonEditor know we are editing a new person (personId = 0)
+                personEditor.SetPersonId( newPerson.Id );
+
+                personEditor.UpdatePerson( newPerson, rockContext );
+                return newPerson;
+            }
         }
 
         /// <summary>
@@ -1450,7 +1600,7 @@ namespace RockWeb.Blocks.WorkFlow
             {
                 if ( button.CausesValidation )
                 {
-                    Page.Validate();
+                    Page.Validate( this.BlockValidationGroup );
 
                     if ( !Page.IsValid )
                     {
@@ -1529,6 +1679,9 @@ namespace RockWeb.Blocks.WorkFlow
 
             Guid? previousActionGuid = null;
 
+            // just in case this is the Form Completion, keep track of that actionTypeId is
+            int? completionActionTypeId = _actionType?.Id;
+
             if ( _action != null )
             {
                 // Compare GUIDs since the IDs are DB generated and will be 0 if the workflow is not persisted.
@@ -1557,6 +1710,11 @@ namespace RockWeb.Blocks.WorkFlow
                     }
 
                     pageReference.Parameters.AddOrReplace( PageParameterKey.WorkflowGuid, _workflow.Guid.ToString() );
+                    if ( this.GetAttributeValue( AttributeKey.LogInteractionOnCompletion ).AsBoolean() || this.GetAttributeValue( AttributeKey.LogInteractionOnView ).AsBoolean() )
+                    {
+                        // we only need InteractionStartDateTime in the URL if we the Interaction Block settings are enabled.
+                        pageReference.Parameters.AddOrReplace( PageParameterKey.InteractionStartDateTime, this.InteractionStartDateTime.ToISO8601DateString() );
+                    }
 
                     foreach ( var key in pageReference.QueryString.AllKeys.Where( k => !k.Equals( PageParameterKey.Command, StringComparison.OrdinalIgnoreCase ) ) )
                     {
@@ -1570,6 +1728,9 @@ namespace RockWeb.Blocks.WorkFlow
             }
             else
             {
+                // final form completed
+                LogWorkflowEntryInteraction( _workflow, completionActionTypeId, WorkflowInteractionOperationType.FormCompleted );
+
                 if ( lSummary.Text.IsNullOrWhiteSpace() )
                 {
                     var hideForm = _action == null || _action.Guid != previousActionGuid;
@@ -1669,6 +1830,117 @@ namespace RockWeb.Blocks.WorkFlow
             }
         }
 
-        #endregion
+        #endregion Methods
+
+        #region Interaction Methods
+
+        /// <summary>
+        /// Initializes the interactions.
+        /// </summary>
+        private void InitializeInteractions()
+        {
+            var urlInteractionStartDateTime = this.PageParameter( PageParameterKey.InteractionStartDateTime ).AsDateTime();
+            this.InteractionStartDateTime = urlInteractionStartDateTime ?? RockDateTime.Now;
+
+            if ( this.GetAttributeValue( AttributeKey.LogInteractionOnView ).AsBoolean() )
+            {
+                // if this is the First Viewed Form (which we can detect if the URL doesn't contain a StartDateTime) log a FormView interaction
+                if ( !urlInteractionStartDateTime.HasValue )
+                {
+                    LogWorkflowEntryInteraction( _workflow, _actionType?.Id, WorkflowInteractionOperationType.FormViewed );
+                }
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private enum WorkflowInteractionOperationType
+        {
+            FormViewed,
+            FormCompleted,
+        }
+
+        /// <summary>
+        /// Logs a 'Form Viewed' or 'Form Completed' Interaction
+        /// </summary>
+        private void LogWorkflowEntryInteraction( Workflow workflow, int? workflowActionTypeId, WorkflowInteractionOperationType workflowInteractionOperationType )
+        {
+            if ( workflowInteractionOperationType == WorkflowInteractionOperationType.FormCompleted )
+            {
+                if ( !this.GetAttributeValue( AttributeKey.LogInteractionOnCompletion ).AsBoolean() )
+                {
+                    return;
+                }
+            }
+            else
+            {
+                if ( !this.GetAttributeValue( AttributeKey.LogInteractionOnView ).AsBoolean() )
+                {
+                    return;
+                }
+            }
+
+            var workflowLaunchInteractionChannelId = InteractionChannelCache.GetId( Rock.SystemGuid.InteractionChannel.WORKFLOW_LAUNCHES.AsGuid() );
+
+            var interactionTransactionInfo = new InteractionTransactionInfo
+            {
+                PersonAliasId = this.CurrentPersonAliasId,
+                InteractionEntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.WORKFLOW.AsGuid() ),
+                InteractionDateTime = RockDateTime.Now,
+                InteractionChannelId = workflowLaunchInteractionChannelId ?? 0,
+                InteractionRelatedEntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.WORKFLOW_ACTION_TYPE.AsGuid() ),
+                InteractionRelatedEntityId = workflowActionTypeId,
+                LogCrawlers = false
+            };
+
+            /* 7-30-2021 MDP
+
+             If the workflow isn't persisted, the WorkflowId would be 0. If so, just leave the InteractionEntityId
+             null. The InteractionData will still have WorkflowType and ActionType, which are the main things that will
+             be needed when looking at WorkflowEntry Interactions. So, leaving InteractionEntityId null (workflow.Id)
+             is OK.
+             see https://app.asana.com/0/0/1200679813013532/f
+            */
+            if ( workflow.Id > 0 )
+            {
+                interactionTransactionInfo.InteractionEntityId = workflow.Id;
+                interactionTransactionInfo.InteractionEntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.WORKFLOW.AsGuid() );
+            }
+
+            var workflowType = GetWorkflowType();
+
+            if ( workflowInteractionOperationType == WorkflowInteractionOperationType.FormCompleted )
+            {
+                interactionTransactionInfo.InteractionSummary = $"Completed a workflow of type: { workflowType?.Name }";
+                interactionTransactionInfo.InteractionOperation = "Form Completed";
+
+                if ( this.InteractionStartDateTime.HasValue )
+                {
+                    interactionTransactionInfo.InteractionLength = ( RockDateTime.Now - this.InteractionStartDateTime.Value ).TotalSeconds;
+                }
+            }
+            else
+            {
+                interactionTransactionInfo.InteractionSummary = $"Launched a workflow of type: { workflowType?.Name }";
+                interactionTransactionInfo.InteractionOperation = "Form Viewed";
+            }
+
+            // there is only one Channel for Workflow Entry (Rock.SystemGuid.InteractionChannel.WORKFLOW_LAUNCHES)
+            // so there isn't a channel entity
+            IEntity channelEntity = null;
+
+            var componentEntity = workflowType;
+
+            var interactionTransaction = new InteractionTransaction(
+                DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.INTERACTIONCHANNELTYPE_SYSTEM_EVENTS.AsGuid() ),
+                channelEntity,
+                componentEntity,
+                interactionTransactionInfo );
+
+            interactionTransaction.Enqueue();
+        }
+
+        #endregion Interaction Methods
     }
 }

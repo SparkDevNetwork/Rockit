@@ -13,27 +13,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-//
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Entity;
 using System.Linq;
-using System.Web.UI;
+using System.Text;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
+
+using Humanizer;
 
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
+using Rock.Financial;
 using Rock.Model;
-using Rock.Web;
 using Rock.Web.Cache;
 
 namespace RockWeb.Blocks.Crm.PersonDetail
 {
     /// <summary>
-    /// 
+    ///
     /// </summary>
     [DisplayName( "Giving Overview" )]
     [Category( "CRM > Person Detail" )]
@@ -46,18 +47,52 @@ namespace RockWeb.Blocks.Crm.PersonDetail
         IsRequired = true,
         DefaultIntegerValue = 365,
         Order = 0 )]
+
+    [LinkedPage(
+        "Alert List Page",
+        Description = "The page to see a list of alerts for the person.",
+        Order = 1,
+        Key = AttributeKey.AlertListPage,
+        DefaultValue = Rock.SystemGuid.Page.GIVING_ALERTS )]
+
     public partial class GivingOverview : Rock.Web.UI.PersonBlock
     {
+        #region Constants
+
+        /// <summary>
+        /// The HTML escaped "plus or minus" symbol to use for markup strings.
+        /// </summary>
+        private const string PlusOrMinus = "&#177;";
+
+        #endregion Constants
+
         #region Attribute Keys
 
         private static class AttributeKey
         {
             public const string InactiveGiverCutoff = "InactiveGiverCutoff";
+            public const string AlertListPage = "AlertListPage";
         }
 
         #endregion Attribute Keys
 
         #region Properties
+
+        /// <summary>
+        /// Is the yearly summary expanded.
+        /// </summary>
+        public bool IsYearlySummaryExpanded
+        {
+            get
+            {
+                return ViewState["IsYearlySummaryExpanded"].ToStringSafe().AsBoolean();
+            }
+
+            set
+            {
+                ViewState["IsYearlySummaryExpanded"] = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the number of notifications currently being displayed.
@@ -101,6 +136,28 @@ namespace RockWeb.Blocks.Crm.PersonDetail
         #region Events
 
         /// <summary>
+        /// Handles the Click event of the lbShowMoreYearlySummary control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void lbShowMoreYearlySummary_Click( object sender, EventArgs e )
+        {
+            IsYearlySummaryExpanded = true;
+            BindYearlySummary();
+        }
+
+        /// <summary>
+        /// Handles the Click event of the lbShowLessYearlySummary control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        protected void lbShowLessYearlySummary_Click( object sender, EventArgs e )
+        {
+            IsYearlySummaryExpanded = false;
+            BindYearlySummary();
+        }
+
+        /// <summary>
         /// Handles the ItemDataBound event of the rptYearSummary control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
@@ -113,12 +170,16 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                 return;
             }
 
+            var lYearlySummaryYear = e.Item.FindControl( "lYearlySummaryYear" ) as Literal;
+            lYearlySummaryYear.Text = contributionSummary.Year.ToString();
+
             var lAccount = e.Item.FindControl( "lAccount" ) as Literal;
+
             var accountsHtml = string.Empty;
             foreach ( var item in contributionSummary.SummaryRecords )
             {
                 accountsHtml += string.Format(
-                @"<tr><td>{0}</td><td class='text-right'>{1}</td></tr>",
+                @"<tr><td class='pr-4'>{0}</td><td class='text-right'>{1}</td></tr>",
                 item.AccountName,
                 item.TotalAmount.FormatAsCurrency() );
             }
@@ -132,6 +193,40 @@ namespace RockWeb.Blocks.Crm.PersonDetail
         #endregion Events
 
         #region Internal Methods
+
+        /// <summary>
+        /// Shows the message if stale.
+        /// </summary>
+        private void ShowMessageIfStale()
+        {
+            /* 2021-09-30 MDP 
+              
+             Rules for when giving characteristics are considered stale 
+
+            Show the ‘stale’ message when the last gift was over { TypicalFrequency + 2* Frequency Standard Deviation }   days. 
+
+            Message should be worded as:
+
+            The giving characteristics below were generated (stale time) ago at the time of the last gift.
+            Information on bin, percentile and typical gift patterns represent values from that time period.
+
+            */
+
+            nbGivingCharacteristicsStaleWarning.Visible = false;
+            var lastTransaction = new FinancialTransactionService( new RockContext() ).GetGivingAutomationSourceTransactionQueryByGivingId( Person.GivingId ).Max( a => ( DateTime? ) a.TransactionDateTime );
+            var frequencyMeanDays = Person.GetAttributeValue( Rock.SystemGuid.Attribute.PERSON_GIVING_FREQUENCY_MEAN_DAYS.AsGuid() ).AsDecimalOrNull();
+            var frequencyStandardDeviationDays = Person.GetAttributeValue( Rock.SystemGuid.Attribute.PERSON_GIVING_FREQUENCY_STD_DEV_DAYS.AsGuid() ).AsDecimalOrNull();
+            if ( lastTransaction.HasValue && frequencyMeanDays.HasValue && frequencyStandardDeviationDays.HasValue )
+            {
+                var consideredStaleAfterDays = frequencyMeanDays.Value + ( frequencyStandardDeviationDays.Value * 2 );
+                var timeSpanSinceLastUpdated = RockDateTime.Now - lastTransaction.Value;
+                if ( ( decimal ) timeSpanSinceLastUpdated.TotalDays > consideredStaleAfterDays )
+                {
+                    nbGivingCharacteristicsStaleWarning.Text = $@"The giving characteristics below were generated {lastTransaction.ToElapsedString().ToLower()} at the time of the last gift. Information on bin, percentile and typical gift patterns represent values from that time period.";
+                    nbGivingCharacteristicsStaleWarning.Visible = true;
+                }
+            }
+        }
 
         /// <summary>
         /// Shows the detail.
@@ -150,29 +245,31 @@ namespace RockWeb.Blocks.Crm.PersonDetail
 
             Person.LoadAttributes();
             var rockContext = new RockContext();
-            var transactionDetailService = new FinancialTransactionDetailService( rockContext );
-            var qry = transactionDetailService.Queryable().AsNoTracking()
-                .Where( a =>
-                    a.Transaction.TransactionTypeValueId == contributionType.Id &&
-                    a.Transaction.TransactionDateTime.HasValue );
+            var financialTransactionService = new FinancialTransactionService( rockContext );
+            var givingId = Person.GivingId;
 
-            qry = qry.Where( t => t.Transaction.AuthorizedPersonAlias.Person.GivingId == Person.GivingId );
+            var threeYearsAgo = RockDateTime.Now.AddMonths( -35 ).StartOfMonth();
+            List<MonthlyAccountGivingHistory> threeYearsOfMonthlyAccountGiving = financialTransactionService.GetGivingAutomationMonthlyAccountGivingHistory( givingId, threeYearsAgo );
 
-
-            if ( qry.Any() )
+            if ( threeYearsOfMonthlyAccountGiving.Any() )
             {
                 var inactiveGiverCutOffDate = RockDateTime.Now.AddDays( -GetAttributeValue( AttributeKey.InactiveGiverCutoff ).AsInteger() ).Date;
                 pnlGiving.Visible = true;
-                if ( qry.Where( a => a.Transaction.TransactionDateTime.Value >= inactiveGiverCutOffDate ).Count() == default( int ) )
-                {
-                    pnlInactiveGiver.Visible = true;
-                    lLastGiver.Text = qry
-                        .OrderByDescending( a => a.Transaction.TransactionDateTime.Value )
-                        .Select( a => a.Transaction.TransactionDateTime.Value )
-                        .FirstOrDefault()
-                        .ToShortDateString();
-                }
+                var hasGiftsAfterCutoff = threeYearsOfMonthlyAccountGiving
+                    .Any( h =>
+                        h.Amount > 0 && (
+                            h.Year >= inactiveGiverCutOffDate.Year ||
+                            ( h.Year == inactiveGiverCutOffDate.Year && h.Month >= inactiveGiverCutOffDate.Month )
+                        ) );
 
+                if ( !hasGiftsAfterCutoff )
+                {
+                    var lastGaveObject = threeYearsOfMonthlyAccountGiving.FirstOrDefault( h => h.Amount > 0 );
+                    var lastGaveDate = lastGaveObject != null ? ( DateTime? ) new DateTime( lastGaveObject.Year, lastGaveObject.Month, 1 ) : null;
+                    pnlInactiveGiver.Visible = true;
+                    pnlGivingStats.AddCssClass( "inactive-giving" );
+                    lLastGiver.Text = lastGaveDate.HasValue ? lastGaveDate.Value.ToString( "MMM yyyy" ) : string.Empty;
+                }
             }
             else
             {
@@ -181,27 +278,168 @@ namespace RockWeb.Blocks.Crm.PersonDetail
             }
 
             var contributionByMonths = new Dictionary<DateTime, decimal>();
-            for ( var i = 0; i <= 35; i++ )
+            for ( var i = 35; i >= 0; i-- )
             {
-                var startDate = RockDateTime.Now.AddMonths( -i ).StartOfMonth();
-                var amt = GetContributionByMonth( startDate );
-                contributionByMonths.AddOrReplace( startDate, amt );
+                var currentMonthlyDate = RockDateTime.Now.StartOfMonth().AddMonths( -i );
+                var month = currentMonthlyDate.Month;
+                var year = currentMonthlyDate.Year;
+                var total = threeYearsOfMonthlyAccountGiving.Where( h => h.Year == year && h.Month == month ).Sum( h => h.Amount );
+                contributionByMonths[currentMonthlyDate] = total;
             }
 
             MaxGiftAmount = contributionByMonths.Max( a => a.Value );
 
+            // Giving By Month Chart
             rptGivingByMonth.DataSource = contributionByMonths.OrderBy( a => a.Key );
             rptGivingByMonth.DataBind();
 
+            // Community View
+            ShowCommunityView();
+
+            ShowGivingStatsForLast12Months();
+
+            ShowGivingCharacteristicsKPI( rockContext );
+
+            ShowMessageIfStale();
+
+            BindYearlySummary();
+
+            var eraFirstGave = Person.GetAttributeValue( "core_EraFirstGave" ).AsDateTime();
+            bdgFirstGift.Text = $"First Gift: {eraFirstGave.ToElapsedString()}";
+            bdgFirstGift.ToolTip = eraFirstGave.ToShortDateString();
+
+            var eraLastGive = Person.GetAttributeValue( "core_EraLastGave" ).AsDateTime();
+            bdgLastGift.Text = $"Last Gift: {eraLastGive.ToElapsedString()}";
+            bdgLastGift.ToolTip = eraLastGive.ToShortDateString();
+
+            ShowGivingAlerts();
+        }
+
+        /// <summary>
+        /// Shows the giving stats for last12 months.
+        /// </summary>
+        private void ShowGivingStatsForLast12Months()
+        {
+            var givingId = Person.GivingId;
+            var rockContext = new RockContext();
+            var financialTransactionService = new FinancialTransactionService( rockContext );
+            var oneYearAgo = RockDateTime.Now.AddMonths( -12 );
+
+            var twelveMonthsTransactionsQry = financialTransactionService
+                    .GetGivingAutomationSourceTransactionQueryByGivingId( givingId )
+                    .Where( t => t.TransactionDateTime >= oneYearAgo );
+
+            var twelveMonthTransactions = twelveMonthsTransactionsQry
+                .Select( a => new
+                {
+                    TransactionDateTime = a.TransactionDateTime,
+                    TotalAmountBeforeRefund = a.TransactionDetails.Sum( d => d.Amount ),
+                    // For each Refund (there could be more than one) get the refund amount for each if the refunds's Detail records for the Account.
+                    // Then sum that up for the total refund amount for the account
+                    TotalRefundAmount = a
+                            .Refunds.Select( r => r.FinancialTransaction.TransactionDetails
+                            .Sum( rrrr => ( decimal? ) rrrr.Amount ) ).Sum() ?? 0.0M
+                } )
+                .ToList();
+
+            var last12MonthTotal = twelveMonthTransactions.Sum( t => t.TotalAmountBeforeRefund + t.TotalRefundAmount );
+            var last12MonthCount = twelveMonthTransactions.Count;
+
+            // Last 12 Months KPI
+            string kpiLast12Months;
+            var last12MonthCountText = $"{last12MonthCount} {"gift".PluralizeIf( last12MonthCount != 1 )}";
+            kpiLast12Months = GetKpiShortCode(
+                "Last 12 Months",
+                $"<span class=\"currency-span\">{FormatAsCurrency( last12MonthTotal )}</span>",
+                subValue: $"<div class=\"small\">{last12MonthCountText}</div>" );
+
+            // Last 90 Days KPI
+            var oneHundredEightyDaysAgo = RockDateTime.Now.AddDays( -180 );
+            var ninetyDaysAgo = RockDateTime.Now.AddDays( -90 );
+            var transactionPriorNinetyDayTotal = twelveMonthTransactions.Where( t => t.TransactionDateTime >= oneHundredEightyDaysAgo && t.TransactionDateTime < ninetyDaysAgo ).Sum( t => t.TotalAmountBeforeRefund + t.TotalRefundAmount );
+            var baseGrowthContribution = transactionPriorNinetyDayTotal;
+
+            var last90DaysContribution = twelveMonthTransactions.Where( t => t.TransactionDateTime >= ninetyDaysAgo ).Sum( t => t.TotalAmountBeforeRefund + t.TotalRefundAmount );
+
+            decimal growthPercent = 0;
+
+            if ( baseGrowthContribution == 0 )
+            {
+                growthPercent = 100;
+            }
+            else
+            {
+                growthPercent = ( last90DaysContribution - baseGrowthContribution ) / baseGrowthContribution * 100;
+            }
+
+            var isGrowthPositive = growthPercent >= 0;
+
+            var growthPercentText = Math.Abs( growthPercent ).ToString( "N1" ) + "%";
+
+            string growthPercentDisplay;
+
+            // Show growth Percent
+            // If more than 1000% show HIGH or LOW 
+            if ( growthPercent > 1000 )
+            {
+                growthPercentDisplay = "HIGH";
+            }
+            else if ( growthPercent < -1000 )
+            {
+                growthPercentDisplay = "LOW";
+            }
+            else
+            {
+                growthPercentDisplay = growthPercentText;
+            }
+
+            var last90DayCount = twelveMonthTransactions.Count( t => t.TransactionDateTime >= ninetyDaysAgo );
+            var last90DayCountText = $"{last90DayCount} {"gift".PluralizeIf( last90DayCount != 1 )}";
+
+            var last90DaysSubValue =
+$@"<span title=""{growthPercentText}"" class=""small text-{ ( isGrowthPositive ? "success" : "danger" )}"">
+    <i class=""fa {( isGrowthPositive ? "fa-arrow-up" : "fa-arrow-down" )}""></i>
+    {growthPercentDisplay}
+</span>
+<div class=""small"">{last90DayCountText}</div>";
+
+            var kpiLast90Days = GetKpiShortCode(
+                "Last 90 Days",
+                $"<span class=\"currency-span\">{FormatAsCurrency( last90DaysContribution )}</span>",
+                subValue: last90DaysSubValue );
+
+            // Gives as family / individual KPI
+            var givesAs = Person.GivingGroupId.HasValue ? "Family" : "Individual";
+            var givesAsIcon = Person.GivingGroupId.HasValue ? "fa-fw fa-users" : "fa-fw fa-user";
+            var kpiGivesAs = GetKpiShortCode( "Gives As", givesAs, icon: givesAsIcon );
+
+            // Giving Journey
+            var journeyStage = ( GivingJourneyStage ) Person.GetAttributeValue( Rock.SystemGuid.Attribute.PERSON_GIVING_CURRENT_GIVING_JOURNEY_STAGE.AsGuid() ).AsInteger();
+            var journeyStageName = journeyStage.GetDescription() ?? journeyStage.ConvertToString();
+            var kpiGivingJourney = GetKpiShortCode( "Giving Journey", journeyStageName, icon: "fa fa-fw fa-hiking" );
+
+            // Combined KPIs
+            var kpi = kpiLast12Months + kpiLast90Days + kpiGivesAs + kpiGivingJourney;
+
+            var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( null );
+            lLastGiving.Text = string.Format( @"{{[kpis style:'edgeless' iconbackground:'false' columnmin:'200px' columncount:'4' columncountmd:'4' columncountsm:'2']}}{0}{{[endkpis]}}", kpi ).ResolveMergeFields( mergeFields );
+        }
+
+        /// <summary>
+        /// Shows the community view.
+        /// </summary>
+        private void ShowCommunityView()
+        {
             var givingPercentileAttribute = AttributeCache.Get( Rock.SystemGuid.Attribute.PERSON_GIVING_PERCENTILE );
             if ( givingPercentileAttribute != null )
             {
                 var givingPercentile = Person.GetAttributeValue( givingPercentileAttribute.Key ).AsInteger();
-                var percentileStage = 10 - givingPercentile / 10;
+                var percentileStage = 10 - ( givingPercentile / 10 );
                 if ( givingPercentile % 10 == 0 && givingPercentile != 0 )
                 {
                     percentileStage += 1;
                 }
+
                 lPercent.Text = givingPercentile.ToStringSafe();
 
                 var lStage = pnlGiving.FindControl( "lStage" + percentileStage ) as HtmlGenericControl;
@@ -216,79 +454,107 @@ namespace RockWeb.Blocks.Crm.PersonDetail
             {
                 var givingBin = Person.GetAttributeValue( givingBinAttribute.Key ).AsInteger();
                 lGivingBin.Text = givingBin.ToString();
-            }
-            
 
-            var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( null );
-            var last12MonthStartDate = RockDateTime.Now.AddMonths( -12 ).StartOfMonth();
-            var last90DaysStartDate = RockDateTime.Now.AddDays( -90 ).Date;
-            var last180DaysStartDate = RockDateTime.Now.AddDays( -180 ).Date;
-            var last12MonthQry = qry.Where( a => a.Transaction.TransactionDateTime.Value >= last12MonthStartDate );
-            var last90DaysQry = qry.Where( a => a.Transaction.TransactionDateTime.Value >= last90DaysStartDate );
-            var baseGrowthQry = qry.Where( a => a.Transaction.TransactionDateTime.Value >= last180DaysStartDate && a.Transaction.TransactionDateTime.Value < last90DaysStartDate );
-            var baseGrowthContribution = baseGrowthQry.Select( a => a.Amount ).DefaultIfEmpty().Sum();
-            var last90DaysContribution = last90DaysQry.Select( a => a.Amount ).DefaultIfEmpty().Sum();
-            decimal growthPercent = 0;
-            if ( last90DaysContribution == 0 )
+                var lBin = pnlGiving.FindControl( "lBin" + givingBin ) as HtmlGenericControl;
+                if ( lBin != null )
+                {
+                    lBin.AddCssClass( "bg-primary" );
+                }
+            }
+
+            if ( givingBinAttribute != null && givingPercentileAttribute != null )
             {
-                growthPercent = 0;
+                var givingPercentile = Person.GetAttributeValue( givingPercentileAttribute.Key ).AsInteger();
+
+                lHelpText.Text = Person.NickName.ToPossessive() + " giving is in the " + givingPercentile.Ordinalize() + " percentile, this is classified as Bin " + lGivingBin.Text + ".";
             }
-            else if ( baseGrowthContribution == 0 )
-            {
-                growthPercent = 100;
-            }
-            else
-            {
-                growthPercent = ( baseGrowthContribution - last90DaysContribution ) / baseGrowthContribution * 100;
-            }
-
-            var isGrowthPositive = growthPercent >= 0;
-
-            string kpi = GetKpiShortCode(
-                "$ Last 12 Months",
-                FormatAsCurrency( contributionByMonths.Where( a => a.Key >= last12MonthStartDate ).Sum( a => a.Value ) ),
-                subValue: string.Format( "<span class=\"label label-warning \">{0}</span>", Person.GetAttributeValue( "core_EraFirstGave" ).AsDateTime().ToShortDateString() ) );
-            kpi += GetKpiShortCode(
-                "$ Last 90 Days",
-                FormatAsCurrency( last90DaysContribution ),
-                string.Format( "<span class=\"small text-{2}\"><i class=\"fa {1}\"></i> {0}%</span>", Math.Round( Math.Abs( growthPercent ), 2 ), isGrowthPositive ? "fa-arrow-up" : "fa-arrow-down", isGrowthPositive ? "success" : "danger" ) );
-            kpi += GetKpiShortCode( "Gifts Last 12 Months", last12MonthQry.Select( a => a.TransactionId ).Distinct().Count().ToStringSafe() );
-            kpi += GetKpiShortCode( "Gifts Last 90 Days", last90DaysQry.Select( a => a.TransactionId ).Distinct().Count().ToStringSafe() );
-            lLastGiving.Text = string.Format( @"{{[kpis size:'xl' columnmin:'220px' columnminmd:'220px' columncount:'4' columncountmd:'3' columncountsm:'2']}}{0}{{[endkpis]}}", kpi ).ResolveMergeFields( mergeFields );
-
-            GetGivingAnalyticsKPI( rockContext );
-
-            BindYearlySummary();
         }
 
-        protected string GetGivingByMonthPercent( decimal amount )
+        /// <summary>
+        /// Handles the ItemDataBound event of the rptGivingByMonth control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="RepeaterItemEventArgs"/> instance containing the event data.</param>
+        protected void rptGivingByMonth_ItemDataBound( object sender, RepeaterItemEventArgs e )
+        {
+            if ( !( e.Item.DataItem as KeyValuePair<DateTime, decimal>? ).HasValue )
+            {
+                return;
+            }
+
+            var lGivingByMonthPercentHtml = e.Item.FindControl( "lGivingByMonthPercentHtml" ) as Literal;
+            if ( lGivingByMonthPercentHtml == null )
+            {
+                return;
+            }
+
+            var contributionByMonth = ( KeyValuePair<DateTime, decimal> ) e.Item.DataItem;
+
+            lGivingByMonthPercentHtml.Text = $@"<li title='{( contributionByMonth.Key.ToString( "MMM yyyy" ) )} {contributionByMonth.Value.FormatAsCurrency()}' />
+  <span style='{GetGivingByMonthPercentStyle( contributionByMonth.Value )}'></span>
+</li>";
+        }
+
+        /// <summary>
+        /// Gets the giving by month percent style.
+        /// </summary>
+        /// <param name="amount">The amount.</param>
+        /// <returns>System.String.</returns>
+        protected string GetGivingByMonthPercentStyle( decimal amount )
         {
             return string.Format( "height: {0}%", MaxGiftAmount == 0 ? 0 : amount / MaxGiftAmount * 100 );
         }
 
-        private void GetGivingAnalyticsKPI( RockContext rockContext )
+        /// <summary>
+        /// Shows the giving characteristics kpi.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        private void ShowGivingCharacteristicsKPI( RockContext rockContext )
         {
+            var stringBuilder = new StringBuilder();
             var mergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( null );
-            var givingAnalytics = GetKpiShortCode( "Typical Gift", FormatAsCurrency( Person.GetAttributeValue( "GiftAmountMedian" ).AsDecimal() ), FormatAsCurrency( Person.GetAttributeValue( "GiftAmountIQR" ).AsDecimal() ) + " σ", "fa-fw fa-money-bill", "left" );
-            givingAnalytics += GetKpiShortCode( "Typical Frequency", Person.GetAttributeValue( "GiftFrequencyDaysMean" ).AsInteger() + "d", Person.GetAttributeValue( "GiftFrequencyDaysStandardDeviation" ).AsInteger() + "d σ", "fa-fw fa-clock" );
-            givingAnalytics += GetKpiShortCode( "% Scheduled", Person.GetAttributeValue( "PercentofGiftsScheduled" ).AsInteger() + "%", icon: "fa-fw fa-percent" );
-            var givesAs = "Individual";
-            var givesAsIcon = "fa-fw fa-user";
-            if ( Person.GivingGroupId.HasValue )
-            {
-                givesAs = "Family";
-                givesAsIcon = "fa-fw fa-users";
-            }
 
-            givingAnalytics += GetKpiShortCode( "Gives As", givesAs, icon: givesAsIcon );
+            // Typical gift KPI
+            var giftAmountMedian = FormatAsCurrency( Person.GetAttributeValue( "GiftAmountMedian" ).AsDecimal() );
+            var giftAmountIqr = FormatAsCurrency( Person.GetAttributeValue( "GiftAmountIQR" ).AsDecimal() );
 
+            var typicalGiftKpi = GetKpiShortCode(
+                "Typical Gift",
+                $"<span class=\"currency-span\">{giftAmountMedian}</span>",
+                $"{giftAmountIqr}",
+                "fa-fw fa-money-bill",
+                "left",
+                $"A typical gift amount has a median value of {giftAmountMedian} with an IQR variance of {giftAmountIqr}." );
+
+            stringBuilder.Append( typicalGiftKpi );
+
+            // Add KPI for the average days between gifts and the standard deviation of days between gifts.
+            var giftFrequencyDaysMean = Person.GetAttributeValue( Rock.SystemGuid.Attribute.PERSON_GIVING_FREQUENCY_MEAN_DAYS.AsGuid() ).AsDecimal().ToString( "N0" );
+            var giftFrequencyDaysMeanUnits = giftFrequencyDaysMean == "1" ? "day" : "days";
+            var giftFrequencyDaysStdDev = Person.GetAttributeValue( Rock.SystemGuid.Attribute.PERSON_GIVING_FREQUENCY_STD_DEV_DAYS.AsGuid() ).AsDecimal().ToString( "N1" );
+            var giftFrequencyDaysStdDevUnits = giftFrequencyDaysStdDev == "1.0" ? "day" : "days";
+
+            var typicalFrequencyKpi = GetKpiShortCode(
+                "Typical Frequency",
+                giftFrequencyDaysMean + "d",
+                $"{PlusOrMinus}{giftFrequencyDaysStdDev}d",
+                "fa-fw fa-clock",
+                description: $"A typical gift frequency has a mean value of {giftFrequencyDaysMean} {giftFrequencyDaysMeanUnits} with a standard deviation variance of {giftFrequencyDaysStdDev} {giftFrequencyDaysStdDevUnits}." );
+
+            stringBuilder.Append( typicalFrequencyKpi );
+
+            // Percent of gifts that are scheduled KPI
+            stringBuilder.Append( GetKpiShortCode( "Percent Scheduled", Person.GetAttributeValue( "PercentofGiftsScheduled" ).AsInteger() + "%", icon: "fa-fw fa-percent" ) );
+
+            // Frequency label KPI
             var frequencyLabelAttribute = AttributeCache.Get( Rock.SystemGuid.Attribute.PERSON_GIVING_FREQUENCY_LABEL );
             if ( frequencyLabelAttribute != null )
             {
                 var frequencyLabel = frequencyLabelAttribute.FieldType.Field.FormatValue( null, Person.GetAttributeValue( "FrequencyLabel" ), frequencyLabelAttribute.QualifierValues, false );
-                givingAnalytics += GetKpiShortCode( "Frequency", frequencyLabel, icon: "fa-fw fa-calendar-alt", textAlign: "left" );
+                stringBuilder.Append( GetKpiShortCode( "Frequency", frequencyLabel, icon: "fa-fw fa-calendar-alt", textAlign: "left" ) );
             }
 
+            // Preferred currency KPI
             var currencyTypeIconCssClassAttr = AttributeCache.Get( Rock.SystemGuid.Attribute.DEFINED_TYPE_CURRENCY_TYPE_ICONCSSCLASS );
             if ( currencyTypeIconCssClassAttr != null )
             {
@@ -303,15 +569,15 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                         iconCssClass = preferredCurrencyValue.GetAttributeValue( "IconCssClass" );
                     }
 
-                    givingAnalytics += GetKpiShortCode( "Preferred Currency", preferredCurrencyValue.Value, icon: "fa-fw " + iconCssClass );
+                    stringBuilder.Append( GetKpiShortCode( "Preferred Currency", preferredCurrencyValue.Value, icon: "fa-fw " + iconCssClass ) );
                 }
                 else
                 {
-                    givingAnalytics += GetKpiShortCode( "Preferred Currency", string.Empty, icon: "fa-fw " + iconCssClass );
+                    stringBuilder.Append( GetKpiShortCode( "Preferred Currency", string.Empty, icon: "fa-fw " + iconCssClass ) );
                 }
             }
 
-
+            // Preferred source KPI
             var transactionSourceIconCssClassAttr = AttributeCache.Get( Rock.SystemGuid.Attribute.DEFINED_TYPE_TRANSACTION_SOURCE_ICONCSSCLASS );
             if ( transactionSourceIconCssClassAttr != null )
             {
@@ -325,49 +591,58 @@ namespace RockWeb.Blocks.Crm.PersonDetail
                         iconCssClass = preferredSourceValue.GetAttributeValue( "IconCssClass" );
                     }
 
-                    givingAnalytics += GetKpiShortCode( "Preferred Source", preferredSourceValue.Value, icon: "fa-fw " + iconCssClass );
+                    stringBuilder.Append( GetKpiShortCode( "Preferred Source", preferredSourceValue.Value, icon: "fa-fw " + iconCssClass ) );
                 }
                 else
                 {
-                    givingAnalytics += GetKpiShortCode( "Preferred Source", string.Empty, icon: "fa-fw " + iconCssClass );
+                    stringBuilder.Append( GetKpiShortCode( "Preferred Source", string.Empty, icon: "fa-fw " + iconCssClass ) );
                 }
             }
 
+            lGivingCharacteristicsHtml.Text = string.Format( @"{{[kpis columnmin:'200px' style:'edgeless' iconbackground:'false' columncount:'3' columncountmd:'2' columncountsm:'2']}}{0}{{[endkpis]}}", stringBuilder ).ResolveMergeFields( mergeFields );
+        }
+
+        /// <summary>
+        /// Shows the giving alerts
+        /// </summary>
+        private void ShowGivingAlerts()
+        {
+            var rockContext = new RockContext();
             var financialTransactionAlertService = new FinancialTransactionAlertService( rockContext );
+            var givingId = Person.GivingId;
+            var givingIdPersonAliasIdQuery = new PersonAliasService( rockContext ).Queryable().Where( a => a.Person.GivingId == givingId ).Select( a => a.Id );
             var financialTransactionAlertQry = financialTransactionAlertService.Queryable().AsNoTracking()
-                .Where( a =>
-                    a.PersonAlias.PersonId == Person.Id );
+                    .Where( a => givingIdPersonAliasIdQuery.Contains( a.PersonAliasId ) );
+
             var financialTransactionGratitudeCount = financialTransactionAlertQry.Where( a => a.FinancialTransactionAlertType.AlertType == AlertType.Gratitude ).Count();
             var financialTransactionFollowupCount = financialTransactionAlertQry.Where( a => a.FinancialTransactionAlertType.AlertType == AlertType.FollowUp ).Count();
-            givingAnalytics += GetKpiShortCode(
-                "Giving Alerts",
-                string.Format( "<span class=\"badge bg-success\">{0}</span><span class=\"badge bg-warning\">{1}</span>", financialTransactionGratitudeCount, financialTransactionFollowupCount ),
-                icon: "fa-fw fa-comment-alt" );
 
-            lGivingAnalytics.Text = string.Format( @"{{[kpis size:'lg' columnmin:'220px' iconbackground:'false' columnminmd:'220px' columncount:'4' columncountmd:'3' columncountsm:'2']}}{0}{{[endkpis]}}", givingAnalytics ).ResolveMergeFields( mergeFields );
+            var alertListUrl = LinkedPageUrl( AttributeKey.AlertListPage, new Dictionary<string, string> { { "PersonGuid", Person.Guid.ToString() } } );
+
+            var hasAlertListLink = !alertListUrl.IsNullOrWhiteSpace();
+
+            var givingAlertsBadges = $"<span class=\"badge badge-success align-text-bottom\">{financialTransactionGratitudeCount}</span> <span class=\"badge badge-warning align-text-bottom\">{financialTransactionFollowupCount}</span>";
+            if ( hasAlertListLink )
+            {
+                lGivingAlertsBadgesHtml.Text = $"<a href=\"{alertListUrl}\">" + givingAlertsBadges + "</a>";
+            }
+            else
+            {
+                lGivingAlertsBadgesHtml.Text = givingAlertsBadges;
+            }
         }
 
-        private decimal GetContributionByMonth( DateTime date )
-        {
-            var contributionType = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_CONTRIBUTION.AsGuid() );
-            var rockContext = new RockContext();
-            var transactionDetailService = new FinancialTransactionDetailService( rockContext );
-            var qry = transactionDetailService.Queryable().AsNoTracking()
-                .Where( a =>
-                    a.Transaction.TransactionTypeValueId == contributionType.Id &&
-                    a.Transaction.TransactionDateTime.HasValue );
-
-            qry = qry.Where( t => t.Transaction.AuthorizedPersonAlias.Person.GivingId == Person.GivingId );
-            var startDate = date.StartOfMonth();
-            var endDate = startDate.AddMonths( 1 );
-            return qry
-                .Where( a => a.Transaction.TransactionDateTime.Value >= startDate && a.Transaction.TransactionDateTime < endDate )
-                .Select( l => l.Amount )
-                .DefaultIfEmpty( 0 )
-                .Sum();
-        }
-
-        private string GetKpiShortCode( string label, string value, string subValue = "", string icon = "", string textAlign = "" )
+        /// <summary>
+        /// Gets the kpi short code.
+        /// </summary>
+        /// <param name="label">The label.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="subValue">The sub value.</param>
+        /// <param name="icon">The icon.</param>
+        /// <param name="textAlign">The text align.</param>
+        /// <param name="description">The description.</param>
+        /// <returns></returns>
+        private string GetKpiShortCode( string label, string value, string subValue = "", string icon = "", string textAlign = "", string description = "" )
         {
             if ( subValue.IsNotNullOrWhiteSpace() )
             {
@@ -381,47 +656,48 @@ namespace RockWeb.Blocks.Crm.PersonDetail
 
             if ( textAlign.IsNotNullOrWhiteSpace() )
             {
-                textAlign = string.Format( "textAlign:'{0}'", textAlign );
+                textAlign = string.Format( "textalign:'{0}'", textAlign );
             }
 
-            var kpi = string.Format(
-                "[[ kpi {3} labellocation:'top' value:'{0}' {2} label:'{1}' {4}]][[ endkpi ]]",
-                value,
-                label,
-                subValue,
-                icon,
-                textAlign );
+            var kpi = $"[[ kpi {icon} labellocation:'top' value:'{value}' {subValue} label:'{label}' {textAlign} description:'{description}' ]][[ endkpi ]]";
             return kpi;
         }
 
+        /// <summary>
+        /// Binds the yearly summary.
+        /// </summary>
         private void BindYearlySummary()
         {
-            var contributionType = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_CONTRIBUTION.AsGuid() );
-            if ( contributionType != null )
+            var givingId = Person.GivingId;
+            using ( var rockContext = new RockContext() )
             {
-                var rockContext = new RockContext();
-                var transactionDetailService = new FinancialTransactionDetailService( rockContext );
-                var qry = transactionDetailService.Queryable().AsNoTracking()
-                    .Where( a =>
-                        a.Transaction.TransactionTypeValueId == contributionType.Id &&
-                        a.Transaction.TransactionDateTime.HasValue );
-
-                qry = qry.Where( t => t.Transaction.AuthorizedPersonAlias.Person.GivingId == Person.GivingId );
-
-                var financialAccounts = new FinancialAccountService( rockContext ).Queryable().Select( a => new { a.Id, a.Name } ).ToDictionary( k => k.Id, v => v.Name );
-                List<SummaryRecord> summaryList;
-                using ( new Rock.Data.QueryHintScope( rockContext, QueryHintType.RECOMPILE ) )
+                DateTime? startDate;
+                if ( !IsYearlySummaryExpanded )
                 {
-                    summaryList = qry
-                        .GroupBy( a => new { a.Transaction.TransactionDateTime.Value.Year, a.AccountId } )
-                        .Select( t => new SummaryRecord
-                        {
-                            Year = t.Key.Year,
-                            AccountId = t.Key.AccountId,
-                            TotalAmount = t.Sum( d => d.Amount )
-                        } ).OrderByDescending( a => a.Year )
-                        .ToList();
+                    // Only show this current year and last year
+                    startDate = RockDateTime.Now.StartOfYear().AddYears( -1 );
                 }
+                else
+                {
+                    startDate = null;
+                }
+
+                var monthlyAccountGivingHistoryList = new FinancialTransactionService( rockContext ).GetGivingAutomationMonthlyAccountGivingHistory( givingId, startDate );
+
+                var financialAccounts = new FinancialAccountService( rockContext ).Queryable()
+                    .AsNoTracking()
+                    .ToDictionary( k => k.Id, v => v.Name );
+
+                var summaryList = monthlyAccountGivingHistoryList
+                    .GroupBy( a => new { a.Year, a.AccountId } )
+                    .Select( t => new SummaryRecord
+                    {
+                        Year = t.Key.Year,
+                        AccountId = t.Key.AccountId,
+                        TotalAmount = t.Sum( d => d.Amount )
+                    } )
+                    .OrderByDescending( a => a.Year )
+                    .ToList();
 
                 var contributionSummaries = new List<ContributionSummary>();
                 foreach ( var item in summaryList.GroupBy( a => a.Year ) )
@@ -441,19 +717,22 @@ namespace RockWeb.Blocks.Crm.PersonDetail
 
                 rptYearSummary.DataSource = contributionSummaries;
                 rptYearSummary.DataBind();
+
+                // Show the correct button to expand or collapse
+                lbShowLessYearlySummary.Visible = IsYearlySummaryExpanded;
+                lbShowMoreYearlySummary.Visible = !IsYearlySummaryExpanded;
             }
         }
 
         private string FormatAsCurrency( decimal value )
         {
-            var currencySymbol = GlobalAttributesCache.Value( "CurrencySymbol" );
-            return string.Format( "{0}{1:N0}", currencySymbol, value );
+            return value.FormatAsCurrencyWithDecimalPlaces( 0 );
         }
 
         #endregion Methods
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         protected class SummaryRecord
         {
@@ -467,7 +746,7 @@ namespace RockWeb.Blocks.Crm.PersonDetail
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         protected class ContributionSummary
         {

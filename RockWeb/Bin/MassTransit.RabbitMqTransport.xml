@@ -9,17 +9,41 @@
             If true, only the broker topology will be deployed
             </summary>
         </member>
+        <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqBusConfiguration.TryGetHost(System.Uri,MassTransit.RabbitMqTransport.Configuration.IRabbitMqHostConfiguration@)">
+            <summary>
+            Return the host that supports the specified address
+            </summary>
+            <param name="address">The address to match</param>
+            <param name="hostConfiguration">The matching host, if present</param>
+            <returns>True if the host was found, otherwise false</returns>
+        </member>
+        <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqBusConfiguration.TryGetHost(MassTransit.RabbitMqTransport.IRabbitMqHost,MassTransit.RabbitMqTransport.Configuration.IRabbitMqHostConfiguration@)">
+            <summary>
+            Return the host if it is part of the configuration
+            </summary>
+            <param name="host"></param>
+            <returns></returns>
+            <param name="hostConfiguration"></param>
+        </member>
         <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqBusConfiguration.CreateEndpointConfiguration">
             <summary>
             Create an endpoint configuration on the bus, which can later be turned into a receive endpoint
             </summary>
             <returns></returns>
         </member>
-        <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqBusConfiguration.CreateHostConfiguration(MassTransit.RabbitMqTransport.RabbitMqHostSettings)">
+        <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqBusConfiguration.CreateHostConfiguration(MassTransit.RabbitMqTransport.Transport.IRabbitMqHostControl)">
             <summary>
             Create a host configuration, by adding a host to the bus
             </summary>
-            <param name="hostSettings">The settings used to create the host</param>
+            <param name="host"></param>
+            <returns></returns>
+        </member>
+        <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqBusConfiguration.CreateReceiveEndpointConfiguration(System.String,MassTransit.RabbitMqTransport.Configuration.IRabbitMqEndpointConfiguration)">
+            <summary>
+            Create a receive endpoint configuration for the default host
+            </summary>
+            <param name="queueName"></param>
+            <param name="endpointConfiguration"></param>
             <returns></returns>
         </member>
         <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqBusConfiguration.CreateReceiveEndpointConfiguration(MassTransit.RabbitMqTransport.Topology.Settings.RabbitMqReceiveSettings,MassTransit.RabbitMqTransport.Configuration.IRabbitMqEndpointConfiguration)">
@@ -33,17 +57,6 @@
         <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqHostConfiguration.CreateReceiveEndpointConfiguration(System.String)">
             <summary>
             Create a receive endpoint configuration using the specified host
-            </summary>
-            <returns></returns>
-        </member>
-        <member name="P:MassTransit.RabbitMqTransport.Configuration.IRabbitMqHostConfiguration.PublisherConfirmation">
-            <summary>
-            True if the broker is confirming published messages
-            </summary>
-        </member>
-        <member name="M:MassTransit.RabbitMqTransport.Configuration.IRabbitMqHostConfiguration.CreateModelContextSupervisor">
-            <summary>
-            Create a model context supervisor so that channels can be created from the broker
             </summary>
             <returns></returns>
         </member>
@@ -115,11 +128,6 @@
             Sets the queue to be lazy (using less memory)
             </summary>
         </member>
-        <member name="P:MassTransit.RabbitMqTransport.IQueueConfigurator.QueueExpiration">
-            <summary>
-            Set the queue to expire after the specified time
-            </summary>
-        </member>
         <member name="M:MassTransit.RabbitMqTransport.IQueueConfigurator.SetQueueArgument(System.String,System.Object)">
             <summary>
             Set a queue argument passed to the broker on queue declaration
@@ -150,16 +158,6 @@
             <summary>
             Purge the messages from an existing queue on startup (note that upon reconnection to the server
             the queue will not be purged again, only when the service is restarted).
-            </summary>
-        </member>
-        <member name="P:MassTransit.RabbitMqTransport.IQueueEndpointConfigurator.ConsumerPriority">
-            <summary>
-            Sets the priority of the consumer (optional, no default value specified)
-            </summary>
-        </member>
-        <member name="P:MassTransit.RabbitMqTransport.IQueueEndpointConfigurator.ExclusiveConsumer">
-            <summary>
-            Should the consumer have exclusive access to the queue
             </summary>
         </member>
         <member name="P:MassTransit.RabbitMqTransport.IRabbitMqBusFactoryConfigurator.DeployTopologyOnly">
@@ -195,15 +193,6 @@
             </summary>
             <param name="settings"></param>
             <returns></returns>
-        </member>
-        <member name="M:MassTransit.RabbitMqTransport.IRabbitMqBusFactoryConfigurator.ReceiveEndpoint(MassTransit.RabbitMqTransport.IRabbitMqHost,MassTransit.IEndpointDefinition,MassTransit.IEndpointNameFormatter,System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
-            <summary>
-            Specify a receive endpoint for the bus, using an endpoint definition
-            </summary>
-            <param name="host"></param>
-            <param name="definition">An endpoint definition, which abstracts specific endpoint behaviors from the transport</param>
-            <param name="endpointNameFormatter"></param>
-            <param name="configureEndpoint">The configuration callback</param>
         </member>
         <member name="M:MassTransit.RabbitMqTransport.IRabbitMqBusFactoryConfigurator.ReceiveEndpoint(MassTransit.RabbitMqTransport.IRabbitMqHost,System.String,System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
             <summary>
@@ -251,25 +240,19 @@
             </summary>
             <param name="configureCluster">The cluster configuration</param>
         </member>
-        <member name="M:MassTransit.RabbitMqTransport.IRabbitMqHostConfigurator.RequestedChannelMax(System.UInt16)">
-            <summary>
-            Set the maximum number of channels allowed for the connection
-            </summary>
-            <param name="value"></param>
-        </member>
         <member name="T:MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator">
             <summary>
             Configure a receiving RabbitMQ endpoint
             </summary>
         </member>
+        <member name="P:MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator.Host">
+            <summary>
+            The host on which the endpoint is being configured
+            </summary>
+        </member>
         <member name="P:MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator.BindMessageExchanges">
             <summary>
             If true, binds the message type exchanges to the queue exchange
-            </summary>
-        </member>
-        <member name="P:MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator.BindQueue">
-            <summary>
-            If false, deploys only exchange, without queue
             </summary>
         </member>
         <member name="P:MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator.DeadLetterExchange">
@@ -377,15 +360,6 @@
             determine if the remote server certificate is valid.
             </summary>
         </member>
-        <member name="M:MassTransit.RabbitMqTransport.RabbitMqEndpointDefinitionExtensions.Apply(MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator,MassTransit.IEndpointDefinition,System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
-            <summary>
-            We may want to have a builder/endpoint context that could store things like management endpoint, etc. to configure
-            filters and add configuration interfaces for things like concurrency limit and prefetch count
-            </summary>
-            <param name="configurator"></param>
-            <param name="definition"></param>
-            <param name="configure">The callback to invoke after the definition configuration has been applied</param>
-        </member>
         <member name="T:MassTransit.RabbitMqTransport.ConnectionContext">
             <summary>
             A RabbitMQ connection
@@ -401,22 +375,20 @@
             The connection description, useful to debug output
             </summary>
         </member>
-        <member name="P:MassTransit.RabbitMqTransport.ConnectionContext.StopTimeout">
+        <member name="P:MassTransit.RabbitMqTransport.ConnectionContext.HostAddress">
             <summary>
-            The time to wait during shutdown of any dependencies before giving up and killing things
+            The Host Address for this connection
             </summary>
         </member>
-        <member name="M:MassTransit.RabbitMqTransport.ConnectionContext.CreateModel(System.Threading.CancellationToken)">
+        <member name="P:MassTransit.RabbitMqTransport.ConnectionContext.HostSettings">
+            <summary>
+            The host settings for the connection
+            </summary>
+        </member>
+        <member name="M:MassTransit.RabbitMqTransport.ConnectionContext.CreateModel">
             <summary>
             Create a model on the connection
             </summary>
-            <returns></returns>
-        </member>
-        <member name="M:MassTransit.RabbitMqTransport.ConnectionContext.CreateModelContext(System.Threading.CancellationToken)">
-            <summary>
-            Create a channel, and return the <see cref="T:MassTransit.RabbitMqTransport.ModelContext"/>.
-            </summary>
-            <param name="cancellationToken"></param>
             <returns></returns>
         </member>
         <member name="T:MassTransit.RabbitMqTransport.Contexts.DelayedExchangeMessageRedeliveryContext`1">
@@ -522,12 +494,12 @@
             Csv string for all Clustered Members
             </summary>
         </member>
-        <member name="T:MassTransit.RabbitMqTransport.Integration.IConnectionContextSupervisor">
+        <member name="T:MassTransit.RabbitMqTransport.Integration.IConnectionCache">
             <summary>
             Attaches a connection context to the value (shared, of course)
             </summary>
         </member>
-        <member name="T:MassTransit.RabbitMqTransport.Integration.IModelContextSupervisor">
+        <member name="T:MassTransit.RabbitMqTransport.Integration.IModelCache">
             <summary>
             Attaches a model context to the value
             </summary>
@@ -542,17 +514,16 @@
             Returns the last host selected by the selector
             </summary>
         </member>
-        <member name="M:MassTransit.RabbitMqTransport.IRabbitMqHost.ConnectReceiveEndpoint(MassTransit.IEndpointDefinition,MassTransit.IEndpointNameFormatter,System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
+        <member name="M:MassTransit.RabbitMqTransport.IRabbitMqHost.ConnectReceiveEndpoint(System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
             <summary>
-            Connect a receive endpoint for the host, using an endpoint definition
+            Create a temporary receive endpoint on the host, with a separate handle for stopping/removing the endpoint
             </summary>
-            <param name="definition">An endpoint definition, which abstracts specific endpoint behaviors from the transport</param>
-            <param name="endpointNameFormatter"></param>
-            <param name="configureEndpoint">The configuration callback</param>
+            <param name="configure"></param>
+            <returns></returns>
         </member>
         <member name="M:MassTransit.RabbitMqTransport.IRabbitMqHost.ConnectReceiveEndpoint(System.String,System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
             <summary>
-            Connect a receive endpoint to the host, with the specified queue name
+            Create a receive endpoint on the host, with a separate handle for stopping/removing the endpoint
             </summary>
             <param name="queueName"></param>
             <param name="configure"></param>
@@ -613,13 +584,17 @@
             Receives messages from RabbitMQ, pushing them to the InboundPipe of the service endpoint.
             </summary>
         </member>
-        <member name="M:MassTransit.RabbitMqTransport.Pipeline.RabbitMqBasicConsumer.#ctor(MassTransit.RabbitMqTransport.ModelContext,System.Uri,MassTransit.RabbitMqTransport.Contexts.RabbitMqReceiveEndpointContext)">
+        <member name="M:MassTransit.RabbitMqTransport.Pipeline.RabbitMqBasicConsumer.#ctor(MassTransit.RabbitMqTransport.ModelContext,System.Uri,GreenPipes.IPipe{MassTransit.ReceiveContext},MassTransit.IReceiveObserver,MassTransit.RabbitMqTransport.Contexts.RabbitMqReceiveEndpointContext,MassTransit.Transports.IDeadLetterTransport,MassTransit.Transports.IErrorTransport)">
             <summary>
             The basic consumer receives messages pushed from the broker.
             </summary>
             <param name="model">The model context for the consumer</param>
             <param name="inputAddress">The input address for messages received by the consumer</param>
+            <param name="receivePipe">The receive pipe to dispatch messages</param>
+            <param name="receiveObserver">The observer for receive events</param>
             <param name="receiveEndpointContext">The topology</param>
+            <param name="deadLetterTransport"></param>
+            <param name="errorTransport"></param>
         </member>
         <member name="M:MassTransit.RabbitMqTransport.Pipeline.RabbitMqBasicConsumer.RabbitMQ#Client#IBasicConsumer#HandleBasicConsumeOk(System.String)">
             <summary>
@@ -646,9 +621,9 @@
             A filter that uses the model context to create a basic consumer and connect it to the model
             </summary>
         </member>
-        <member name="T:MassTransit.RabbitMqTransport.Pipeline.ReceiveEndpointFilter">
+        <member name="T:MassTransit.RabbitMqTransport.Pipeline.ReceiveModelFilter">
             <summary>
-            Creates a <see cref="T:MassTransit.RabbitMqTransport.ModelContext"/> and sends it to the receive endpoint pipe
+            Creates a receiving model context using the connection
             </summary>
         </member>
         <member name="T:MassTransit.RabbitMqTransport.RabbitMqBasicConsumeContext">
@@ -832,11 +807,6 @@
             True if the publisher should confirm acceptance of messages
             </summary>
         </member>
-        <member name="P:MassTransit.RabbitMqTransport.RabbitMqHostSettings.RequestedChannelMax">
-            <summary>
-            The maximum number of channels for the connection
-            </summary>
-        </member>
         <member name="P:MassTransit.RabbitMqTransport.RabbitMqSendContext.Mandatory">
             <summary>
                 Specify that the published message must be delivered to a queue or it will be returned
@@ -861,13 +831,6 @@
             <summary>
             The basic properties for the RabbitMQ message
             </summary>
-        </member>
-        <member name="T:MassTransit.RabbitMqTransport.Scheduling.RabbitMqScheduleMessagePipe`1">
-            <summary>
-            Sets the message enqueue time when sending the message, and invokes
-            any developer-specified pipes.
-            </summary>
-            <typeparam name="T"></typeparam>
         </member>
         <member name="T:MassTransit.RabbitMqTransport.Topology.Builders.IPublishEndpointBrokerTopologyBuilder">
             <summary>
@@ -1384,26 +1347,6 @@
             If the connection is reset, messages are not purged until the service is reset
             </summary>
         </member>
-        <member name="P:MassTransit.RabbitMqTransport.Topology.ReceiveSettings.ConsumeArguments">
-            <summary>
-            Arguments passed to the basicConsume
-            </summary>
-        </member>
-        <member name="P:MassTransit.RabbitMqTransport.Topology.ReceiveSettings.ExclusiveConsumer">
-            <summary>
-            Should the consumer have exclusive access to the queue
-            </summary>
-        </member>
-        <member name="P:MassTransit.RabbitMqTransport.Topology.ReceiveSettings.QueueExpiration">
-            <summary>
-            When the queue should expire
-            </summary>
-        </member>
-        <member name="P:MassTransit.RabbitMqTransport.Topology.ReceiveSettings.BindQueue">
-            <summary>
-            If false, deploys only exchange, without queue
-            </summary>
-        </member>
         <member name="M:MassTransit.RabbitMqTransport.Topology.ReceiveSettings.GetInputAddress(System.Uri)">
             <summary>
             Get the input address for the transport on the specified host
@@ -1513,16 +1456,15 @@
             <param name="host"></param>
             <param name="configure"></param>
         </member>
-        <member name="M:MassTransit.RabbitMqHostConfigurationExtensions.ReceiveEndpoint(MassTransit.RabbitMqTransport.IRabbitMqBusFactoryConfigurator,MassTransit.RabbitMqTransport.IRabbitMqHost,MassTransit.IEndpointDefinition,System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
+        <member name="M:MassTransit.RabbitMqHostConfigurationExtensions.ManagementEndpoint(MassTransit.RabbitMqTransport.IRabbitMqBusFactoryConfigurator,MassTransit.RabbitMqTransport.IRabbitMqHost,System.Action{MassTransit.RabbitMqTransport.IRabbitMqReceiveEndpointConfigurator})">
             <summary>
-            Declare a ReceiveEndpoint using a unique generated queue name. This queue defaults to auto-delete
-            and non-durable. By default all services bus instances include a default receiveEndpoint that is
-            of this type (created automatically upon the first receiver binding).
+            Registers a management endpoint on the bus, which can be used to control
+            filters and other management control points on the bus.
             </summary>
             <param name="configurator"></param>
-            <param name="host"></param>
-            <param name="definition"></param>
-            <param name="configure"></param>
+            <param name="host">The host where the endpoint is to be created</param>
+            <param name="configure">Configure additional values of the underlying receive endpoint</param>
+            <returns></returns>
         </member>
         <member name="M:MassTransit.RabbitMqTurnoutConfigurationExtensions.TurnoutEndpoint``1(MassTransit.RabbitMqTransport.IRabbitMqBusFactoryConfigurator,MassTransit.RabbitMqTransport.IRabbitMqHost,System.String,System.Action{MassTransit.Turnout.Configuration.ITurnoutServiceConfigurator{``0}})">
             <summary>
@@ -1535,6 +1477,16 @@
             <param name="queueName">The receive queue name for commands</param>
             <param name="configure"></param>
             <param name="host">The host on which to configure the endpoint</param>
+        </member>
+        <member name="M:MassTransit.DeferExtensions.Defer``1(MassTransit.ConsumeContext{``0},System.TimeSpan,System.Action{MassTransit.ConsumeContext,MassTransit.SendContext})">
+            <summary>
+            Defers the message for redelivery using a delayed exchange (an experimental RabbitMQ plug-in).
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="context"></param>
+            <param name="delay"></param>
+            <param name="callback"></param>
+            <returns></returns>
         </member>
         <member name="M:MassTransit.DelayedRedeliveryExtensions.UseDelayedRedelivery``1(GreenPipes.IPipeConfigurator{MassTransit.ConsumeContext{``0}},GreenPipes.IRetryPolicy)">
             <summary>
@@ -1559,16 +1511,6 @@
             </summary>
             <param name="configurator"></param>
             <param name="configureRetry"></param>
-        </member>
-        <member name="M:MassTransit.RabbitMqDeferMessageExtensions.Defer``1(MassTransit.ConsumeContext{``0},System.TimeSpan,System.Action{MassTransit.ConsumeContext,MassTransit.SendContext})">
-            <summary>
-            Defers the message for redelivery using a delayed exchange (an experimental RabbitMQ plug-in).
-            </summary>
-            <typeparam name="T"></typeparam>
-            <param name="context"></param>
-            <param name="delay"></param>
-            <param name="callback"></param>
-            <returns></returns>
         </member>
         <member name="M:MassTransit.RabbitMqRequestClientExtensions.CreateRequestClient``2(MassTransit.RabbitMqTransport.IRabbitMqHost,System.Uri,System.TimeSpan,System.Nullable{System.TimeSpan},System.Action{MassTransit.SendContext{``0}})">
             <summary>
@@ -1618,6 +1560,31 @@
             <param name="timeout">The request timeout</param>
             <param name="timeToLive">The request time to live</param>
             <param name="callback">Customize the send context</param>
+            <returns></returns>
+        </member>
+        <member name="M:MassTransit.RabbitMqRequestClientExtensions.CreateClientFactory(MassTransit.RabbitMqTransport.IRabbitMqHost,MassTransit.RequestTimeout)">
+            <summary>
+            Connects a new receive endpoint to the host, and creates a <see cref="T:MassTransit.IClientFactory"/>.
+            </summary>
+            <param name="host">The host to connect the new receive endpoint</param>
+            <param name="timeout">The default request timeout</param>
+            <returns></returns>
+        </member>
+        <member name="M:MassTransit.RabbitMqRequestClientExtensions.CreateRequestClient``1(MassTransit.RabbitMqTransport.IRabbitMqHost,System.Uri,MassTransit.RequestTimeout)">
+            <summary>
+            Connects a new receive endpoint to the host, and creates a <see cref="T:MassTransit.IClientFactory"/>.
+            </summary>
+            <param name="host">The host to connect the new receive endpoint</param>
+            <param name="destinationAddress">The request service address</param>
+            <param name="timeout">The default request timeout</param>
+            <returns></returns>
+        </member>
+        <member name="M:MassTransit.RabbitMqRequestClientExtensions.CreateRequestClient``1(MassTransit.RabbitMqTransport.IRabbitMqHost,MassTransit.RequestTimeout)">
+            <summary>
+            Create a request client from the bus, creating a response endpoint, and publishing the request versus sending it.
+            </summary>
+            <param name="host">The host to connect the new receive endpoint</param>
+            <param name="timeout">The default request timeout</param>
             <returns></returns>
         </member>
         <member name="M:MassTransit.RabbitMqSendContextExtensions.SetPriority(MassTransit.SendContext,System.Byte)">

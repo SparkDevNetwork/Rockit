@@ -19,6 +19,7 @@ using System.ComponentModel;
 using System.Data.Entity;
 using System.Linq;
 using System.Web.UI.WebControls;
+
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -113,17 +114,18 @@ namespace RockWeb.Blocks.Finance
             public const string TransferButtonText = "TransferButtonText";
         }
 
+        private static class PageParameterKey
+        {
+            public const string ScheduledTransactionGuid = "ScheduledTransactionGuid";
+            public const string Transfer = "transfer";
+        }
+
         #region Fields
 
         /// <summary>
         /// The _transfer to gateway unique identifier is set to non-null if the block setting is set.
         /// </summary>
         private Guid? _transferToGatewayGuid = null;
-
-        /// <summary>
-        /// This constant-like value is used to avoid hard-coding the string "transfer" in multiple places.
-        /// </summary>
-        private const string TRANSFER = "transfer";
 
         #endregion
 
@@ -208,7 +210,7 @@ namespace RockWeb.Blocks.Finance
                     btnEdit.Text = GetAttributeValue( AttributeKey.TransferButtonText );
 
                     HiddenField hfTransfer = ( HiddenField ) e.Item.FindControl( "hfTransfer" );
-                    hfTransfer.Value = TRANSFER;
+                    hfTransfer.Value = PageParameterKey.Transfer;
                 }
 
                 // if there isn't an Edit page defined for the transaction, don't show th button
@@ -234,7 +236,7 @@ namespace RockWeb.Blocks.Finance
 
                 if ( transactionSchedule.NextPaymentDate.HasValue )
                 {
-                    scheduleSummary.Add( "DaysTillNextPayment", ( transactionSchedule.NextPaymentDate.Value - DateTime.Now ).Days );
+                    scheduleSummary.Add( "DaysTillNextPayment", ( transactionSchedule.NextPaymentDate.Value - RockDateTime.Now ).Days );
                 }
                 else
                 {
@@ -246,7 +248,7 @@ namespace RockWeb.Blocks.Finance
 
                 if ( lastPaymentDate.HasValue )
                 {
-                    scheduleSummary.Add( "DaysSinceLastPayment", ( DateTime.Now - lastPaymentDate.Value ).Days );
+                    scheduleSummary.Add( "DaysSinceLastPayment", ( RockDateTime.Now - lastPaymentDate.Value ).Days );
                 }
                 else
                 {
@@ -260,6 +262,9 @@ namespace RockWeb.Blocks.Finance
                 scheduleSummary.Add( "UrlEncryptedKey", transactionSchedule.UrlEncodedKey );
                 scheduleSummary.Add( "Frequency", transactionSchedule.TransactionFrequencyValue.Value );
                 scheduleSummary.Add( "FrequencyDescription", transactionSchedule.TransactionFrequencyValue.Description );
+                scheduleSummary.Add( "Status", transactionSchedule.Status );
+                scheduleSummary.Add( "CardExpirationDate", transactionSchedule.FinancialPaymentDetail.ExpirationDate );
+                scheduleSummary.Add( "CardIsExpired", transactionSchedule.FinancialPaymentDetail.CardExpirationDate < RockDateTime.Now );
 
                 List<Dictionary<string, object>> summaryDetails = new List<Dictionary<string, object>>();
                 decimal totalAmount = 0;
@@ -305,6 +310,19 @@ namespace RockWeb.Blocks.Finance
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void bbtnDelete_Click( object sender, EventArgs e )
         {
+            /* 2021-08-27 MDP
+
+            We really don't want to actually delete a FinancialScheduledTransaction.
+            Just inactivate it, even if there aren't FinancialTransactions associated with it.
+            It is possible the the Gateway has processed a transaction on it that Rock doesn't know about yet.
+            If that happens, Rock won't be able to match a record for that downloaded transaction!
+            We also might want to match inactive or "deleted" schedules on the Gateway to a person in Rock,
+            so we'll need the ScheduledTransaction to do that.
+
+            So, don't delete ScheduledTransactions.
+
+            */
+
             BootstrapButton bbtnDelete = ( BootstrapButton ) sender;
             RepeaterItem riItem = ( RepeaterItem ) bbtnDelete.NamingContainer;
 
@@ -334,7 +352,7 @@ namespace RockWeb.Blocks.Finance
                     }
 
                     rockContext.SaveChanges();
-                    lLavaContent.Text = string.Format( "<div class='alert alert-success'>Your recurring {0} has been deleted.</div>", GetAttributeValue( AttributeKey.TransactionLabel ).ToLower() );
+                    lLavaContent.Text = string.Format( "<div class='alert alert-success'>Your scheduled {0} has been deleted.</div>", GetAttributeValue( AttributeKey.TransactionLabel ).ToLower() );
                 }
                 else
                 {
@@ -358,8 +376,7 @@ namespace RockWeb.Blocks.Finance
 
             HiddenField hfScheduledTransactionId = ( HiddenField ) riItem.FindControl( "hfScheduledTransactionId" );
             var scheduledTransactionId = hfScheduledTransactionId.Value.AsIntegerOrNull();
-            HiddenField hfTransfer = ( HiddenField ) riItem.FindControl( "hfTransfer" );
-
+            
             if ( !scheduledTransactionId.HasValue )
             {
                 return;
@@ -372,12 +389,13 @@ namespace RockWeb.Blocks.Finance
             }
 
             Dictionary<string, string> qryParams = new Dictionary<string, string>();
-            qryParams.Add( "ScheduledTransactionId", scheduledTransactionId.Value.ToString() );
+            qryParams.Add( PageParameterKey.ScheduledTransactionGuid, financialScheduledTransaction.Guid.ToString() );
 
             // If this is a transfer, go to the TransactionEntry page/block
-            if ( _transferToGatewayGuid != null && hfTransfer.Value == TRANSFER && !string.IsNullOrWhiteSpace( GetAttributeValue( AttributeKey.ScheduledTransactionEntryPage ) ) )
+            HiddenField hfTransfer = ( HiddenField ) riItem.FindControl( "hfTransfer" );
+            if ( _transferToGatewayGuid != null && hfTransfer.Value == PageParameterKey.Transfer && !string.IsNullOrWhiteSpace( GetAttributeValue( AttributeKey.ScheduledTransactionEntryPage ) ) )
             {
-                qryParams.Add( TRANSFER, "true" );
+                qryParams.Add( PageParameterKey.Transfer, "true" );
                 this.NavigateToLinkedPage( AttributeKey.ScheduledTransactionEntryPage, qryParams );
             }
             else
@@ -436,6 +454,9 @@ namespace RockWeb.Blocks.Finance
                 {
                     schedules = schedules.Where( s => s.FinancialGateway.Guid == gatewayFilterGuid );
                 }
+
+                // Refresh the active transactions
+                transactionService.GetStatus( schedules, true );
 
                 rptScheduledTransactions.DataSource = schedules.ToList();
                 rptScheduledTransactions.DataBind();

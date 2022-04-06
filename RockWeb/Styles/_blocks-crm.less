@@ -24,14 +24,6 @@
 // 1. Page Styles
 // -------------------------
 
-.personprofile {
-  // offset pageheader margin
-  small {
-    // lighten up small elements a bit
-    opacity: .7;
-  }
-}
-
 .personprofilebar-bio,
 .personprofilebar-badge,
 .personprofilebar-family,
@@ -55,31 +47,25 @@
     top: 0;
     right: 0;
     z-index: 401; // get this above the fluid-box photo
-    height: 39px;
+    display: flex;
+    height: 40px;
 
     .action {
-      float: left;
-      width: 45px;
-      height: 100%;
-      color: lighten(@persondetails-bio-color, 15%);
-      text-align: center;
-      cursor: pointer;
-      border-color: darken(@persondetails-bio-bg, @const-border-darken-amt);
-      border-style: solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      color: @persondetails-bio-color;
+      border: 0 solid darken(@persondetails-bio-bg, @const-border-darken-amt);
       border-width: 0 0 1px 1px;
-
-      & > i {
-        position: relative;
-        top: 50%;
-        height: 20px;
-        transform: translateY(-50%);
-      }
     }
 
     .action-extended {
       width: auto;
       .dropdown {
-        padding: 6px 0 4px;
+        display: flex;
+        align-items: center;
+        height: 100%;
       }
 
       .dropdown-menu {
@@ -96,11 +82,12 @@
     .full-name,
     .previous-names {
       display: none;
-      font-size: 18px;
+      font-size: @font-size-lg;
     }
 
     .firstname {
-      font-size: .6em;
+      font-size: @persondetails-bio-firstname-font-size;
+      font-weight: @persondetails-bio-firstname-font-weight;
     }
   }
 
@@ -111,7 +98,7 @@
 
   .nav li .persondetails-actions {
     padding: 2px 15px 0;
-    color: lighten(@persondetails-bio-color, 15%);
+    color: inherit;
 
     &:hover,
     &:focus {
@@ -189,8 +176,7 @@
     text-align: center;
 
     .btn {
-      display: inline-block;
-      font-size: 16px;
+      font-size: @font-size-base;
       color: #fff;
       background-color: @gray;
       border: 0;
@@ -198,21 +184,6 @@
 
       &:hover {
         opacity: .8;
-      }
-
-      &.btn-facebook {
-        color: #fff;
-        background-color: #44619d;
-      }
-
-      &.btn-twitter {
-        color: #fff;
-        background-color: #55acee;
-      }
-
-      &.btn-instagram {
-        color: #fff;
-        background-color: #39688f;
       }
 
       &:first-child {
@@ -288,10 +259,6 @@
   border-bottom: 1px solid darken(@persondetails-badge-bg, @const-border-darken-amt);
 
   --badge-size: @badge-icon-height;
-
-  .config-bar {
-    font-size: @font-size-base;
-  }
 
   .badge-group {
     margin: @spacing-sm-px 0;
@@ -405,7 +372,7 @@
 }
 
 .badge-baptism {
-  color: #23a5c5;
+  color: @badge-baptism-color;
 }
 
 .badge-era {
@@ -420,7 +387,7 @@
   }
 
   &.era-loss {
-    color: #ee7624;
+    color: @badge-era-loss-color;
   }
 
   span {
@@ -438,12 +405,12 @@
   font-size: var(--badge-size, 45px);
 
   &.badge-disabled {
-    color: #939393;
+    color: @badge-disabled-color;
     opacity: .2;
   }
 }
 
-.attendance-chart {
+.trend-chart {
   //http://codepen.io/Victa/pen/xDqbf
   display: -ms-flexbox;
   display: flex;
@@ -479,9 +446,10 @@
     flex-basis: 0;
     flex-grow: 1;
     max-width: 100%;
+    margin-right: 2px;
+    overflow: hidden;
     -ms-flex-preferred-size: 0;
     -ms-flex-positive: 1;
-    overflow: hidden;
 
     &:hover {
       opacity: .85;
@@ -495,18 +463,23 @@
       position: absolute;
       bottom: 0;
       display: block;
-      width: 8px;
-      width: ~"calc(100% - 2px)";
+      width: 100%;
       min-width: 2px;
       min-height: 1px;
       max-height: 100%;
       background: @persondetails-badge-color;
+      border-radius: 2px 2px 0 0;
 
       .animate & {
-        -webkit-animation: bar-grow 1s ease-in-out;
-        -moz-animation: bar-grow 1s ease-in-out;
-        -o-animation: bar-grow 1s ease-in-out;
         animation: bar-grow 1s ease-in-out;
+      }
+    }
+  }
+
+  @media (min-width: @screen-lg-min) {
+    &-gap {
+      li {
+        margin-right: 5px;
       }
     }
   }
@@ -568,7 +541,7 @@
         display: block;
         width: .2222em;
         min-height: 2px;
-        background: lighten(#4f89bd, 20%);
+        background: lighten(@badge-disc-primary-color, 20%);
 
         @media screen and (-webkit-min-device-pixel-ratio: 0) {
           // needed for chrome but kills ie
@@ -579,13 +552,13 @@
 
       &.badge-disc-primary {
         span {
-          background: #4f89bd;
+          background: @badge-disc-primary-color;
         }
       }
 
       &.badge-disc-disabled {
         span {
-          background-color: #939393;
+          background-color: @badge-disc-disabled-color;
           opacity: .2;
         }
       }
@@ -598,7 +571,7 @@
     left: 12px;
     padding: 1px 5px;
     font-size: 24px;
-    background-color: #e3ded7;
+    background-color: @badge-disc-requested-color;
     border-radius: 99px;
     opacity: .8;
   }
@@ -607,7 +580,6 @@
     ul.badge-disc-chart li span {
       -webkit-animation: bar-grow 1s ease-in-out;
       -moz-animation: bar-grow 1s ease-in-out;
-      -o-animation: bar-grow 1s ease-in-out;
       animation: bar-grow 1s ease-in-out;
     }
   }
@@ -619,22 +591,22 @@
 
   .duration-metric {
     position: relative;
-    color: #e5d24d;  // Default (.duration-weeks)
+    color: @badge-attending-weeks-color;  // Default (.duration-weeks)
     &::before {
       &:extend(.badge-background);
       border-radius: 50%;
     }
 
     &.duration-new {
-      color: #d25555;
+      color: @badge-attending-new-color;
     }
 
     &.duration-months {
-      color: #69ad5e;
+      color: @badge-attending-months-color;
     }
 
     &.duration-years {
-      color: #56789e;
+      color: @badge-attending-years-color;
     }
 
     .metric-value {
@@ -711,7 +683,7 @@
     position: relative;
     font-size: 40px;
     font-size: ~"calc(var(--badge-size, 45px) * 0.888)";
-    color: #4f89bd;
+    color: @badge-lastvisitonsite-color;
 
     .badge-icon {
       font-size: inherit;
@@ -783,11 +755,11 @@
 
   // Incomplete and Pending have !important to allow for additional assessments with embedded CSS
   &.not-requested {
-    color: @ui-4 !important;
+    color: fade(@badge-disabled-color, 20%) !important;
   }
 
   &.requested {
-    color: @ui-5 !important;
+    color: @persondetails-badge-color !important;
   }
 
   .fa-stack-1x {
@@ -813,13 +785,6 @@
   }
 }
 
-@-o-keyframes bar-grow {
-  0% {
-    height: 0;
-    opacity: 0;
-  }
-}
-
 @keyframes bar-grow {
   0% {
     height: 0;
@@ -832,7 +797,7 @@
     position: relative;
     font-size: 40px;
     font-size: ~"calc(var(--badge-size, 45px) * 0.888)";
-    color: #4f89bd;
+    color: @badge-personaldevice-color;
 
     .badge-icon {
       font-size: inherit;
@@ -867,41 +832,34 @@
 .persondetails-group {
   header {
     position: relative;
-    padding: 10px 15px;
+    display: flex;
     margin: 0 -15px;
     background-color: @persondetails-bio-bg;
     border-top: 1px solid darken(@persondetails-bio-bg, @const-border-darken-amt);
     border-bottom: 1px solid darken(@persondetails-bio-bg, @const-border-darken-amt);
-    .clearfix();
 
     h1 {
       float: left;
-      margin: 0;
-      font-size: 18px;
+      margin: 10px 15px;
+      font-size: @font-size-h4;
       font-weight: 600;
       line-height: 25px;
     }
 
     .action-wrapper {
       float: right;
-      height: 45px;
-      margin: -10px -15px -10px 0;
+      margin-left: auto;
 
       .action {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         float: right;
         width: 45px;
         height: 100%;
         text-align: center;
         cursor: pointer;
         border-left: 1px solid darken(@persondetails-bio-bg, @const-border-darken-amt);
-
-        i {
-          position: relative;
-          top: 50%;
-          height: 20px;
-          transform: translateY(-50%);
-        }
       }
     }
   }
@@ -974,7 +932,7 @@
 
     h4 {
       margin: 0;
-      font-size: 14px;
+      font-size: @font-size-h6;
       font-weight: @font-weight-semibold;
     }
 
@@ -1023,25 +981,20 @@
 }
 
 // history page
-span.field-name {
-  padding: 2px 4px;
-  font-family: @font-family-monospace;
-  font-size: 90%;
-  color: @pagetitle-text-color;
-  white-space: nowrap;
-  background-color: @pagetitle-bg;
-  border-radius: 4px;
-}
-
-/* white-space was nowrap but changed to inherit; see discussion at https://github.com/SparkDevNetwork/Rock/commit/e4230496c8a1dc199f1bbb26f95dfa025d64dd02#r28278277 */
+span.field-name,
 span.field-value {
   padding: 2px 4px;
   font-family: @font-family-monospace;
   font-size: 90%;
   color: @pagetitle-text-color;
-  white-space: inherit;
-  background-color: @pagetitle-bg;
+  white-space: nowrap;
+  background-color: @gray-100;
   border-radius: 4px;
+}
+
+/* white-space was nowrap but changed to inherit; see discussion at https://github.com/SparkDevNetwork/Rock/commit/e4230496c8a1dc199f1bbb26f95dfa025d64dd02#r28278277 */
+span.field-value {
+  white-space: inherit;
 }
 
 // 8. Add Family Page
@@ -1051,7 +1004,7 @@ span.field-value {
   margin-top: 0 !important;
 }
 
-@media (max-width: @screen-sm) {
+@media (max-width: @screen-md) {
   /* Force table to not be like tables anymore */
   table.table-groupmembers,
   .table-groupmembers thead,
@@ -1069,7 +1022,7 @@ span.field-value {
   }
 
   .table-groupmembers {
-    /* Hide table headers (but not display: none;, for accessibility) */
+    // Hide table headers (but not display: none;, for accessibility)
     thead tr {
       position: absolute;
       top: -9999px;
@@ -1102,7 +1055,9 @@ span.field-value {
       left: 6px;
       width: 35%;
       padding-right: 10px;
+      overflow: hidden;
       font-weight: @grid-column-header-font-weight;
+      text-overflow: ellipsis;
     }
 
     > tbody > tr {
@@ -1125,7 +1080,7 @@ span.field-value {
       }
     }
 
-    /* Label the data */
+    // Label the data
     tbody {
       td::before {
         content: attr(data-label);
@@ -1162,10 +1117,13 @@ span.field-value {
     }
   }
 
-  .table-groupcontactinfo {
+  .table-groupcontactinfo,
+  .table-groupmemberattributes {
     margin-bottom: 12px;
+  }
 
-    /* Hide table headers (but not display: none;, for accessibility) */
+  .table-groupcontactinfo {
+    // Hide table headers (but not display: none;, for accessibility)
     thead tr {
       position: absolute;
       top: -9999px;
@@ -1189,7 +1147,7 @@ span.field-value {
       border-bottom: 1px solid @gray-lighter;
     }
 
-    /* Label the data */
+    // Label the data
     tbody {
       .person-name {
         /* Now like a table header */
@@ -1339,7 +1297,7 @@ span.field-value {
 .person-bio {
   div.deceased h1.title.name::after {
     margin-left: 12px;
-    font-size: 14px;
+    font-size: @font-size-small;
     color: @brand-danger;
     content: "Deceased";
   }
@@ -1352,7 +1310,7 @@ span.field-value {
     }
 
     .person-info::after {
-      font-size: 10px;
+      font-size: @font-size-xs;
       color: @brand-danger;
       content: "Deceased";
     }
@@ -1559,11 +1517,14 @@ tr.inactive {
   .likert {
     .radio-inline {
       padding: 5px @padding-base-horizontal 7px (@custom-control-indicator-size + @padding-base-horizontal + 4px);
-      margin-right: @padding-base-horizontal;
-      margin-left: -@padding-base-horizontal;
       cursor: pointer;
       background-clip: padding-box;
       border-radius: 4px;
+
+      @media (min-width: @likert-screen-column-min) {
+        margin-right: @padding-base-horizontal;
+        margin-left: -@padding-base-horizontal;
+      }
 
       &:hover {
         background-color: @gray-lighter;
@@ -1632,20 +1593,21 @@ tr.inactive {
 @steps-breakpoint: @screen-lg-min;
 
 .add-step-buttons {
-  padding: 8px 0;
-  margin: -16px -16px 0;
-  background: @drawer-bg;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px @panel-body-padding;
+  margin: -@panel-body-padding -@panel-body-padding 0;
+  background: @panel-drawer-bg;
   border-bottom: 1px solid @panel-border;
 
-  + .row {
-    margin-top: 16px;
+  .add-step-label {
+    margin: 0 4px 0 0;
+    font-size: @font-size-small;
   }
 
-  .add-step-label {
-    float: left;
-    padding: (@padding-small-vertical + 1) 0;
-    margin: 0 6px 0 0;
-    font-size: @font-size-small;
+  .btn {
+    margin: 2px;
   }
 }
 
@@ -1657,6 +1619,7 @@ tr.inactive {
   min-height: 1px;
   padding-right: 15px;
   padding-left: 15px;
+  margin-bottom: 15px;
 
   @media (min-width: @steps-breakpoint) {
     width: 100%;
@@ -1666,8 +1629,8 @@ tr.inactive {
 
 .step-card {
   position: relative;
-  height: 260px;
-  margin-bottom: 15px;
+  height: 100%;
+  min-height: 260px;
   overflow: hidden;
   text-align: center;
   border: 1px solid @panel-border;
@@ -1681,46 +1644,49 @@ tr.inactive {
     display: flex;
     -ms-flex-direction: column;
     flex-direction: column;
+    -ms-flex-pack: center;
+    justify-content: center;
     height: 100%;
-    padding: 12px 0;
+    padding: 12px;
     text-align: center;
     transition-duration: .25s;
     will-change: transform;
   }
 
   .step-status {
-    margin: 12px 0 0;
+    margin: 0;
   }
 
   .step-name {
     display: -webkit-box;
-    margin: 0 0 12px;
     overflow: hidden;
+    line-height: 1.3;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-    line-height: 1.3;
   }
 
   @media (min-width: @steps-breakpoint) {
     .card-info {
-      -ms-flex-pack: center;
-      justify-content: center;
       padding: 0;
     }
 
     .card-top {
       display: -ms-flexbox;
+      display: -webkit-box;
       display: flex;
-      -ms-flex-align: end;
+      -ms-flex-align: center;
       -ms-flex-pack: center;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
+      -webkit-box-align: center;
+      -webkit-box-pack: center;
     }
 
     .card-top,
     .card-bottom {
       -ms-flex: 1 1 50%;
       flex: 1 1 50%;
+      margin: 16px 0;
     }
   }
 
@@ -1791,8 +1757,8 @@ tr.inactive {
     display: block;
   }
 
-  .card-add-step-button > span {
-    transform: none;
+  .card-add-step-button {
+    height: 50%;
   }
 }
 

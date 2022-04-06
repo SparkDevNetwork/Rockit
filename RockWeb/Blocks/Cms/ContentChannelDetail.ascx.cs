@@ -43,7 +43,7 @@ namespace RockWeb.Blocks.Cms
     [DisplayName( "Content Channel Detail" )]
     [Category( "CMS" )]
     [Description( "Displays the details for a content channel." )]
-    public partial class ContentChannelDetail : RockBlock, IDetailBlock
+    public partial class ContentChannelDetail : RockBlock
     {
 
         #region Properties
@@ -721,7 +721,12 @@ namespace RockWeb.Blocks.Cms
                 var descriptionListRight = new DescriptionList();
 
                 descriptionListLeft.Add( "Items Require Approval", contentChannel.RequiresApproval.ToYesNo() );
-                descriptionListRight.Add( "Is Indexed", contentChannel.IsIndexEnabled.ToYesNo() );
+
+                // Only show index state if indexing is enabled on the server
+                if ( IndexContainer.IndexingEnabled )
+                {
+                    descriptionListRight.Add( "Is Indexed", contentChannel.IsIndexEnabled.ToYesNo() );
+                }
 
                 if ( contentChannel.EnableRss )
                 {

@@ -69,25 +69,27 @@
                 </div>
                 <div class="panel-body">
                     <div class="grid grid-panel">
-                        <Rock:Grid ID="gAttendees" runat="server" DisplayType="Light" UseFullStylesForLightGrid="true" OnRowDataBound="gAttendees_RowDataBound" OnRowSelected="gAttendees_RowSelected" DataKeyNames="PersonGuid,AttendanceIds" ShowActionRow="false">
+                        <Rock:Grid ID="gAttendees" runat="server" DisplayType="Light" UseFullStylesForLightGrid="true" OnRowDataBound="gAttendees_RowDataBound" OnRowSelected="gAttendees_RowSelected" DataKeyNames="PersonGuid,AttendanceIds" AllowSorting="true" ShowActionRow="false">
                             <Columns>
                                 <Rock:RockLiteralField ID="lPhoto" ItemStyle-CssClass="avatar-column" ColumnPriority="TabletSmall" />
                                 <Rock:RockLiteralField ID="lMobileIcon" HeaderStyle-CssClass="d-table-cell d-sm-none d-print-none" ItemStyle-CssClass="mobile-icon d-table-cell d-sm-none d-print-none py-0 align-middle" />
-                                <Rock:RockLiteralField ID="lName" HeaderText="Name" HeaderStyle-CssClass="print-first-col" ItemStyle-CssClass="name js-name align-middle print-first-col" />
+                                <Rock:RockLiteralField ID="lName" HeaderText="Name" HeaderStyle-CssClass="print-first-col" ItemStyle-CssClass="name js-name align-middle print-first-col" SortExpression="NickName,LastName,PersonGuid" />
                                 <Rock:RockLiteralField ID="lBadges" HeaderStyle-CssClass="d-none d-sm-table-cell d-print-none" ItemStyle-CssClass="badges d-none d-sm-table-cell d-print-none align-middle" />
-                                <Rock:RockLiteralField ID="lGroupNameAndPath" HeaderText="Group" Visible="false" />
-                                <Rock:RockBoundField DataField="Tag" HeaderText="Tag" HeaderStyle-CssClass="d-none d-sm-table-cell" ItemStyle-CssClass="tag d-none d-sm-table-cell align-middle" />
-                                <Rock:RockBoundField DataField="ServiceTimes" HeaderText="Service Times" HeaderStyle-CssClass="d-none d-sm-table-cell" ItemStyle-CssClass="service-times d-none d-sm-table-cell align-middle" />
+                                <Rock:RockLiteralField ID="lGroupNameAndPath" HeaderText="Group" Visible="false" SortExpression="GroupName,NickName,LastName,PersonGuid" />
+                                <Rock:RockBoundField DataField="Tag" HeaderText="Tag" HeaderStyle-CssClass="d-none d-sm-table-cell" ItemStyle-CssClass="tag d-none d-sm-table-cell align-middle" SortExpression="Tag" />
+                                <Rock:RockBoundField DataField="ServiceTimes" HeaderText="Service Times" HeaderStyle-CssClass="d-none d-sm-table-cell" ItemStyle-CssClass="service-times d-none d-sm-table-cell align-middle" SortExpression="ServiceTimesScheduleOrder" />
                                 <Rock:RockLiteralField ID="lMobileTagAndSchedules" HeaderText="Tag" HeaderStyle-CssClass="d-sm-none" ItemStyle-CssClass="tags-and-schedules d-table-cell d-sm-none" />
-                                <Rock:RockLiteralField ID="lElapsedCheckInTime" HeaderText="Check-in Time" HeaderStyle-HorizontalAlign="Right" ItemStyle-CssClass="check-in-time align-middle" ItemStyle-HorizontalAlign="Right" ColumnPriority="TabletSmall" />
+                                <Rock:RockLiteralField ID="lElapsedCheckInTime" HeaderText="Check-in Time" HeaderStyle-HorizontalAlign="Right" ItemStyle-CssClass="check-in-time align-middle" ItemStyle-HorizontalAlign="Right" ColumnPriority="TabletSmall" SortExpression="CheckInTime" />
+                                <Rock:RockLiteralField ID="lElapsedPresentTime" HeaderText="Present Time" HeaderStyle-HorizontalAlign="Right" ItemStyle-CssClass="check-in-time align-middle" ItemStyle-HorizontalAlign="Right" ColumnPriority="TabletSmall" SortExpression="PresentDateTime" />
+                                <Rock:RockLiteralField ID="lElapsedCheckedOutTime" HeaderText="Checked-out Time" HeaderStyle-HorizontalAlign="Right" ItemStyle-CssClass="check-in-time align-middle" ItemStyle-HorizontalAlign="Right" ColumnPriority="TabletSmall" SortExpression="CheckOutTime" />
                                 <Rock:RockLiteralField ID="lStatusTag" HeaderStyle-CssClass="d-none d-sm-table-cell print-last-col" ItemStyle-CssClass="status-tag d-none d-sm-table-cell align-middle print-last-col" ItemStyle-HorizontalAlign="Right" ColumnPriority="TabletSmall" />
 
                                 <Rock:LinkButtonField ID="btnCancel" ItemStyle-CssClass="grid-columnaction d-print-none" CssClass="btn btn-danger btn-square js-cancel-checkin" Text="<i class='fa fa-times'></i>" ToolTip="Cancel" OnClick="btnCancel_Click" OnDataBound="btnCancel_DataBound" />
                                 <Rock:LinkButtonField ID="btnPresent" ItemStyle-CssClass="grid-columnaction d-print-none" CssClass="btn btn-success btn-square js-mark-present" Text="<i class='fa fa-user-check'></i>" ToolTip="Mark Present" OnClick="btnPresent_Click" OnDataBound="btnPresent_DataBound" />
-
-                                <Rock:LinkButtonField ID="btnCheckOut" ItemStyle-CssClass="grid-columnaction" CssClass="btn btn-primary btn-square" Text="<i class='fa fa-user-minus'></i>" ToolTip="Check out" OnClick="btnCheckOut_Click" OnDataBound="btnCheckOut_DataBound" />
+                                
                                 <Rock:LinkButtonField ID="btnStaying" ItemStyle-CssClass="grid-columnaction" CssClass="btn btn-default btn-square" Text="<i class='fa fa-user-clock'></i>" ToolTip="Staying" OnClick="btnStaying_Click" />
-                                <Rock:LinkButtonField ID="btnNotPresent" ItemStyle-CssClass="grid-columnaction" CssClass="btn btn-default btn-square" Text="<i class='fa fa-external-link-alt'></i>" ToolTip="Not Present" OnClick="btnNotPresent_Click" OnDataBound="btnNotPresent_DataBound" />
+                                <Rock:LinkButtonField ID="btnNotPresent" ItemStyle-CssClass="grid-columnaction" CssClass="btn btn-default btn-square" Text="<i class='fa fa-user-slash'></i>" ToolTip="Not Present" OnClick="btnNotPresent_Click" OnDataBound="btnNotPresent_DataBound" />
+                                <Rock:LinkButtonField ID="btnCheckOut" ItemStyle-CssClass="grid-columnaction" CssClass="btn btn-primary btn-square" Text="<i class='fa fa-user-minus'></i>" ToolTip="Check out" OnClick="btnCheckOut_Click" OnDataBound="btnCheckOut_DataBound" />
                             </Columns>
                         </Rock:Grid>
                     </div>
@@ -99,7 +101,7 @@
                 <Content>
                     <asp:HiddenField ID="hfConfirmStayingAttendanceId" runat="server" />
                     <Rock:NotificationBox ID="nbConfirmStayingWarning" runat="server" NotificationBoxType="Warning" />
-                    <asp:Literal ID="lConfirmStayingPromptText" runat="server" Text="Which schedule would you like to this person to stay for:" />
+                    <asp:Literal ID="lConfirmStayingPromptText" runat="server" Text="Which schedule would you like this person to stay for:" />
                     <Rock:RockRadioButtonList ID="rblScheduleStayingFor" runat="server" Label="Schedule" RepeatDirection="Horizontal" />
                 </Content>
             </Rock:ModalDialog>

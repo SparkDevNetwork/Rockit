@@ -3,8 +3,6 @@
 <style>
     .mobile-app-preview {
         padding: 20px;
-        border: 1px solid #bbb;
-        border-radius: 18px;
     }
     .mobile-app-preview img {
         width: 100%;
@@ -24,17 +22,16 @@
     <ContentTemplate>
         <Rock:NotificationBox ID="nbError" runat="server" NotificationBoxType="Danger" />
         <Rock:ModalAlert ID="mdWarning" runat="server" />
-        <asp:Panel ID="pnlOverview" runat="server" CssClass="panel panel-default">
+        <asp:Panel ID="pnlOverview" runat="server" CssClass="panel panel-block">
             <div class="panel-heading">
                 <h3 class="panel-title">
                     <i class="fa fa-mobile"></i>
                     <asp:Literal ID="ltAppName" runat="server" />
-
-                    <div class="panel-labels">
-                        <span class="label label-default">Site Id: <asp:Literal ID="lSiteId" runat="server" /></span>
-                        <asp:Literal ID="lLastDeployDate" runat="server" />
-                    </div>
                 </h3>
+                <div class="panel-labels">
+                    <span class="label label-default">Site Id: <asp:Literal ID="lSiteId" runat="server" /></span>
+                    <asp:Literal ID="lLastDeployDate" runat="server" />
+                </div>
             </div>
 
             <div class="panel-body">
@@ -174,7 +171,7 @@
 
                                 <asp:Panel ID="pnlStylesAdvancedFields" runat="server" CssClass="js-advanced-style-fields" style="display:none">
                                     <div class="row">
-                                        
+
                                         <div class="col-md-4">
                                             <Rock:NumberBox ID="nbFontSizeDefault" runat="server" NumberType="Integer" Label="Font Size Default" Help="The default font size."></Rock:NumberBox>
                                         </div>
@@ -292,6 +289,12 @@
 
                             <div class="col-md-4">
                                 <Rock:ImageUploader ID="imgEditPreviewThumbnail" runat="server" Label="Preview Thumbnail" Help="Preview thumbnail to be used by Rock to distinguish application." />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <Rock:RockTextBox ID="tbEditPushTokenUpdateValue" runat="server" Label="Force Push Token Update" Help="Setting or changing this value will force all clients to update their push token. Use with caution." />
                             </div>
                         </div>
                     </Rock:PanelWidget>

@@ -50,7 +50,7 @@ namespace RockWeb.Blocks.Farm
         DefaultIntegerValue = 4,
         Order = 2 )]
 
-    public partial class WebFarmSettings : RockBlock, IDetailBlock
+    public partial class WebFarmSettings : RockBlock
     {
         #region Keys
 
@@ -286,7 +286,7 @@ namespace RockWeb.Blocks.Farm
         }
 
         /// <summary>
-        /// This method satisfies the IDetailBlock requirement
+        /// Called by a related block to show the detail for a specific entity.
         /// </summary>
         /// <param name="unused"></param>
         public void ShowDetail( int unused )
@@ -334,6 +334,8 @@ namespace RockWeb.Blocks.Farm
             {
                 ShowViewMode();
             }
+
+            nbInMemoryBus.Visible = Rock.Bus.RockMessageBus.IsInMemoryTransport;
         }
 
         /// <summary>
@@ -431,7 +433,7 @@ namespace RockWeb.Blocks.Farm
                     } )
                     .ToList();
 
-                rNodes.DataSource = viewModels;
+                rNodes.DataSource = viewModels.OrderBy( n => n.NodeName );
                 rNodes.DataBind();
             }
 

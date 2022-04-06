@@ -22,8 +22,9 @@
     .card-node .card-header {
         display: flex;
         justify-content: space-between;
-        padding: 8px;
+        padding: 0 8px;
         background: transparent;
+        align-items: center;
     }
 
     .server-meta {
@@ -33,7 +34,7 @@
         align-items: center;
         overflow: hidden;
         font-size: 20px;
-        line-height: 1;
+        line-height: 36px;
     }
 
     .node-name {
@@ -113,6 +114,7 @@
                 </div>
             </div>
             <div class="panel-body">
+                <Rock:NotificationBox ID="nbInMemoryBus" runat="server" NotificationBoxType="Warning" Text="The Web Farm will not function correctly with the In-Memory bus transport. Please configure a different bus transport before using the Web Farm." />
                 <Rock:NotificationBox ID="nbEditModeMessage" runat="server" NotificationBoxType="Info" />
                 <asp:ValidationSummary ID="valValidation" runat="server" HeaderText="Please correct the following:" CssClass="alert alert-validation" />
 

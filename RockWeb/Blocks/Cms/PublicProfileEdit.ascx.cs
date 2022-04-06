@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -20,7 +21,6 @@ using System.Linq;
 using System.Web.UI;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
-
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -116,29 +116,6 @@ namespace RockWeb.Blocks.Cms
         DefaultValue = Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_HOME,
         Order = 9 )]
 
-    [BooleanField(
-        "Highlight Mobile Phone",
-        Key = AttributeKey.HighlightMobilePhone,
-        Description = "Determines if the emphasis box should be placed around the mobile number.",
-        DefaultBooleanValue = true,
-        Order = 10 )]
-
-    [TextField(
-        "Mobile Highlight Title",
-        Key = AttributeKey.MobileHighlightTitle,
-        Description = "The text to use for the mobile highlight title (only displayed if Highlight Mobile Phone is selected).",
-        IsRequired = false,
-        DefaultValue = "Help Us Keep You Informed",
-        Order = 11 )]
-
-    [TextField(
-        "Mobile Highlight Text",
-        Description = "The text to use for the mobile highlight text (only displayed if Highlight Mobile Phone is selected).",
-        IsRequired = false,
-        DefaultValue = "Help us keep you in the loop by providing your mobile phone number and opting in for text messages. We'll only send you the most important information at this number.",
-        Order = 12,
-        Key = AttributeKey.MobileHighlightText )]
-
     [DefinedValueField(
         "Required Adult Phone Types",
         Key = AttributeKey.RequiredAdultPhoneTypes,
@@ -146,7 +123,30 @@ namespace RockWeb.Blocks.Cms
         DefinedTypeGuid = Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE,
         IsRequired = false,
         AllowMultiple = true,
-        Order = 13 )]
+        Order = 10 )]
+
+    [BooleanField(
+        "Highlight Mobile Phone",
+        Key = AttributeKey.HighlightMobilePhone,
+        Description = "Determines if the emphasis box should be placed around the mobile number.",
+        DefaultBooleanValue = true,
+        Order = 11 )]
+
+    [TextField(
+        "Mobile Highlight Title",
+        Key = AttributeKey.MobileHighlightTitle,
+        Description = "The text to use for the mobile highlight title (only displayed if Highlight Mobile Phone is selected).",
+        IsRequired = false,
+        DefaultValue = "Help Us Keep You Informed",
+        Order = 12 )]
+
+    [TextField(
+        "Mobile Highlight Text",
+        Description = "The text to use for the mobile highlight text (only displayed if Highlight Mobile Phone is selected).",
+        IsRequired = false,
+        DefaultValue = "Help us keep you in the loop by providing your mobile phone number and opting in for text messages. We'll only send you the most important information at this number.",
+        Order = 13,
+        Key = AttributeKey.MobileHighlightText )]
 
     [BooleanField(
         "Require Adult Email Address",
@@ -455,8 +455,8 @@ namespace RockWeb.Blocks.Cms
         }
 
         /// <summary>
-        /// Handles any custom postbacks from the Lava.
-        /// Returns true if one of the custom Lava postbacks was handled
+        /// Handles any custom post-backs from the Lava.
+        /// Returns true if one of the custom Lava post-backs was handled
         /// </summary>
         /// <param name="eventTarget">The event target.</param>
         /// <param name="eventArgument">The event argument.</param>
@@ -638,7 +638,7 @@ namespace RockWeb.Blocks.Cms
         {
             if ( personGuid == Guid.Empty )
             {
-                // When the personGuid is empty, then we check based on the given person's Id is in the group. 
+                // When the personGuid is empty, then we check based on the given person's Id is in the group.
                 return IsValidPersonForGroup( person, group );
             }
             else
@@ -736,13 +736,17 @@ namespace RockWeb.Blocks.Cms
             var groupId = hfGroupId.Value.AsIntegerOrNull();
             if ( !groupId.HasValue )
             {
-                // invalid situation/tampering; return and report nothing.
+                // GroupId wasn't specified due to invalid situation
+                // Return and report nothing.
+                return;
             }
 
             var group = new GroupService( rockContext ).Get( groupId.Value );
             if ( group == null )
             {
-                // invalid situation/tampering; return and report nothing.
+                // A valid group wasn't specified.
+                // Return and report nothing.
+                return;
             }
 
             // invalid situation; return and report nothing.
@@ -914,13 +918,11 @@ namespace RockWeb.Blocks.Cms
                         {
                             HiddenField hfPhoneType = item.FindControl( "hfPhoneType" ) as HiddenField;
                             PhoneNumberBox pnbPhone = item.FindControl( "pnbPhone" ) as PhoneNumberBox;
-                            CheckBox cbUnlisted = item.FindControl( "cbUnlisted" ) as CheckBox;
                             CheckBox cbSms = item.FindControl( "cbSms" ) as CheckBox;
 
-                            if ( hfPhoneType != null &&
-                                pnbPhone != null &&
-                                cbSms != null &&
-                                cbUnlisted != null )
+                            if ( hfPhoneType != null
+                                && pnbPhone != null
+                                && cbSms != null )
                             {
                                 if ( !string.IsNullOrWhiteSpace( PhoneNumber.CleanNumber( pnbPhone.Number ) ) )
                                 {
@@ -953,7 +955,6 @@ namespace RockWeb.Blocks.Cms
                                             smsSelected = cbSms.Checked;
                                         }
 
-                                        phoneNumber.IsUnlisted = cbUnlisted.Checked;
                                         phoneNumberTypeIds.Add( phoneNumberTypeId );
                                     }
                                 }
@@ -981,7 +982,7 @@ namespace RockWeb.Blocks.Cms
                       we'll require an SMS number in these situations. The goal is to only enforce if they are able to do something about it.
                       1) The block is configured to show both 'Communication Preference' and 'Phone Numbers'.
                       2) Communication Preference is set to SMS
-                      
+
                      Edge cases
                        - Both #1 and #2 are true, but no Phone Types are selected in block settings. In this case, still enforce.
                          Think of this as a block configuration issue (they shouldn't have configured it that way)
@@ -1033,7 +1034,7 @@ namespace RockWeb.Blocks.Cms
                                 }
                             }
 
-                            // if they used the ImageEditor, and cropped it, the un-cropped file is still in BinaryFile. So clean it up
+                            // if they used the ImageEditor, and cropped it, the original file is still in BinaryFile. So clean it up.
                             if ( imgPhoto.CropBinaryFileId.HasValue )
                             {
                                 if ( imgPhoto.CropBinaryFileId != person.PhotoId )
@@ -1568,7 +1569,7 @@ namespace RockWeb.Blocks.Cms
         }
 
         /// <summary>
-        /// Sets the visiblity of the controls for role.
+        /// Sets the visibility of the controls for role.
         /// </summary>
         /// <param name="roleTypeId">The role type identifier.</param>
         public void SetControlsForRoleType( int roleTypeId )
@@ -1603,6 +1604,48 @@ namespace RockWeb.Blocks.Cms
             {
                 var attributeGuidListChild = GetAttributeValue( AttributeKey.PersonAttributesChildren ).SplitDelimitedValues().AsGuidList();
                 pnlPersonAttributes.Visible = attributeGuidListChild.Any();
+            }
+
+            // Go through the ContactInfo items, and set or reset the control features per the selected Role.
+            foreach ( RepeaterItem ri in rContactInfo.Items )
+            {
+                SetContactInfo( ri );
+            }
+        }
+
+        private void SetContactInfo( RepeaterItem ri )
+        {
+            var pnbPhone = ri.FindControl( "pnbPhone" ) as PhoneNumberBox;
+            HiddenField hfPhoneType = ri.FindControl( "hfPhoneType" ) as HiddenField;
+            int phoneTypeId = hfPhoneType.Value.AsInteger();
+
+            var phoneNumberTypes = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE.AsGuid() );
+            var phoneNumberDefinedType = phoneNumberTypes.DefinedValues.Where( re => re.Id == phoneTypeId ).FirstOrDefault();
+
+            if ( pnbPhone != null )
+            {
+                pnbPhone.ValidationGroup = BlockValidationGroup;
+
+                var phoneNumber = new PhoneNumber { NumberTypeValueId = phoneTypeId };
+                HtmlGenericControl phoneNumberContainer = ( HtmlGenericControl ) ri.FindControl( "divPhoneNumberContainer" );
+
+                if ( _isEditRecordAdult && ( phoneNumber != null ) )
+                {
+                    pnbPhone.Required = _requiredPhoneNumberGuids.Contains( phoneNumberDefinedType.Guid );
+                    if ( pnbPhone.Required )
+                    {
+                        pnbPhone.RequiredErrorMessage = string.Format( "{0} phone is required", phoneNumberDefinedType.Value );
+                        phoneNumberContainer.AddCssClass( "required" );
+                    }
+                }
+
+                // If not an adult record (child) and the phoneNumber has a value, remove the required status.
+                if ( !_isEditRecordAdult && ( phoneNumber != null ) )
+                {
+                    pnbPhone.Required = false;
+                    pnbPhone.RequiredErrorMessage = string.Empty;
+                    phoneNumberContainer.RemoveCssClass( "required" );
+                }
             }
         }
 

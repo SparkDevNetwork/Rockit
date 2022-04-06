@@ -26,9 +26,12 @@ using System.Text.RegularExpressions;
 using System.Web.UI;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
+
 using Humanizer;
+
 using Rock;
 using Rock.Attribute;
+using Rock.Constants;
 using Rock.Data;
 using Rock.Model;
 using Rock.Reporting;
@@ -322,10 +325,13 @@ namespace RockWeb.Blocks.Communication
                 }
                 else
                 {
-                    // If user is not authorized to View, hide all content.
+                    // If user is not authorized to View, don't show details. Just a warning.
                     if ( !_Communication.IsAuthorized( Rock.Security.Authorization.VIEW, CurrentPerson ) )
                     {
-                        this.Visible = false;
+                        nbEditModeMessage.NotificationBoxType = NotificationBoxType.Warning;
+                        nbEditModeMessage.Text = EditModeMessage.NotAuthorizedToView( Rock.Model.Communication.FriendlyTypeName );
+
+                        pnlCommunicationView.Visible = false;
                     }
                     else
                     {
@@ -658,7 +664,7 @@ namespace RockWeb.Blocks.Communication
                         CurrentPageReference.Parameters.Add( PageParameterKey.CommunicationId, newCommunication.Id.ToString() );
                     }
 
-                    Response.Redirect( CurrentPageReference.BuildUrl() );
+                    Response.Redirect( CurrentPageReference.BuildUrl(), false );
                     Context.ApplicationInstance.CompleteRequest();
                 }
             }
@@ -1235,7 +1241,7 @@ namespace RockWeb.Blocks.Communication
         }
 
         /// <summary>
-        /// Create aset of page query parameters to represent the current Page settings.
+        /// Create a set of page query parameters to represent the current Page settings.
         /// </summary>
         /// <returns></returns>
         private Dictionary<string, string> GetQueryParamsFromSettings()
@@ -1780,6 +1786,15 @@ namespace RockWeb.Blocks.Communication
                         break;
                     }
             }
+
+            if ( communication != null && communication.IsBulkCommunication )
+            {
+                hlBulk.Visible = true;
+            }
+            else
+            {
+                hlBulk.Visible = false;
+            }
         }
 
         /// <summary>
@@ -1882,13 +1897,13 @@ namespace RockWeb.Blocks.Communication
             bool showSmsTab = false;
             bool showPushTab = false;
 
-            sb.AppendLine("<ul class='nav nav-pills' role='tablist'>");
+            sb.AppendLine( "<ul class='nav nav-pills' role='tablist'>" );
 
             if ( communication.CommunicationType == CommunicationType.Email || communication.CommunicationType == CommunicationType.RecipientPreference && communication.Message.IsNotNullOrWhiteSpace() )
             {
                 firstTabRendered = true;
                 showEmailTab = true;
-                sb.AppendLine("<li class='active'><a href='#emailTabContent' role='tab' id='email-tab' data-toggle='tab' aria-controls='email'>Email</a></li>");
+                sb.AppendLine( "<li class='active'><a href='#emailTabContent' role='tab' id='email-tab' data-toggle='tab' aria-controls='email'>Email</a></li>" );
             }
 
             if ( communication.CommunicationType == CommunicationType.SMS || communication.CommunicationType == CommunicationType.RecipientPreference )
@@ -1896,15 +1911,15 @@ namespace RockWeb.Blocks.Communication
                 showSmsTab = true;
                 if ( firstTabRendered )
                 {
-                    sb.AppendLine("<li>");
+                    sb.AppendLine( "<li>" );
                 }
                 else
                 {
                     firstTabRendered = true;
-                    sb.AppendLine("<li class='active'>");
+                    sb.AppendLine( "<li class='active'>" );
                 }
 
-                sb.AppendLine("<a href='#smsTabContent' role='tab' id='sms-tab' data-toggle='tab' aria-controls='sms'>SMS</a></li>");
+                sb.AppendLine( "<a href='#smsTabContent' role='tab' id='sms-tab' data-toggle='tab' aria-controls='sms'>SMS</a></li>" );
             }
 
             if ( communication.CommunicationType == CommunicationType.PushNotification || communication.CommunicationType == CommunicationType.RecipientPreference && communication.PushMessage.IsNotNullOrWhiteSpace() )
@@ -1912,29 +1927,29 @@ namespace RockWeb.Blocks.Communication
                 showPushTab = true;
                 if ( firstTabRendered )
                 {
-                    sb.AppendLine("<li>");
+                    sb.AppendLine( "<li>" );
                 }
                 else
                 {
                     firstTabRendered = true;
-                    sb.AppendLine("<li class='active'>");
+                    sb.AppendLine( "<li class='active'>" );
                 }
 
-                sb.AppendLine("<a href='#pushTabContent' role='tab' id='push-tab' data-toggle='tab' aria-controls='push'>Push</a></li>");
+                sb.AppendLine( "<a href='#pushTabContent' role='tab' id='push-tab' data-toggle='tab' aria-controls='push'>Push</a></li>" );
             }
 
-            sb.AppendLine("</ul><hr/>");
+            sb.AppendLine( "</ul><div><hr/></div>" );
 
 
             sb.AppendLine( "<div class='tab-content flex-fill'>" );
 
             if ( showEmailTab )
             {
-                sb.AppendLine( "<div id='emailTabContent' class='tab-pane active'>" );
+                sb.AppendLine( "<div id='emailTabContent' class='tab-pane h-100 d-flex flex-column active'>" );
                 sb.AppendLine( "<div class='row'>" );
 
                 AppendStaticControlMediumData( sb, "From",
-                string.Format( "{0} ({1})", communication.FromName, communication.FromEmail ));
+                string.Format( "{0} ({1})", communication.FromName, communication.FromEmail ) );
 
                 AppendStaticControlMediumData( sb, "Subject", communication.Subject, "col-sm-8" );
                 sb.AppendLine( "</div>" );
@@ -1958,9 +1973,9 @@ namespace RockWeb.Blocks.Communication
                 }
 
                 sb.AppendLine( string.Format( @"
-            <div class='bg-gray-100 flex-fill position-relative mb-3 mb-sm-0 styled-scroll' style='min-height:400px'>
+            <div class='bg-gray-100 flex-fill position-relative mb-3 mb-sm-0 styled-scroll border border-panel' style='min-height:400px'>
             <div class='position-absolute w-100 h-100 inset-0 overflow-auto'>
-            <iframe id='js-email-body-iframe' class='w-100' scrolling='yes' onload='resizeIframe(this)'></iframe>
+            <iframe id='js-email-body-iframe' class='w-100 bg-white' scrolling='yes' onload='resizeIframe(this)'></iframe>
             </div>
             </div>
             <script id='email-body' type='text/template'>{0}</script>
@@ -2010,8 +2025,9 @@ namespace RockWeb.Blocks.Communication
 
                 AppendStaticControlMediumData( sb, "Title", communication.PushTitle, "col-sm-8" );
 
-                if ( communication.PushOpenAction != null ) {
-                    AppendMediumData( sb, "Open Action", Regex.Replace( communication.PushOpenAction.ToStringSafe(), @"(\B[A-Z]+?(?=[A-Z][^A-Z])|\B[A-Z]+?(?=[^A-Z]))", " $1" ));
+                if ( communication.PushOpenAction != null )
+                {
+                    AppendMediumData( sb, "Open Action", Regex.Replace( communication.PushOpenAction.ToStringSafe(), @"(\B[A-Z]+?(?=[A-Z][^A-Z])|\B[A-Z]+?(?=[^A-Z]))", " $1" ) );
                 }
                 AppendStaticControlMediumData( sb, "Message", communication.PushMessage, "col-sm-12" );
 
@@ -2109,6 +2125,7 @@ namespace RockWeb.Blocks.Communication
                 if ( communication != null )
                 {
                     if ( communication.CommunicationType == CommunicationType.Email
+                         || communication.CommunicationType == CommunicationType.PushNotification
                          || communication.CommunicationType == CommunicationType.RecipientPreference )
                     {
                         communicationTypeHasAnalytics = true;
@@ -2141,15 +2158,22 @@ namespace RockWeb.Blocks.Communication
             if ( communicationId != null )
             {
                 var recipientService = new CommunicationRecipientService( dataContext );
-
                 var sentStatus = new CommunicationRecipientStatus[] { CommunicationRecipientStatus.Opened, CommunicationRecipientStatus.Delivered };
 
-                var recipientQuery = recipientService.Queryable().Where( a => a.CommunicationId == communicationId ).ToList();
+                var recipientSummary = recipientService.Queryable()
+                    .Where( a => a.CommunicationId == communicationId )
+                    .GroupBy( a => a.Status )
+                    .Select( g => new
+                    {
+                        Status = g.Key,
+                        Count = g.Count()
+                    } )
+                    .ToList();
 
-                pendingRecipientCount = recipientQuery.Count( a => a.Status == CommunicationRecipientStatus.Pending );
-                deliveredRecipientCount = recipientQuery.Count( a => sentStatus.Contains( a.Status ) );
-                failedRecipientCount = recipientQuery.Count( a => a.Status == CommunicationRecipientStatus.Failed );
-                cancelledRecipientCount = recipientQuery.Count( a => a.Status == CommunicationRecipientStatus.Cancelled );
+                pendingRecipientCount = recipientSummary.Where( a => a.Status == CommunicationRecipientStatus.Pending ).Sum( a => a.Count );
+                deliveredRecipientCount = recipientSummary.Where( a => sentStatus.Contains( a.Status ) ).Sum( a => a.Count );
+                failedRecipientCount = recipientSummary.Where( a => a.Status == CommunicationRecipientStatus.Failed ).Sum( a => a.Count );
+                cancelledRecipientCount = recipientSummary.Where( a => a.Status == CommunicationRecipientStatus.Cancelled ).Sum( a => a.Count );
             }
 
             string actionsStatFormatNumber = "<div>{0:#,##0}</div>";

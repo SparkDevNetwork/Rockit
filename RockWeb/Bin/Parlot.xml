@@ -1,0 +1,946 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Parlot</name>
+    </assembly>
+    <members>
+        <member name="T:FastExpressionCompiler.CompilerFlags">
+            <summary>The options for the compiler</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.CompilerFlags.Default">
+            <summary>The default options: Invocation lambda is inlined, no debug info</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.CompilerFlags.NoInvocationLambdaInlining">
+            <summary>Prevents the inlining of the lambda in the Invocation expression to optimize for the multiple same lambda compiled once</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.CompilerFlags.EnableDelegateDebugInfo">
+            <summary>Adds the Expression, ExpressionString, and CSharpString to the delegate closure for the debugging inspection</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.CompilerFlags.ThrowOnNotSupportedExpression">
+            <summary>When the flag set then instead of the returning `null` the specific exception</summary>
+        </member>
+        <member name="T:FastExpressionCompiler.NotSupported">
+            <summary>Indicates the not supported expression combination</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.NewArrayInit_MultidimensionalArray">
+            <summary>Multi-dimensional array initializer is not supported</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.Quote">
+            <summary>Quote is not supported</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.Dynamic">
+            <summary>Dynamic is not supported</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.RuntimeVariables">
+            <summary>RuntimeVariables is not supported</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.MemberInit_MemberBinding">
+            <summary>MemberInit MemberBinding is not supported</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.MemberInit_ListBinding">
+            <summary>MemberInit ListBinding is not supported</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.Try_GotoReturnToTheFollowupLabel">
+            <summary>Goto of the Return kind from the TryCatch is not supported</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupported.Assign_Target">
+            <summary>Not supported assignment target</summary>
+        </member>
+        <member name="T:FastExpressionCompiler.NotSupportedExpressionException">
+            <summary>FEC Not Supported exception</summary>
+        </member>
+        <member name="F:FastExpressionCompiler.NotSupportedExpressionException.Reason">
+            <summary>The reason</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.NotSupportedExpressionException.#ctor(FastExpressionCompiler.NotSupported)">
+            <summary>Constructor</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.NotSupportedExpressionException.#ctor(FastExpressionCompiler.NotSupported,System.String)">
+            <summary>Constructor</summary>
+        </member>
+        <member name="T:FastExpressionCompiler.IDelegateDebugInfo">
+            <summary>The interface is implemented by the compiled delegate Target if `CompilerFlags.EnableDelegateDebugInfo` is set.</summary>
+        </member>
+        <member name="P:FastExpressionCompiler.IDelegateDebugInfo.Expression">
+            <summary>The lambda expression object that was compiled to the delegate</summary>
+        </member>
+        <member name="P:FastExpressionCompiler.IDelegateDebugInfo.ExpressionString">
+            <summary>The lambda expression construction syntax C# code</summary>
+        </member>
+        <member name="P:FastExpressionCompiler.IDelegateDebugInfo.CSharpString">
+            <summary>The lambda expression equivalent C# code</summary>
+        </member>
+        <member name="T:FastExpressionCompiler.ExpressionCompiler">
+            <summary>Compiles expression to delegate ~20 times faster than Expression.Compile.
+            Partial to extend with your things when used as source file.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``1(System.Linq.Expressions.LambdaExpression,System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to TDelegate type. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFastToIL(System.Linq.Expressions.LambdaExpression,System.Reflection.Emit.ILGenerator,System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            Compiles a static method to the passed IL Generator.
+            Could be used as alternative for `CompileToMethod` like this <code><![CDATA[funcExpr.CompileFastToIL(methodBuilder.GetILGenerator())]]></code>.
+            Check `IssueTests.Issue179_Add_something_like_LambdaExpression_CompileToMethod.cs` for example.
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast(System.Linq.Expressions.LambdaExpression,System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileSys``1(System.Linq.Expressions.Expression{``0})">
+            <summary>Unifies Compile for System.Linq.Expressions and FEC.LightExpression</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileSys(System.Linq.Expressions.LambdaExpression)">
+            <summary>Unifies Compile for System.Linq.Expressions and FEC.LightExpression</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``1(System.Linq.Expressions.Expression{``0},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to TDelegate type. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``1(System.Linq.Expressions.Expression{System.Func{``0}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``2(System.Linq.Expressions.Expression{System.Func{``0,``1}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``3(System.Linq.Expressions.Expression{System.Func{``0,``1,``2}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to TDelegate type. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``4(System.Linq.Expressions.Expression{System.Func{``0,``1,``2,``3}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``5(System.Linq.Expressions.Expression{System.Func{``0,``1,``2,``3,``4}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to TDelegate type. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``6(System.Linq.Expressions.Expression{System.Func{``0,``1,``2,``3,``4,``5}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``7(System.Linq.Expressions.Expression{System.Func{``0,``1,``2,``3,``4,``5,``6}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast(System.Linq.Expressions.Expression{System.Action},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``1(System.Linq.Expressions.Expression{System.Action{``0}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``2(System.Linq.Expressions.Expression{System.Action{``0,``1}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``3(System.Linq.Expressions.Expression{System.Action{``0,``1,``2}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``4(System.Linq.Expressions.Expression{System.Action{``0,``1,``2,``3}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``5(System.Linq.Expressions.Expression{System.Action{``0,``1,``2,``3,``4}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.CompileFast``6(System.Linq.Expressions.Expression{System.Action{``0,``1,``2,``3,``4,``5}},System.Boolean,FastExpressionCompiler.CompilerFlags)">
+            <summary>Compiles lambda expression to delegate. Use ifFastFailedReturnNull parameter to Not fallback to Expression.Compile, useful for testing.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.TryCompile``1(System.Linq.Expressions.LambdaExpression,FastExpressionCompiler.CompilerFlags)">
+            <summary>Tries to compile lambda expression to <typeparamref name="TDelegate"/></summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.TryCompileWithPreCreatedClosure``1(System.Linq.Expressions.LambdaExpression,System.Linq.Expressions.ConstantExpression[])">
+            <summary>Tries to compile lambda expression to <typeparamref name="TDelegate"/> 
+            with the provided closure object and constant expressions (or lack there of) -
+            Constant expression should be the in order of Fields in closure object!
+            Note 1: Use it on your own risk - FEC won't verify the expression is compile-able with passed closure, it is up to you!
+            Note 2: The expression with NESTED LAMBDA IS NOT SUPPORTED!
+            Note 3: `Label` and `GoTo` are not supported in this case, because they need first round to collect out-of-order labels</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.TryCompileWithPreCreatedClosure``1(System.Linq.Expressions.LambdaExpression,System.Linq.Expressions.ConstantExpression[],FastExpressionCompiler.CompilerFlags)">
+            <summary>Tries to compile lambda expression to <typeparamref name="TDelegate"/> 
+            with the provided closure object and constant expressions (or lack there of)</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.TryCompileWithoutClosure``1(System.Linq.Expressions.LambdaExpression,FastExpressionCompiler.CompilerFlags)">
+            <summary>Tries to compile expression to "static" delegate, skipping the step of collecting the closure object.</summary>
+        </member>
+        <member name="T:FastExpressionCompiler.ExpressionCompiler.ClosureInfo">
+            Track the info required to build a closure object + some context information not directly related to closure.
+        </member>
+        <member name="F:FastExpressionCompiler.ExpressionCompiler.ClosureInfo._blockStack">
+            Tracks the stack of blocks where are we in emit phase
+        </member>
+        <member name="F:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.Labels">
+            Map of the links between Labels and Goto's
+        </member>
+        <member name="F:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.Constants">
+            Constant expressions to find an index (by reference) of constant expression from compiled expression.
+        </member>
+        <member name="F:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.ConstantUsageThenVarIndex">
+            Constant usage count and variable index
+        </member>
+        <member name="F:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.NonPassedParameters">
+            Parameters not passed through lambda parameter list But used inside lambda body.
+            The top expression should Not contain not passed parameters. 
+        </member>
+        <member name="F:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.NestedLambdas">
+            All nested lambdas recursively nested in expression
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.#ctor(FastExpressionCompiler.ExpressionCompiler.ClosureStatus,System.Object[],System.Int32[])">
+            <summary>Populates info directly with provided closure object and constants.
+            If provided, the <paramref name="constUsage"/> should be the size of <paramref name="constValues"/>
+            </summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.PushBlockWithVars(System.Linq.Expressions.ParameterExpression)">
+            LocalVar maybe a `null` in a collecting phase when we only need to decide if ParameterExpression is an actual parameter or variable
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.ClosureInfo.PushBlockWithVars(System.Collections.Generic.IReadOnlyList{System.Linq.Expressions.ParameterExpression},System.Int32[])">
+            LocalVars maybe a `null` in collecting phase when we only need to decide if ParameterExpression is an actual parameter or variable
+        </member>
+        <member name="M:FastExpressionCompiler.ExpressionCompiler.IsClosureBoundConstant(System.Object,System.Type)">
+            Helps to identify constants as the one to be put into the Closure
+        </member>
+        <member name="T:FastExpressionCompiler.ExpressionCompiler.EmittingVisitor">
+            <summary>Supports emitting of selected expressions, e.g. lambdaExpr are not supported yet.
+            When emitter find not supported expression it will return false from <see cref="M:FastExpressionCompiler.ExpressionCompiler.EmittingVisitor.TryEmit(System.Linq.Expressions.Expression,System.Collections.Generic.IReadOnlyList{System.Linq.Expressions.ParameterExpression},System.Reflection.Emit.ILGenerator,FastExpressionCompiler.ExpressionCompiler.ClosureInfo@,FastExpressionCompiler.CompilerFlags,FastExpressionCompiler.ExpressionCompiler.ParentFlags,System.Int32)"/>, so I could fallback
+            to normal and slow Expression.Compile.</summary>
+        </member>
+        <member name="T:FastExpressionCompiler.ILGeneratorHacks">
+            <summary>Reflecting the internal methods to access the more performant for defining the local variable</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ILGeneratorHacks.GetNextLocalVarIndex(System.Reflection.Emit.ILGenerator,System.Type)">
+            <summary>Efficiently returns the next variable index, hopefully without unnecessary allocations.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ToExpressionPrinter.ToExpressionString(System.Linq.Expressions.Expression,FastExpressionCompiler.TryPrintConstant)">
+            <summary>
+            Prints the expression in its constructing syntax - 
+            helpful to get the expression from the debug session and put into it the code for the test.
+            </summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ToExpressionPrinter.ToExpressionString(System.Linq.Expressions.Expression,System.Collections.Generic.List{System.Linq.Expressions.ParameterExpression}@,System.Collections.Generic.List{System.Linq.Expressions.Expression}@,System.Collections.Generic.List{System.Linq.Expressions.LabelTarget}@,System.Boolean,System.Func{System.Type,System.String,System.String},System.Int32,FastExpressionCompiler.TryPrintConstant)">
+            <summary>
+            Prints the expression in its constructing syntax - 
+            helpful to get the expression from the debug session and put into it the code for the test.
+            In addition, returns the gathered expressions, parameters ad labels. 
+            </summary>
+        </member>
+        <member name="T:FastExpressionCompiler.TryPrintConstant">
+            <summary>Output the constant to C# string or should return `null`</summary>
+        </member>
+        <member name="T:FastExpressionCompiler.ToCSharpPrinter">
+            <summary>Converts the expression into the valid C# code representation</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ToCSharpPrinter.ToCSharpString(System.Linq.Expressions.Expression)">
+            <summary>Tries hard to convert the expression into the correct C# code</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ToCSharpPrinter.ToCSharpString(System.Linq.Expressions.Expression,FastExpressionCompiler.TryPrintConstant)">
+            <summary>Tries hard to convert the expression into the correct C# code</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.ToCSharpPrinter.ToCSharpString(System.Linq.Expressions.Expression,System.Text.StringBuilder,System.Int32,System.Boolean,System.Func{System.Type,System.String,System.String},System.Int32,FastExpressionCompiler.TryPrintConstant)">
+            <summary>Tries hard to convert the expression into the correct C# code</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.CodePrinter.ToCode(System.Type,System.Boolean,System.Func{System.Type,System.String,System.String},System.Boolean)">
+            <summary>Converts the <paramref name="type"/> into the proper C# representation.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.CodePrinter.ToCode(System.Boolean)">
+            <summary>Prints valid C# Boolean</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.CodePrinter.ToCode(System.String)">
+            <summary>Prints valid C# String escaping the things</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.CodePrinter.ToEnumValueCode(System.Type,System.Object,System.Boolean,System.Func{System.Type,System.String,System.String})">
+            <summary>Prints valid C# Enum literal</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.CodePrinter.ToCommaSeparatedCode(System.Collections.IEnumerable,FastExpressionCompiler.CodePrinter.IObjectToCode,System.Boolean,System.Func{System.Type,System.String,System.String})">
+            <summary>Prints many code items as the array initializer.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.CodePrinter.ToArrayInitializerCode(System.Collections.IEnumerable,System.Type,FastExpressionCompiler.CodePrinter.IObjectToCode,System.Boolean,System.Func{System.Type,System.String,System.String})">
+            <summary>Prints many code items as array initializer.</summary>
+        </member>
+        <member name="M:FastExpressionCompiler.CodePrinter.ToCode(System.Object,FastExpressionCompiler.CodePrinter.IObjectToCode,System.Boolean,System.Func{System.Type,System.String,System.String})">
+            <summary>
+            Prints a valid C# for known <paramref name="x"/>,
+            otherwise uses passed <paramref name="notRecognizedToCode"/> or falls back to `ToString()`.
+            </summary>
+        </member>
+        <member name="T:Parlot.CharToStringTable">
+            <summary>
+            Cache of char to string mapping to reduce allocations
+            when doing chars comparisons.
+            </summary>
+        </member>
+        <member name="T:Parlot.Compilation.CompilationContext">
+            <summary>
+            Reprensents the context of a compilation phase, coordinating all the parsers involved.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationContext.ParseContext">
+            <summary>
+            Gets the expression containing the the <see cref="P:Parlot.Compilation.CompilationContext.ParseContext"/> instance for the parser.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationContext.NextNumber">
+            <summary>
+            Gets or sets a counter used to generate unique variable names.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationContext.GlobalVariables">
+            <summary>
+            Gets the list of global variables to add the the final list of statements.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationContext.GlobalExpressions">
+            <summary>
+            Gets the list of global expressions to add the the final list of statements.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationContext.Lambdas">
+            <summary>
+            Gets the list of shared lambda expressions representing intermediate parsers.
+            </summary>
+            <remarks>
+            This is used for debug only, in order to inpect the source generated for these intermediate parsers.
+            </remarks>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationContext.DiscardResult">
+            <summary>
+            Gets or sets whether the current compilation phase should ignore the results of the parsers.
+            </summary>
+            <remarks>
+            When set to false, the compiled statements don't need to record and define the <see cref="P:Parlot.Compilation.CompilationResult.Value"/> property.
+            This is done to optimize compiled parser that are usually used for pattern matching only.
+            </remarks>
+        </member>
+        <member name="T:Parlot.Compilation.CompilationResult">
+            <summary>
+            Every parser that is compiled returns an instance of <see cref="T:Parlot.Compilation.CompilationResult"/> which encapsulates the statements to execute in order
+            to parse the expected input.
+            The convention is that these statements are returned in the <see cref="P:Parlot.Compilation.CompilationResult.Body"/> property, and any variable that needs to be declared in the block
+            that the <see cref="P:Parlot.Compilation.CompilationResult.Body"/> is used in are set in the <see cref="P:Parlot.Compilation.CompilationResult.Variables"/> list.
+            The <see cref="P:Parlot.Compilation.CompilationResult.Success"/> property reprsents the variable that contains the success of the statements once executed, and if <code>true</code> then 
+            the <see cref="P:Parlot.Compilation.CompilationResult.Value"/> property contains the result.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationResult.Variables">
+            <summary>
+            Gets the list of <see cref="T:System.Linq.Expressions.ParameterExpression"/> representing the variables used by the compiled result.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationResult.Body">
+            <summary>
+            Gets the list of <see cref="T:System.Linq.Expressions.Expression"/> representing the body of the compiled results.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationResult.Success">
+            <summary>
+            Gets or sets the <see cref="T:System.Linq.Expressions.ParameterExpression"/> of the <see cref="T:System.Boolean"/> variable representing the success of the parsing statements.
+            </summary>
+        </member>
+        <member name="P:Parlot.Compilation.CompilationResult.Value">
+            <summary>
+            Gets or sets the <see cref="T:System.Linq.Expressions.ParameterExpression"/> of the <see cref="T:System.Boolean"/> variable representing the value of the parsing statements.
+            </summary>
+        </member>
+        <member name="T:Parlot.Compilation.ICompiledParser">
+            <summary>
+            Marker interface to detect a Parser has already been compiled.
+            </summary>
+        </member>
+        <member name="T:Parlot.Compilation.CompiledParser`1">
+            <summary>
+            An instance of this class encapsulates the result of a compiled parser
+            in order to expose is as as standard parser contract.
+            </summary>
+            <remarks>
+            This class is used in <see cref="M:Parlot.Fluent.Parser`1.Compile"/>.
+            </remarks>
+        </member>
+        <member name="M:Parlot.Compilation.ICompilable.Compile(Parlot.Compilation.CompilationContext)">
+            <summary>
+            Creates a compiled representation of a parser.
+            </summary>
+            <param name="context">The current compilation context.</param>
+        </member>
+        <member name="M:Parlot.Cursor.Advance">
+            <summary>
+            Advances the cursor by one character.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.Advance(System.Int32)">
+            <summary>
+            Advances the cursor.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.AdvanceNoNewLines(System.Int32)">
+            <summary>
+            Advances the cursor with the knowledge there are no new lines.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.ResetPosition(Parlot.TextPosition@)">
+            <summary>
+            Moves the cursor to the specific position
+            </summary>
+        </member>
+        <member name="P:Parlot.Cursor.Current">
+            <summary>
+            Evaluates the char at the current position.
+            </summary>
+        </member>
+        <member name="P:Parlot.Cursor.Offset">
+            <summary>
+            Returns the cursor's position in the _buffer.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.PeekNext(System.Int32)">
+            <summary>
+            Evaluates a char forward in the _buffer.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.Match(System.Char)">
+            <summary>
+            Whether a char is at the current position.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.MatchAnyOf(System.String)">
+            <summary>
+            Whether any char of the string is at the current position.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.MatchAny(System.Char[])">
+            <summary>
+            Whether any char of an array is at the current position.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.Match(System.String)">
+            <summary>
+            Whether a string is at the current position.
+            </summary>
+        </member>
+        <member name="M:Parlot.Cursor.Match(System.String,System.StringComparison)">
+            <summary>
+            Whether a string is at the current position.
+            </summary>
+        </member>
+        <member name="T:Parlot.Fluent.Discard`2">
+            <summary>
+            Doesn't parse anything and return the default value.
+            </summary>
+        </member>
+        <member name="T:Parlot.Fluent.Empty`1">
+            <summary>
+            Doesn't parse anything and return the default value.
+            </summary>
+        </member>
+        <member name="T:Parlot.Fluent.Eof`1">
+            <summary>
+            Successful when the cursor is at the end of the string.
+            </summary>
+        </member>
+        <member name="T:Parlot.Fluent.OneOf`1">
+            <summary>
+            OneOf the inner choices when all parsers return the same type.
+            We then return the actual result of each parser.
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="P:Parlot.Fluent.ParseContext.CompilationThreshold">
+            <summary>
+            The number of usages of the parser before it is compiled automatically. <c>0</c> to disable automatic compilation. Default is 0.
+            </summary>
+        </member>
+        <member name="P:Parlot.Fluent.ParseContext.UseNewLines">
+            <summary>
+            Whether new lines are treated as normal chars or white spaces. Default is <c>false</c>.
+            </summary>
+            <remarks>
+            When <c>false</c>, new lines will be skipped like any other white space.
+            Otherwise new lines need to be read explicitely by a rule.
+            </remarks>
+        </member>
+        <member name="F:Parlot.Fluent.ParseContext.Scanner">
+            <summary>
+            The scanner used for the parsing session.
+            </summary>
+        </member>
+        <member name="P:Parlot.Fluent.ParseContext.OnEnterParser">
+            <summary>
+            Delegate that is executed whenever a parser is invoked.
+            </summary>
+        </member>
+        <member name="P:Parlot.Fluent.ParseContext.WhiteSpaceParser">
+            <summary>
+            The parser that is used to parse whitespaces and comments.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.ParseContext.EnterParser``1(Parlot.Fluent.Parser{``0})">
+            <summary>
+            Called whenever a parser is invoked. Will be used to detect invalid states and infinite loops.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Compile">
+            <summary>
+            Compiles the current parser.
+            </summary>
+            <returns>A compiled parser.</returns>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Build(Parlot.Compilation.CompilationContext,System.Boolean)">
+            <summary>
+            Invokes the <see cref="M:Parlot.Compilation.ICompilable.Compile(Parlot.Compilation.CompilationContext)"/> method of the <see cref="T:Parlot.Fluent.Parser`1"/> if it's available or 
+            creates a generic one.
+            </summary>
+            <param name="context">The <see cref="T:Parlot.Compilation.CompilationContext"/> instance.</param>
+            <param name="requireResult">Forces the instruction to compute the resulting value whatever the state of <see cref="P:Parlot.Compilation.CompilationContext.DiscardResult"/> is.</param>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Then``1(System.Func{`0,``0})">
+            <summary>
+            Builds a parser that converts the previous result when it succeeds.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Then``1(System.Func{Parlot.Fluent.ParseContext,`0,``0})">
+            <summary>
+            Builds a parser that converts the previous result, and can alter the current <see cref="T:Parlot.Fluent.ParseContext"/>.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.ElseError(System.String)">
+            <summary>
+            Builds a parser that emits an error when the previous parser failed.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Error(System.String)">
+            <summary>
+            Builds a parser that emits an error.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Error``1(System.String)">
+            <summary>
+            Builds a parser that emits an error.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.When(System.Func{`0,System.Boolean})">
+            <summary>
+            Builds a parser that verifies the previous parser result matches a predicate.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Switch``1(System.Func{Parlot.Fluent.ParseContext,`0,Parlot.Fluent.Parser{``0}})">
+            <summary>
+            Builds a parser what returns another one based on the previous result.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Eof">
+            <summary>
+            Builds a parser that ensures the cursor is at the end of the input.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Discard``1">
+            <summary>
+            Builds a parser that discards the previous result and replaces it by the specified type or value.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parser`1.Discard``1(``0)">
+            <summary>
+            Builds a parser that discards the previous result and replaces it by the specified type or value.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.And``2(Parlot.Fluent.Parser{``0},Parlot.Fluent.Parser{``1})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.And``3(Parlot.Fluent.Parser{System.ValueTuple{``0,``1}},Parlot.Fluent.Parser{``2})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.And``4(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2}},Parlot.Fluent.Parser{``3})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.And``5(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3}},Parlot.Fluent.Parser{``4})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.And``6(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4}},Parlot.Fluent.Parser{``5})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.And``7(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4,``5}},Parlot.Fluent.Parser{``6})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AndSkip``2(Parlot.Fluent.Parser{``0},Parlot.Fluent.Parser{``1})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AndSkip``3(Parlot.Fluent.Parser{System.ValueTuple{``0,``1}},Parlot.Fluent.Parser{``2})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AndSkip``4(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2}},Parlot.Fluent.Parser{``3})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AndSkip``5(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3}},Parlot.Fluent.Parser{``4})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AndSkip``6(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4}},Parlot.Fluent.Parser{``5})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AndSkip``7(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4,``5}},Parlot.Fluent.Parser{``6})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AndSkip``8(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}},Parlot.Fluent.Parser{``7})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="P:Parlot.Fluent.Parsers.Literals">
+            <summary>
+            Provides parsers for literals. Literals do not skip spaces before being parsed and can be combined to
+            parse composite terms.
+            </summary>
+        </member>
+        <member name="P:Parlot.Fluent.Parsers.Terms">
+            <summary>
+            Provides parsers for terms. Terms skip spaces before being parsed.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Separated``2(Parlot.Fluent.Parser{``0},Parlot.Fluent.Parser{``1})">
+            <summary>
+            Builds a parser that looks for zero or many times a parser separated by another one.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipWhiteSpace``1(Parlot.Fluent.Parser{``0})">
+            <summary>
+            Builds a parser that skips white spaces before another one.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.ZeroOrOne``1(Parlot.Fluent.Parser{``0})">
+            <summary>
+            Builds a parser that looks for zero or one time the specified parser.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.ZeroOrMany``1(Parlot.Fluent.Parser{``0})">
+            <summary>
+            Builds a parser that looks for zero or many times the specified parser.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.OneOrMany``1(Parlot.Fluent.Parser{``0})">
+            <summary>
+            Builds a parser that looks for one or many times the specified parser.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Not``1(Parlot.Fluent.Parser{``0})">
+            <summary>
+            Builds a parser that succeed when the specified parser fails to match.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Deferred``1">
+            <summary>
+            Builds a parser that can be defined later one. Use it when a parser need to be declared before its rule can be set.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Recursive``1(System.Func{Parlot.Fluent.Deferred{``0},Parlot.Fluent.Parser{``0}})">
+            <summary>
+            Builds a parser than needs a reference to itself to be declared.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Between``3(Parlot.Fluent.Parser{``0},Parlot.Fluent.Parser{``1},Parlot.Fluent.Parser{``2})">
+            <summary>
+            Builds a parser that matches the specified parser between two other ones.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.AnyCharBefore``1(Parlot.Fluent.Parser{``0},System.Boolean,System.Boolean,System.Boolean)">
+            <summary>
+            Builds a parser that matches any chars before a specific parser.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Capture``1(Parlot.Fluent.Parser{``0})">
+            <summary>
+            Builds a parser that captures the output of another parser.
+            This is used to provide pattern matching capabilities, and optimized copmiled parsers that then don't need to materialize each parser result.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Empty``1">
+            <summary>
+            Builds a parser that always succeeds.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Empty">
+            <summary>
+            Builds a parser that always succeeds.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Empty``1(``0)">
+            <summary>
+            Builds a parser that always succeeds.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Or``1(Parlot.Fluent.Parser{``0},Parlot.Fluent.Parser{``0})">
+            <summary>
+            Builds a parser that return either of the first successful of the specified parsers.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.Or``3(Parlot.Fluent.Parser{``0},Parlot.Fluent.Parser{``1})">
+            <summary>
+            Builds a parser that return either of the first successful of the specified parsers.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.OneOf``1(Parlot.Fluent.Parser{``0}[])">
+            <summary>
+            Builds a parser that return either of the first successful of the specified parsers.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipAnd``2(Parlot.Fluent.Parser{``0},Parlot.Fluent.Parser{``1})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipAnd``3(Parlot.Fluent.Parser{System.ValueTuple{``0,``1}},Parlot.Fluent.Parser{``2})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipAnd``4(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2}},Parlot.Fluent.Parser{``3})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipAnd``5(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3}},Parlot.Fluent.Parser{``4})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipAnd``6(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4}},Parlot.Fluent.Parser{``5})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipAnd``7(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4,``5}},Parlot.Fluent.Parser{``6})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.Parsers.SkipAnd``8(Parlot.Fluent.Parser{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}},Parlot.Fluent.Parser{``7})">
+            <summary>
+            Builds a parser that ensure the specified parsers match consecutively. The last parser's result is then ignored.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.WhiteSpace(System.Boolean)">
+            <summary>
+            Builds a parser that matches whitespaces.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.NonWhiteSpace(System.Boolean)">
+            <summary>
+            Builds a parser that matches anything until whitespaces.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.Text(System.String,System.Boolean)">
+            <summary>
+            Builds a parser that matches the specified text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.Char(System.Char)">
+            <summary>
+            Builds a parser that matches the specified char.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.Integer">
+            <summary>
+            Builds a parser that matches an integer.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.Decimal">
+            <summary>
+            Builds a parser that matches a floating point number.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.String(Parlot.Fluent.StringLiteralQuotes)">
+            <summary>
+            Builds a parser that matches an quoted string that can be escaped.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.Identifier(System.Func{System.Char,System.Boolean},System.Func{System.Char,System.Boolean})">
+            <summary>
+            Builds a parser that matches an identifier.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.LiteralBuilder.Pattern(System.Func{System.Char,System.Boolean},System.Int32,System.Int32)">
+            <summary>
+            Builds a parser that matches a char against a predicate.
+            </summary>
+            <param name="predicate">The predicate to match against each char.</param>
+            <param name="minSize">The minimum number of matches required. Defaults to 1.</param>
+            <param name="maxSize">When the parser reaches the maximum number of matches it returns <see langword="True"/>. Defaults to 0, i.e. no maximum size.</param>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.NonWhiteSpace(System.Boolean)">
+            <summary>
+            Builds a parser that matches anything until whitespaces.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.Text(System.String,System.Boolean)">
+            <summary>
+            Builds a parser that matches the specified text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.Char(System.Char)">
+            <summary>
+            Builds a parser that matches the specified char.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.Integer(Parlot.Fluent.NumberOptions)">
+            <summary>
+            Builds a parser that matches an integer.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.Decimal(Parlot.Fluent.NumberOptions)">
+            <summary>
+            Builds a parser that matches a floating point number.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.String(Parlot.Fluent.StringLiteralQuotes)">
+            <summary>
+            Builds a parser that matches an quoted string that can be escaped.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.Identifier(System.Func{System.Char,System.Boolean},System.Func{System.Char,System.Boolean})">
+            <summary>
+            Builds a parser that matches an identifier.
+            </summary>
+        </member>
+        <member name="M:Parlot.Fluent.TermBuilder.Pattern(System.Func{System.Char,System.Boolean},System.Int32,System.Int32)">
+            <summary>
+            Builds a parser that matches a char against a predicate.
+            </summary>
+            <param name="predicate">The predicate to match against each char.</param>
+            <param name="minSize">The minimum number of matches required. Defaults to 1.</param>
+            <param name="maxSize">When the parser reaches the maximum number of matches it returns <see langword="True"/>. Defaults to 0, i.e. no maximum size.</param>
+        </member>
+        <member name="T:Parlot.Fluent.Switch`2">
+            <summary>
+            Routes the parsing based on a custom delegate.
+            </summary>
+        </member>
+        <member name="T:Parlot.Fluent.Then`2">
+            <summary>
+            Returns a new <see cref="T:Parlot.Fluent.Parser`1" /> converting the input value of 
+            type T to the output value of type U using a custom function.
+            </summary>
+            <typeparam name="T">The input parser type.</typeparam>
+            <typeparam name="U">The output parser type.</typeparam>
+        </member>
+        <member name="T:Parlot.Fluent.When`1">
+            <summary>
+            Ensure the given parser is valid based on a condition, and backtracks if not.
+            </summary>
+            <typeparam name="T">The output parser type.</typeparam>
+        </member>
+        <member name="T:Parlot.Rewriting.IRewritable`1">
+            <summary>
+            A Parser implementing this interface can be rewritten in a more optimized way.
+            The result will replace the instance.
+            </summary>
+        </member>
+        <member name="M:Parlot.Rewriting.IRewritable`1.Rewrite">
+            <summary>
+            Returns the parser to substitute.
+            </summary>
+        </member>
+        <member name="T:Parlot.Rewriting.ISeekable">
+            <summary>
+            A Parser implementing this interface can only be triggered if the next char matches the one provided.
+            It is used to create char lookups to optimize which Parsers need to be invoked next.
+            </summary>
+        </member>
+        <member name="P:Parlot.Rewriting.ISeekable.CanSeek">
+            <summary>
+            Gets whether the current parser can be selected from a single char.
+            This could vary based on the subsequent parsers.
+            </summary>
+        </member>
+        <member name="P:Parlot.Rewriting.ISeekable.ExpectedChars">
+            <summary>
+            Gets the chars that can be matched next to evaluate this Parser.
+            </summary>
+        </member>
+        <member name="P:Parlot.Rewriting.ISeekable.SkipWhitespace">
+            <summary>
+            Gets whether the current parser needs to skip whitespaces before being invoked.
+            </summary>
+        </member>
+        <member name="T:Parlot.Scanner">
+            <summary>
+            This class is used to return tokens extracted from the input buffer.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.#ctor(System.String)">
+            <summary>
+            Scans some text.
+            </summary>
+            <param name="buffer">The string containing the text to scan.</param>
+        </member>
+        <member name="M:Parlot.Scanner.SkipWhiteSpaceOrNewLine">
+            <summary>
+            Reads any whitespace without generating a token.
+            </summary>
+            <returns>Whether some white space was read.</returns>
+        </member>
+        <member name="M:Parlot.Scanner.ReadWhile(System.Func{System.Char,System.Boolean})">
+            <summary>
+            Reads a token while the specific predicate is valid.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadWhile(System.Func{System.Char,System.Boolean},Parlot.TokenResult@)">
+            <summary>
+            Reads a token while the specific predicate is valid.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadChar(System.Char)">
+            <summary>
+            Reads the specified text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadChar(System.Char,Parlot.TokenResult@)">
+            <summary>
+            Reads the specified text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadText(System.String,System.StringComparison)">
+            <summary>
+            Reads the specific expected text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadText(System.String,System.StringComparison,Parlot.TokenResult@)">
+            <summary>
+            Reads the specific expected text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadText(System.String)">
+            <summary>
+            Reads the specific expected text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadText(System.String,Parlot.TokenResult@)">
+            <summary>
+            Reads the specific expected text.
+            </summary>
+        </member>
+        <member name="M:Parlot.Scanner.ReadQuotedString(System.Char,Parlot.TokenResult@)">
+            <summary>
+            Reads a string token enclosed in single or double quotes.
+            </summary>
+            <remarks>
+            This method doesn't escape the string, but only validates its content is syntactically correct.
+            The resulting Span contains the original quotes.
+            </remarks>
+        </member>
+        <member name="T:Parlot.TextPosition">
+            <summary>
+            Represents a position in a text buffer.
+            </summary>
+        </member>
+    </members>
+</doc>

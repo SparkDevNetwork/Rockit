@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-//
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -35,15 +35,64 @@ using Rock.Web.UI.Controls;
 
 namespace RockWeb.Blocks.Reporting
 {
+    /// <summary>
+    /// Displays the details of the given report.
+    /// </summary>
+    /// <seealso cref="Rock.Web.UI.RockBlock" />
     [DisplayName( "Report Detail" )]
     [Category( "Reporting" )]
     [Description( "Displays the details of the given report." )]
 
-    [IntegerField( "Database Timeout", "The number of seconds to wait before reporting a database timeout.", false, 180, "", 0 )]
-    [LinkedPage( "Data View Page", "The page to edit data views", true, "", "", 1 )]
-    [ReportField( "Report", "Select the report to present to the user.", false, "", "", order: 2 )]
-    public partial class ReportDetail : RockBlock, IDetailBlock
+    [BooleanField( "Add Administrate Security to Item Creator",
+        Key = AttributeKey.AddAdministrateSecurityToItemCreator,
+        Description = "If enabled, the person who creates a new item will be granted 'Administrate' and 'Edit' security rights to the item.  This was the behavior in previous versions of Rock.  If disabled, the item creator will not be able to edit the report, its security settings, or possibly perform other functions without the Rock administrator settings up a role that is allowed to perform such functions.",
+        DefaultBooleanValue = false,
+        Order = 0)]
+
+    [IntegerField( "Database Timeout",
+        Key = AttributeKey.DatabaseTimeout,
+        Description = "The number of seconds to wait before reporting a database timeout.",
+        IsRequired = false,
+        DefaultIntegerValue = 180,
+        Order = 1 )]
+
+    [LinkedPage( "Data View Page",
+        Key = AttributeKey.DataViewPage,
+        Description = "The page to edit data views",
+        IsRequired = true,
+        Order = 2 )]
+
+    [ReportField( "Report",
+        Key = AttributeKey.Report,
+        Description = "Select the report to present to the user.",
+        IsRequired = false,
+        Order = 3 )]
+
+    public partial class ReportDetail : RockBlock
     {
+        #region Attribute Keys
+
+        private static class AttributeKey
+        {
+            public const string AddAdministrateSecurityToItemCreator = "AddAdministrateSecurityToItemCreator";
+            public const string DatabaseTimeout = "DatabaseTimeout";
+            public const string DataViewPage = "DataViewPage";
+            public const string Report = "Report";
+        }
+
+        #endregion Attribute Keys
+
+        #region PageParameterKey
+
+        private static class PageParameterKey
+        {
+            public const string ParentCategoryId = "ParentCategoryId";
+            public const string ReportId = "ReportId";
+            public const string DataViewId = "DataViewId";
+        }
+
+        #endregion PageParameterKey
+
         #region Properties
 
         /// <summary>
@@ -67,7 +116,7 @@ namespace RockWeb.Blocks.Reporting
         }
 
         private const string _ViewStateKeyShowResults = "ShowResults";
-        private string _SettingKeyShowResults = "report-show-results-{blockId}";
+        private string _settingKeyShowResults = "report-show-results-{blockId}";
 
         protected bool ShowResults
         {
@@ -82,7 +131,7 @@ namespace RockWeb.Blocks.Reporting
                 {
                     ViewState[_ViewStateKeyShowResults] = value;
 
-                    SetUserPreference( _SettingKeyShowResults, value.ToString() );
+                    SetUserPreference( _settingKeyShowResults, value.ToString() );
                 }
 
                 pnlResultsGrid.Visible = this.ShowResults;
@@ -91,7 +140,6 @@ namespace RockWeb.Blocks.Reporting
                 {
                     btnToggleResults.Text = "Hide Results <i class='fa fa-chevron-up'></i>";
                     btnToggleResults.ToolTip = "Hide Results";
-
                 }
                 else
                 {
@@ -131,14 +179,14 @@ namespace RockWeb.Blocks.Reporting
             base.OnInit( e );
 
             // Create unique user setting keys for this block.
-            _SettingKeyShowResults = _SettingKeyShowResults.Replace( "{blockId}", this.BlockId.ToString() );
+            _settingKeyShowResults = _settingKeyShowResults.Replace( "{blockId}", this.BlockId.ToString() );
 
             gReport.GridRebind += gReport_GridRebind;
             btnDelete.Attributes["onclick"] = string.Format( "javascript: return Rock.dialogs.confirmDelete(event, '{0}');", Report.FriendlyTypeName );
             btnSecurity.EntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.Report ) ).Id;
 
             //// Set postback timeout and request-timeout to whatever the DatabaseTimeout is plus an extra 5 seconds so that page doesn't timeout before the database does
-            int databaseTimeout = GetAttributeValue( "DatabaseTimeout" ).AsIntegerOrNull() ?? 180;
+            int databaseTimeout = GetAttributeValue( AttributeKey.DatabaseTimeout ).AsIntegerOrNull() ?? 180;
             var sm = ScriptManager.GetCurrent( this.Page );
             if ( sm.AsyncPostBackTimeout < databaseTimeout + 5 )
             {
@@ -157,12 +205,12 @@ namespace RockWeb.Blocks.Reporting
 
             if ( !Page.IsPostBack )
             {
-                this.ShowResults = GetUserPreference( _SettingKeyShowResults ).AsBoolean( true );
+                this.ShowResults = GetUserPreference( _settingKeyShowResults ).AsBoolean( true );
 
                 var reportId = GetReportId();
                 if ( reportId.HasValue )
                 {
-                    ShowDetail( reportId.Value, PageParameter( "ParentCategoryId" ).AsIntegerOrNull() );
+                    ShowDetail( reportId.Value, PageParameter( PageParameterKey.ParentCategoryId ).AsIntegerOrNull() );
                 }
                 else
                 {
@@ -325,7 +373,7 @@ namespace RockWeb.Blocks.Reporting
                 return;
             }
 
-            int? databaseTimeoutSeconds = GetAttributeValue( "DatabaseTimeout" ).AsIntegerOrNull();
+            int? databaseTimeoutSeconds = GetAttributeValue( AttributeKey.DatabaseTimeout ).AsIntegerOrNull();
             ReportingHelper.BindGridOptions bindGridOptions = new ReportingHelper.BindGridOptions()
             {
                 CurrentPerson = this.CurrentPerson,
@@ -509,6 +557,17 @@ namespace RockWeb.Blocks.Reporting
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
         protected void btnSave_Click( object sender, EventArgs e )
         {
+            cvSecurityError.IsValid = true;
+            var addAdminToCreator = GetAttributeValue( AttributeKey.AddAdministrateSecurityToItemCreator ).AsBoolean();
+            var rptCategory = CategoryCache.Get( cpCategory.SelectedValueAsInt( false ).Value );
+
+            if ( !addAdminToCreator && !rptCategory.IsAuthorized( Authorization.EDIT, CurrentPerson ) )
+            {
+                cvSecurityError.IsValid = false;
+                cvSecurityError.ErrorMessage = string.Format( "You are not authorized to create or edit Reports for the Category '{0}'.", rptCategory.Name );
+                return;
+            }
+
             Report report = null;
 
             var rockContext = new RockContext();
@@ -640,9 +699,8 @@ namespace RockWeb.Blocks.Reporting
 
             rockContext.SaveChanges();
 
-            if ( adding )
+            if ( adding && GetAttributeValue( AttributeKey.AddAdministrateSecurityToItemCreator ).AsBoolean())
             {
-                // add EDIT and ADMINISTRATE to the person who added the report 
                 Rock.Security.Authorization.AllowPerson( report, Authorization.EDIT, this.CurrentPerson, rockContext );
                 Rock.Security.Authorization.AllowPerson( report, Authorization.ADMINISTRATE, this.CurrentPerson, rockContext );
             }
@@ -711,12 +769,12 @@ namespace RockWeb.Blocks.Reporting
             if ( reportId == 0 )
             {
                 // If not, check if we are editing a new copy of an existing Report.
-                reportId = PageParameter( "ReportId" ).AsInteger();
+                reportId = PageParameter( PageParameterKey.ReportId ).AsInteger();
             }
 
             if ( reportId == 0 )
             {
-                int? parentCategoryId = PageParameter( "ParentCategoryId" ).AsIntegerOrNull();
+                int? parentCategoryId = PageParameter( PageParameterKey.ParentCategoryId ).AsIntegerOrNull();
                 if ( parentCategoryId.HasValue )
                 {
                     // Cancelling on Add, and we know the parentCategoryId, so we are probably in treeview mode, so navigate to the current page
@@ -750,8 +808,8 @@ namespace RockWeb.Blocks.Reporting
         /// </summary>
         public int? GetReportId()
         {
-            int? reportId = PageParameter( "ReportId" ).AsIntegerOrNull();
-            var reportGuid = GetAttributeValue( "Report" ).AsGuidOrNull();
+            int? reportId = PageParameter( PageParameterKey.ReportId ).AsIntegerOrNull();
+            var reportGuid = GetAttributeValue( AttributeKey.Report ).AsGuidOrNull();
 
             if ( reportGuid.HasValue )
             {
@@ -813,6 +871,12 @@ namespace RockWeb.Blocks.Reporting
         /// <param name="entityTypeId">The entity type identifier.</param>
         private void UpdateControlsForEntityType( int? entityTypeId )
         {
+            // If the DataView picker already has a value, and it's not the same type as the entity type ID.
+            if ( dvpDataView.SelectedValueAsId().HasValue && dvpDataView.EntityTypeId != entityTypeId )
+            {
+                dvpDataView.SetValue( null );
+            }
+
             dvpDataView.EntityTypeId = entityTypeId;
             dvpDataView.Enabled = entityTypeId.HasValue;
             btnAddField.Enabled = entityTypeId.HasValue;
@@ -976,8 +1040,16 @@ namespace RockWeb.Blocks.Reporting
             if ( report == null )
             {
                 report = new Report { Id = 0, IsSystem = false, CategoryId = parentCategoryId };
-                // hide the panel drawer that show created and last modified dates
+
+                // Hide the panel drawer that shows created and last modified dates.
                 pdAuditDetails.Visible = false;
+            }
+            else
+            {
+                string quickReturnLava = "{{ Report.Name | AddQuickReturn:'Reports', 40 }}";
+                var quickReturnMergeFields = Rock.Lava.LavaHelper.GetCommonMergeFields( this.RockPage, this.CurrentPerson, new Rock.Lava.CommonMergeFieldsOptions { GetLegacyGlobalMergeFields = false } );
+                quickReturnMergeFields.Add( "Report", report );
+                quickReturnLava.ResolveMergeFields( quickReturnMergeFields );
             }
 
             pnlDetails.Visible = true;
@@ -1099,8 +1171,10 @@ namespace RockWeb.Blocks.Reporting
             var componentType = EntityTypeCache.Get( dataSelectComponentId, rockContext ).GetEntityType();
 
             if ( componentType == null )
+            {
                 return null;
-
+            }
+                
             string dataSelectComponentTypeName = componentType.FullName;
 
             return DataSelectContainer.GetComponent( dataSelectComponentTypeName );
@@ -1137,7 +1211,7 @@ namespace RockWeb.Blocks.Reporting
 
             if ( report.Id == default( int ) )
             {
-                dataViewId = PageParameter( "DataViewId" ).AsIntegerOrNull();
+                dataViewId = PageParameter( PageParameterKey.DataViewId ).AsIntegerOrNull();
                 if ( dataViewId.HasValue )
                 {
                     var dataView = new DataViewService( rockContext ).Get( dataViewId.Value );
@@ -1153,11 +1227,17 @@ namespace RockWeb.Blocks.Reporting
             etpEntityType.SelectedEntityTypeId = entityTypeId;
             UpdateControlsForEntityType( etpEntityType.SelectedEntityTypeId );
             dvpDataView.SetValue( dataViewId );
+            if ( dataViewId.HasValue )
+            {
+                // If the Data View has a value, then prevent the report admin from changing the entity type since it was decided by the Data View already.
+                // If the Data View is changed, then the page should reload the entire Edit control since options will change.
+                etpEntityType.Enabled = false;
+            }
+
             nbFetchTop.Text = report.FetchTop.ToString();
             tbQueryHint.Text = report.QueryHint;
 
             ReportFieldsDictionary = new List<ReportFieldInfo>();
-
 
             kvSortFields.CustomKeys = new Dictionary<string, string>();
             kvSortFields.CustomValues = new Dictionary<string, string>();
@@ -1190,7 +1270,6 @@ namespace RockWeb.Blocks.Reporting
                 ReportFieldsDictionary.Add( new ReportFieldInfo { Guid = reportField.Guid, ReportFieldType = reportField.ReportFieldType, FieldSelection = fieldSelection } );
                 AddFieldPanelWidget( reportField.Guid, reportField.ReportFieldType, fieldSelection, false, rockContext, true, reportField );
             }
-
         }
 
         /// <summary>
@@ -1214,7 +1293,7 @@ namespace RockWeb.Blocks.Reporting
 
                 var queryParams = new Dictionary<string, string>();
                 queryParams.Add( "DataViewId", report.DataViewId.ToString() );
-                lbDataView.NavigateUrl = LinkedPageUrl( "DataViewPage", queryParams );
+                lbDataView.NavigateUrl = LinkedPageUrl( AttributeKey.DataViewPage, queryParams );
 
                 lbDataView.ToolTip = report.DataView.Name;
             }
