@@ -1,21 +1,18 @@
-System.register(["../Elements/loadingIndicator", "vue"], function (exports_1, context_1) {
-    "use strict";
-    var loadingIndicator_1, vue_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['./loadingIndicator.js', 'vue'], (function (exports) {
+    'use strict';
+    var LoadingIndicator, defineComponent;
     return {
-        setters: [
-            function (loadingIndicator_1_1) {
-                loadingIndicator_1 = loadingIndicator_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            LoadingIndicator = module["default"];
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }],
+        execute: (function () {
+
+            var loading = exports('default', defineComponent({
                 name: "Loading",
                 components: {
-                    LoadingIndicator: loadingIndicator_1.default
+                    LoadingIndicator
                 },
                 props: {
                     isLoading: {
@@ -29,7 +26,7 @@ System.register(["../Elements/loadingIndicator", "vue"], function (exports_1, co
     <LoadingIndicator v-else />
 </div>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=loading.js.map
+}));

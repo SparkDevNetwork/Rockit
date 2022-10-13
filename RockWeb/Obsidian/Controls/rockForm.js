@@ -1,43 +1,51 @@
-System.register(["vue", "../Util/form", "./rockValidation"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, form_1, rockValidation_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', '@Obsidian/Utility/form', '@Obsidian/Utility/component', './rockValidation.js', './alert.js'], (function (exports) {
+    'use strict';
+    var defineComponent, ref, reactive, watch, provideFormState, updateRefValue, RockValidation;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (form_1_1) {
-                form_1 = form_1_1;
-            },
-            function (rockValidation_1_1) {
-                rockValidation_1 = rockValidation_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            ref = module.ref;
+            reactive = module.reactive;
+            watch = module.watch;
+        }, function (module) {
+            provideFormState = module.provideFormState;
+        }, function (module) {
+            updateRefValue = module.updateRefValue;
+        }, function (module) {
+            RockValidation = module["default"];
+        }, function () {}],
+        execute: (function () {
+
+            var RockForm = exports('default', defineComponent({
                 name: "RockForm",
                 components: {
-                    RockValidation: rockValidation_1.default
+                    RockValidation
                 },
                 props: {
                     submit: {
                         type: Boolean,
                         default: false
+                    },
+                    hideErrors: {
+                        type: Boolean,
+                        default: false
                     }
                 },
-                emits: [
-                    "submit",
-                    "validationChanged",
-                    "update:submit"
-                ],
+                emits: {
+                    "submit": () => true,
+                    "validationChanged": (_errors) => true,
+                    "visibleValidationChanged": (_errors) => true,
+                    "update:submit": (_value) => true
+                },
                 setup(props, { emit }) {
-                    const errors = vue_1.ref({});
-                    const submit = vue_1.ref(props.submit);
+                    const visibleErrors = ref([]);
+                    const errorValues = ref([]);
+                    const errors = ref({});
+                    const submit = ref(props.submit);
                     const onInternalSubmit = () => {
                         submit.value = true;
                     };
-                    const formState = vue_1.reactive({
+                    const formState = reactive({
                         submitCount: 0,
                         setError: (id, name, error) => {
                             const newErrors = Object.assign({}, errors.value);
@@ -50,19 +58,20 @@ System.register(["vue", "../Util/form", "./rockValidation"], function (exports_1
                             else {
                                 delete newErrors[id];
                             }
-                            errors.value = newErrors;
+                            updateRefValue(errors, newErrors);
                         }
                     });
-                    const submitCount = vue_1.computed(() => formState.submitCount);
-                    form_1.provideFormState(formState);
-                    vue_1.watch(() => props.submit, () => {
+                    provideFormState(formState);
+                    watch(() => props.submit, () => {
                         if (submit.value !== props.submit) {
                             submit.value = props.submit;
                         }
                     });
-                    vue_1.watch(submit, () => {
+                    watch(submit, () => {
                         if (submit.value) {
                             formState.submitCount++;
+                            visibleErrors.value = errorValues.value;
+                            emit("visibleValidationChanged", visibleErrors.value);
                             if (Object.keys(errors.value).length === 0) {
                                 emit("submit");
                             }
@@ -70,23 +79,28 @@ System.register(["vue", "../Util/form", "./rockValidation"], function (exports_1
                         }
                         emit("update:submit", submit.value);
                     });
-                    vue_1.watch(errors, () => {
-                        emit("validationChanged", errors.value);
+                    watch(errors, () => {
+                        const values = [];
+                        for (const key in errors.value) {
+                            values.push(errors.value[key]);
+                        }
+                        errorValues.value = values;
+                        emit("validationChanged", errorValues.value);
                     });
                     return {
-                        onInternalSubmit,
-                        submitCount,
-                        errors
+                        errors,
+                        visibleErrors,
+                        onInternalSubmit
                     };
                 },
                 template: `
 <form @submit.prevent.stop="onInternalSubmit()">
-    <RockValidation :submitCount="submitCount" :errors="errors" />
+    <RockValidation v-if="!hideErrors" :errors="visibleErrors" />
     <slot />
 </form>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=rockForm.js.map
+}));

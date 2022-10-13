@@ -1,30 +1,28 @@
-System.register(["vue", "../Elements/javaScriptAnchor"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, javaScriptAnchor_1, SortDirection;
-    var __moduleName = context_1 && context_1.id;
-    function getRowId(rowData, rowIdKey) {
-        return `${rowData[rowIdKey]}`;
-    }
-    exports_1("getRowId", getRowId);
+System.register(['vue', './javaScriptAnchor.js'], (function (exports) {
+    'use strict';
+    var defineComponent, JavaScriptAnchor;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (javaScriptAnchor_1_1) {
-                javaScriptAnchor_1 = javaScriptAnchor_1_1;
-            }
-        ],
-        execute: function () {
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            JavaScriptAnchor = module["default"];
+        }],
+        execute: (function () {
+
+            exports('getRowId', getRowId);
+
+            var SortDirection; exports('SortDirection', SortDirection);
             (function (SortDirection) {
                 SortDirection[SortDirection["Ascending"] = 0] = "Ascending";
                 SortDirection[SortDirection["Descending"] = 1] = "Descending";
-            })(SortDirection || (SortDirection = {}));
-            exports_1("SortDirection", SortDirection);
-            exports_1("default", vue_1.defineComponent({
+            })(SortDirection || (exports('SortDirection', SortDirection = {})));
+            function getRowId(rowData, rowIdKey) {
+                return `${rowData[rowIdKey]}`;
+            }
+            var Grid = exports('default', defineComponent({
                 name: "Grid",
                 components: {
-                    JavaScriptAnchor: javaScriptAnchor_1.default
+                    JavaScriptAnchor
                 },
                 props: {
                     gridData: {
@@ -206,7 +204,7 @@ System.register(["vue", "../Elements/javaScriptAnchor"], function (exports_1, co
     </table>
 </div>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=grid.js.map
+}));

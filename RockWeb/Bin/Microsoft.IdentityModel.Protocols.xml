@@ -86,16 +86,6 @@
             </summary>
             <exception cref="T:System.ArgumentNullException">If the 'value' is null.</exception>
         </member>
-        <member name="T:Microsoft.IdentityModel.Protocols.LogMessages">
-            <summary>
-            Log messages and codes
-            </summary>
-        </member>
-        <member name="T:Microsoft.IdentityModel.Protocols.X509CertificateValidationMode">
-            <summary>
-            Represents X509Certificate validation mode.
-            </summary>
-        </member>
         <member name="T:Microsoft.IdentityModel.Protocols.ConfigurationManager`1">
             <summary>
             Manages the retrieval of Configuration data.
@@ -304,6 +294,16 @@
         <member name="M:Microsoft.IdentityModel.Protocols.StaticConfigurationManager`1.RequestRefresh">
             <summary>
             For the this type, this is a no-op
+            </summary>
+        </member>
+        <member name="T:Microsoft.IdentityModel.Protocols.LogMessages">
+            <summary>
+            Log messages and codes
+            </summary>
+        </member>
+        <member name="T:Microsoft.IdentityModel.Protocols.X509CertificateValidationMode">
+            <summary>
+            Represents X509Certificate validation mode.
             </summary>
         </member>
     </members>

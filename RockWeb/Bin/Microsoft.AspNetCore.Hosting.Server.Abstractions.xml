@@ -40,12 +40,19 @@
             A collection of HTTP features of the server.
             </summary>
         </member>
-        <member name="M:Microsoft.AspNetCore.Hosting.Server.IServer.Start``1(Microsoft.AspNetCore.Hosting.Server.IHttpApplication{``0})">
+        <member name="M:Microsoft.AspNetCore.Hosting.Server.IServer.StartAsync``1(Microsoft.AspNetCore.Hosting.Server.IHttpApplication{``0},System.Threading.CancellationToken)">
             <summary>
             Start the server with an application.
             </summary>
             <param name="application">An instance of <see cref="T:Microsoft.AspNetCore.Hosting.Server.IHttpApplication`1"/>.</param>
             <typeparam name="TContext">The context associated with the application.</typeparam>
+            <param name="cancellationToken">Indicates if the server startup should be aborted.</param>
+        </member>
+        <member name="M:Microsoft.AspNetCore.Hosting.Server.IServer.StopAsync(System.Threading.CancellationToken)">
+            <summary>
+            Stop processing requests and shut down the server, gracefully if possible.
+            </summary>
+            <param name="cancellationToken">Indicates if the graceful shutdown should be aborted.</param>
         </member>
     </members>
 </doc>

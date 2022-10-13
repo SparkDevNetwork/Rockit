@@ -1,40 +1,28 @@
-System.register(["vue", "../Elements/loadingIndicator", "../Elements/textBox", "../Util/guid", "./gatewayControl"], function (exports_1, context_1) {
-    "use strict";
-    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-    var vue_1, loadingIndicator_1, textBox_1, guid_1, gatewayControl_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['tslib', 'vue', './loadingIndicator.js', './textBox.js', '@Obsidian/Utility/guid', './gatewayControl.js', '@Obsidian/Utility/component', './rockFormField.js', '@Obsidian/Utility/form', '@Obsidian/ValidationRules', './rockLabel.js', './helpBlock.js', './javaScriptAnchor.js', './componentFromUrl.js', './alert.js'], (function (exports) {
+    'use strict';
+    var __awaiter, defineComponent, ref, LoadingIndicator, TextBox, newGuid, onSubmitPayment;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (loadingIndicator_1_1) {
-                loadingIndicator_1 = loadingIndicator_1_1;
-            },
-            function (textBox_1_1) {
-                textBox_1 = textBox_1_1;
-            },
-            function (guid_1_1) {
-                guid_1 = guid_1_1;
-            },
-            function (gatewayControl_1_1) {
-                gatewayControl_1 = gatewayControl_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            __awaiter = module.__awaiter;
+        }, function (module) {
+            defineComponent = module.defineComponent;
+            ref = module.ref;
+        }, function (module) {
+            LoadingIndicator = module["default"];
+        }, function (module) {
+            TextBox = module["default"];
+        }, function (module) {
+            newGuid = module.newGuid;
+        }, function (module) {
+            onSubmitPayment = module.onSubmitPayment;
+        }, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            var testGatewayControl = exports('default', defineComponent({
                 name: "TestGatewayControl",
                 components: {
-                    LoadingIndicator: loadingIndicator_1.default,
-                    TextBox: textBox_1.default
+                    LoadingIndicator,
+                    TextBox
                 },
                 props: {
                     settings: {
@@ -47,7 +35,7 @@ System.register(["vue", "../Elements/loadingIndicator", "../Elements/textBox", "
                     }
                 },
                 setup(props, { emit }) {
-                    const cardNumber = vue_1.ref("");
+                    const cardNumber = ref("");
                     const submit = () => __awaiter(this, void 0, void 0, function* () {
                         yield new Promise(resolve => setTimeout(resolve, 500));
                         if (cardNumber.value === "0000") {
@@ -60,10 +48,10 @@ System.register(["vue", "../Elements/loadingIndicator", "../Elements/textBox", "
                             });
                             return;
                         }
-                        const token = guid_1.newGuid().replace(/-/g, "");
+                        const token = newGuid().replace(/-/g, "");
                         emit("success", token);
                     });
-                    gatewayControl_1.onSubmitPayment(submit);
+                    onSubmitPayment(submit);
                     return {
                         cardNumber
                     };
@@ -73,7 +61,7 @@ System.register(["vue", "../Elements/loadingIndicator", "../Elements/textBox", "
     <TextBox label="Credit Card" v-model="cardNumber" />
 </div>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=testGatewayControl.js.map
+}));

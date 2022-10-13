@@ -1742,6 +1742,15 @@
             The updated date time.
             </value>
         </member>
+        <member name="P:Rock.MyWell.TransactionResponseData._additionalData">
+            <summary>
+            Newtonsoft.Json.JsonExtensionData instructs the Newtonsoft.Json.JsonSerializer to deserialize properties with no
+            matching class member into the specified collection
+            </summary>
+            <value>
+            The other data.
+            </value>
+        </member>
         <member name="T:Rock.MyWell.Processor_Specific">
             <summary>
             
@@ -1790,6 +1799,19 @@
             <value>
             The data.
             </value>
+        </member>
+        <member name="T:Rock.MyWell.TransactionVoidRefundResponseData">
+            <summary>
+            Class TransactionVoidRefundResponseData.
+            Implements the <see cref="T:Rock.MyWell.TransactionResponseData" />
+            </summary>
+            <seealso cref="T:Rock.MyWell.TransactionResponseData" />
+        </member>
+        <member name="P:Rock.MyWell.TransactionVoidRefundResponseData.ReferencedTransactionId">
+            <summary>
+            Gets or sets the referenced transaction identifier.
+            </summary>
+            <value>The referenced transaction identifier.</value>
         </member>
         <member name="T:Rock.MyWell.TransactionStatusResponse">
             <summary>
@@ -2342,6 +2364,12 @@
             The search amount.
             </value>
         </member>
+        <member name="P:Rock.MyWell.QueryTransactionStatusRequest.TransactionTypeSearch">
+            <summary>
+            The Type of transaction to limit the search to
+            </summary>
+            <value>The type.</value>
+        </member>
         <member name="P:Rock.MyWell.QueryTransactionStatusRequest.DateTimeRangeUTC">
             <summary>
             Gets or sets the date range (optional).
@@ -2390,6 +2418,17 @@
             <value>
             The search value.
             </value>
+        </member>
+        <member name="T:Rock.MyWell.QuerySearchTransactionType">
+            <summary>
+            Searching by <see cref="T:Rock.MyWell.TransactionType"/>
+            </summary>
+        </member>
+        <member name="M:Rock.MyWell.QuerySearchTransactionType.#ctor(Rock.MyWell.TransactionType)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Rock.MyWell.QuerySearchTransactionType"/> class.
+            </summary>
+            <param name="transactionType">Type of the transaction.</param>
         </member>
         <member name="T:Rock.MyWell.QuerySearchCustomerId">
             <summary>
@@ -2517,6 +2556,12 @@
             <value>
             The idempotency time.
             </value>
+        </member>
+        <member name="P:Rock.MyWell.TransactionQueryResultData.TransactionType">
+            <summary>
+            Gets the type of the transaction.
+            </summary>
+            <value>The type of the transaction.</value>
         </member>
         <member name="P:Rock.MyWell.TransactionQueryResultData.Type">
             <summary>
@@ -3071,22 +3116,44 @@
         </member>
         <member name="T:Rock.MyWell.TransactionType">
             <summary>
-            
+            Possible Transaction Types are at https://sandbox.gotnpgateway.com/docs/api/#upload-batch-file
+            It is possible there are more, but the documentation doesn't mention any
+            But just in case, we'll throw unexpected ones into 'other'
             </summary>
         </member>
-        <member name="F:Rock.MyWell.TransactionType.sale">
+        <member name="F:Rock.MyWell.TransactionType.verification">
             <summary>
-            The sale
+            verification
             </summary>
         </member>
         <member name="F:Rock.MyWell.TransactionType.authorize">
             <summary>
-            The authorize
+            authorize
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.TransactionType.capture">
+            <summary>
+            capture
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.TransactionType.sale">
+            <summary>
+            sale
             </summary>
         </member>
         <member name="F:Rock.MyWell.TransactionType.credit">
             <summary>
-            The credit
+            credit
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.TransactionType.refund">
+            <summary>
+            refund
+            </summary>
+        </member>
+        <member name="F:Rock.MyWell.TransactionType.other">
+            <summary>
+            Something we didn't expect
             </summary>
         </member>
         <member name="T:Rock.MyWell.MyWellPaymentType">

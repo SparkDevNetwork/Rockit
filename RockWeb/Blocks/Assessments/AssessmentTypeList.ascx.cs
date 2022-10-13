@@ -47,6 +47,7 @@ namespace RockWeb.Blocks.Assessments
 
     #endregion
 
+    [Rock.SystemGuid.BlockTypeGuid( "00A86827-1E0C-4F47-8A6F-82581FA75CED" )]
     public partial class AssessmentTypeList : RockBlock, ISecondaryBlock
     {
         #region Attribute Keys
@@ -529,7 +530,7 @@ namespace RockWeb.Blocks.Assessments
                 }
             }
 
-            // Perform additional customisation of the list grid if required.
+            // Perform additional customization of the list grid if required.
             OnConfigureListGrid( this.ListGridControl );
         }
 
@@ -816,7 +817,7 @@ namespace RockWeb.Blocks.Assessments
         }
 
         /// <summary>
-        /// Show a fatal error indicating that the user does not have permision to access this content.
+        /// Show a fatal error indicating that the user does not have permission to access this content.
         /// </summary>
         private void ShowNotificationViewUnauthorized()
         {

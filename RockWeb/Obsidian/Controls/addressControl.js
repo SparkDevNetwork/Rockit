@@ -1,37 +1,31 @@
-System.register(["vue", "../Elements/rockFormField", "../Elements/dropDownList", "../Elements/rockLabel", "../Elements/textBox", "../Util/guid"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, rockFormField_1, dropDownList_1, rockLabel_1, textBox_1, guid_1, stateOptions, AddressControlBase;
-    var __moduleName = context_1 && context_1.id;
-    function getDefaultAddressControlModel() {
-        return {
-            state: "AZ",
-            country: "US"
-        };
-    }
-    exports_1("getDefaultAddressControlModel", getDefaultAddressControlModel);
+System.register(['vue', './rockFormField.js', './dropDownList.js', './rockLabel.js', './textBox.js', '@Obsidian/Utility/guid', '@Obsidian/Utility/component', '@Obsidian/Utility/form', '@Obsidian/ValidationRules', './helpBlock.js', './javaScriptAnchor.js', 'ant-design-vue', '@Obsidian/Utility/util', '@Obsidian/Utility/stringUtils'], (function (exports) {
+    'use strict';
+    var defineComponent, RockFormField, DropDownList, RockLabel, TextBox, newGuid;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (rockFormField_1_1) {
-                rockFormField_1 = rockFormField_1_1;
-            },
-            function (dropDownList_1_1) {
-                dropDownList_1 = dropDownList_1_1;
-            },
-            function (rockLabel_1_1) {
-                rockLabel_1 = rockLabel_1_1;
-            },
-            function (textBox_1_1) {
-                textBox_1 = textBox_1_1;
-            },
-            function (guid_1_1) {
-                guid_1 = guid_1_1;
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            RockFormField = module["default"];
+        }, function (module) {
+            DropDownList = module["default"];
+        }, function (module) {
+            RockLabel = module["default"];
+        }, function (module) {
+            TextBox = module["default"];
+        }, function (module) {
+            newGuid = module.newGuid;
+        }, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            exports('getDefaultAddressControlModel', getDefaultAddressControlModel);
+
+            function getDefaultAddressControlModel() {
+                return {
+                    state: "AZ",
+                    country: "US"
+                };
             }
-        ],
-        execute: function () {
-            stateOptions = [
+            const stateOptions = [
                 "AL", "AK", "AS", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FM",
                 "FL", "GA", "GU", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA",
                 "ME", "MH", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV",
@@ -40,12 +34,12 @@ System.register(["vue", "../Elements/rockFormField", "../Elements/dropDownList",
                 "WA", "WV", "WI", "WY"
             ]
                 .map(o => ({ value: o, text: o }));
-            exports_1("AddressControlBase", AddressControlBase = vue_1.defineComponent({
+            const AddressControlBase = exports('AddressControlBase', defineComponent({
                 name: "AddressControlBase",
                 components: {
-                    TextBox: textBox_1.default,
-                    RockLabel: rockLabel_1.default,
-                    DropDownList: dropDownList_1.default
+                    TextBox,
+                    RockLabel,
+                    DropDownList
                 },
                 props: {
                     modelValue: {
@@ -58,7 +52,7 @@ System.register(["vue", "../Elements/rockFormField", "../Elements/dropDownList",
                     }
                 },
                 setup(props) {
-                    const uniqueId = props.id || `rock-addresscontrol-${guid_1.newGuid}`;
+                    const uniqueId = props.id || `rock-addresscontrol-${newGuid()}`;
                     return {
                         uniqueId,
                         stateOptions
@@ -66,20 +60,30 @@ System.register(["vue", "../Elements/rockFormField", "../Elements/dropDownList",
                 },
                 template: `
 <div :id="uniqueId">
-    <TextBox placeholder="Address Line 1" :rules="rules" v-model="modelValue.street1" validationTitle="Address Line 1" />
-    <TextBox placeholder="Address Line 2" v-model="modelValue.street2" validationTitle="Address Line 2" />
+    <div class="form-group">
+        <TextBox placeholder="Address Line 1" :rules="rules" v-model="modelValue.street1" validationTitle="Address Line 1" />
+    </div>
+    <div class="form-group">
+        <TextBox placeholder="Address Line 2" v-model="modelValue.street2" validationTitle="Address Line 2" />
+    </div>
     <div class="form-row">
-        <TextBox placeholder="City" :rules="rules" v-model="modelValue.city" form-group-classes="col-sm-6" validationTitle="City" />
-        <DropDownList :showBlankItem="false" v-model="modelValue.state" form-group-classes="col-sm-3" :options="stateOptions" />
-        <TextBox placeholder="Zip" :rules="rules" v-model="modelValue.postalCode" form-group-classes="col-sm-3" validationTitle="Zip" />
+        <div class="form-group col-sm-6">
+            <TextBox placeholder="City" :rules="rules" v-model="modelValue.city" validationTitle="City" />
+        </div>
+        <div class="form-group col-sm-3">
+            <DropDownList :showBlankItem="false" v-model="modelValue.state" :items="stateOptions" />
+        </div>
+        <div class="form-group col-sm-3">
+            <TextBox placeholder="Zip" :rules="rules" v-model="modelValue.postalCode" validationTitle="Zip" />
+        </div>
     </div>
 </div>
 `
             }));
-            exports_1("default", vue_1.defineComponent({
+            var addressControl = exports('default', defineComponent({
                 name: "AddressControl",
                 components: {
-                    RockFormField: rockFormField_1.default,
+                    RockFormField,
                     AddressControlBase
                 },
                 props: {
@@ -96,7 +100,7 @@ System.register(["vue", "../Elements/rockFormField", "../Elements/dropDownList",
 </RockFormField>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=addressControl.js.map
+}));

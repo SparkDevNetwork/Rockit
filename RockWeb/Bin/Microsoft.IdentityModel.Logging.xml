@@ -14,6 +14,16 @@
             Static logger that is exposed externally. An external application or framework can hook up a listener to this event source to log data in a custom way.
             </summary>
         </member>
+        <member name="P:Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII">
+            <summary>
+            Flag which indicates whether or not PII is shown in logs. False by default.
+            </summary>
+        </member>
+        <member name="P:Microsoft.IdentityModel.Logging.IdentityModelEventSource.HiddenPIIString">
+            <summary>
+            String that is used in place of any arguments to log messages if the 'ShowPII' flag is set to false.
+            </summary>
+        </member>
         <member name="M:Microsoft.IdentityModel.Logging.IdentityModelEventSource.WriteAlways(System.String)">
             <summary>
             Writes an event log by using the provided string argument and current UTC time.
@@ -277,6 +287,27 @@
             <param name="eventLevel">Identifies the level of an event to be logged.</param>
             <param name="exception">The exception to log.</param>
         </member>
+        <member name="M:Microsoft.IdentityModel.Logging.LogHelper.LogInformation(System.String,System.Object[])">
+            <summary>
+            Logs an information event.
+            </summary>
+            <param name="message">The log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
+        <member name="M:Microsoft.IdentityModel.Logging.LogHelper.LogVerbose(System.String,System.Object[])">
+            <summary>
+            Logs a verbose event.
+            </summary>
+            <param name="message">The log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
+        <member name="M:Microsoft.IdentityModel.Logging.LogHelper.LogWarning(System.String,System.Object[])">
+            <summary>
+            Logs a warning event.
+            </summary>
+            <param name="message">The log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
         <member name="M:Microsoft.IdentityModel.Logging.LogHelper.LogExceptionImpl``1(System.Diagnostics.Tracing.EventLevel,System.String,System.Exception,System.String,System.Object[])">
             <summary>
             Logs an exception using the event source logger and returns new typed exception.
@@ -286,6 +317,14 @@
             <param name="innerException">the inner <see cref="T:System.Exception"/> to be added to the outer exception.</param>
             <param name="format">Format string of the log message.</param>
             <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
+        <member name="M:Microsoft.IdentityModel.Logging.LogHelper.FormatInvariant(System.String,System.Object[])">
+            <summary>
+            Formats the string using InvariantCulture
+            </summary>
+            <param name="format">Format string.</param>
+            <param name="args">Format arguments.</param>
+            <returns>Formatted string.</returns>
         </member>
         <member name="T:Microsoft.IdentityModel.Logging.LogMessages">
             <summary>

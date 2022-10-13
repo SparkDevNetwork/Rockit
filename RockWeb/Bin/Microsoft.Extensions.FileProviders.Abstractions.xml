@@ -4,28 +4,6 @@
         <name>Microsoft.Extensions.FileProviders.Abstractions</name>
     </assembly>
     <members>
-        <member name="T:Microsoft.Extensions.FileProviders.CompositeDisposable">
-            <summary>
-            Represents a composition of <see cref="T:System.IDisposable"/>.
-            </summary>
-        </member>
-        <member name="M:Microsoft.Extensions.FileProviders.CompositeDisposable.#ctor(System.Collections.Generic.IList{System.IDisposable})">
-            <summary>
-            Creates a new instance of <see cref="T:Microsoft.Extensions.FileProviders.CompositeDisposable"/>.
-            </summary>
-            <param name="disposables">The list of <see cref="T:System.IDisposable"/> to compose.</param>
-        </member>
-        <member name="T:Microsoft.Extensions.FileProviders.CompositeFileChangeToken">
-            <summary>
-            Represents a composition of <see cref="T:Microsoft.Extensions.Primitives.IChangeToken"/>.
-            </summary>
-        </member>
-        <member name="M:Microsoft.Extensions.FileProviders.CompositeFileChangeToken.#ctor(System.Collections.Generic.IList{Microsoft.Extensions.Primitives.IChangeToken})">
-            <summary>
-            Creates a new instance of <see cref="T:Microsoft.Extensions.FileProviders.CompositeFileChangeToken"/>.
-            </summary>
-            <param name="changeTokens">The list of <see cref="T:Microsoft.Extensions.Primitives.IChangeToken"/> to compose.</param>
-        </member>
         <member name="T:Microsoft.Extensions.FileProviders.IDirectoryContents">
             <summary>
             Represents a directory's content in the file provider.

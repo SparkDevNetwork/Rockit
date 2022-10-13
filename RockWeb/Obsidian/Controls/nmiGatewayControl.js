@@ -1,182 +1,24 @@
-System.register(["vue", "../Elements/loadingIndicator", "../Util/guid", "./gatewayControl"], function (exports_1, context_1) {
-    "use strict";
-    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-    var vue_1, loadingIndicator_1, guid_1, gatewayControl_1, standardStyling;
-    var __moduleName = context_1 && context_1.id;
-    function loadCollectJSAsync(tokenizationKey) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (window.CollectJS === undefined) {
-                const script = document.createElement("script");
-                script.type = "text/javascript";
-                script.src = "https://secure.tnbcigateway.com/token/Collect.js";
-                script.setAttribute("data-tokenization-key", tokenizationKey);
-                script.setAttribute("data-variant", "inline");
-                document.getElementsByTagName("head")[0].appendChild(script);
-                try {
-                    yield new Promise((resolve, reject) => {
-                        script.addEventListener("load", () => resolve());
-                        script.addEventListener("error", () => reject());
-                    });
-                }
-                catch (_a) {
-                    return false;
-                }
-            }
-            return window.CollectJS !== undefined;
-        });
-    }
-    function loadStandardStyleTagAsync() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const style = document.createElement("style");
-            style.type = "text/css";
-            style.innerText = standardStyling;
-            yield new Promise((resolve, reject) => {
-                style.addEventListener("load", () => resolve());
-                style.addEventListener("error", () => reject());
-                document.getElementsByTagName("head")[0].appendChild(style);
-            });
-        });
-    }
-    function getCollectJSOptions(controlId, inputStyleHook, inputInvalidStyleHook) {
-        const customCss = {
-            "margin-bottom": "5px",
-            "margin-top": "0"
-        };
-        if (inputStyleHook) {
-            const inputStyles = getComputedStyle(inputStyleHook);
-            customCss["color"] = inputStyles.color;
-            customCss["border-bottom-color"] = inputStyles.borderBottomColor;
-            customCss["border-bottom-left-radius"] = inputStyles.borderBottomLeftRadius;
-            customCss["border-bottom-right-radius"] = inputStyles.borderBottomRightRadius;
-            customCss["border-bottom-style"] = inputStyles.borderBottomStyle;
-            customCss["border-bottom-width"] = inputStyles.borderBottomWidth;
-            customCss["border-left-color"] = inputStyles.borderLeftColor;
-            customCss["border-left-style"] = inputStyles.borderLeftStyle;
-            customCss["border-left-width"] = inputStyles.borderLeftWidth;
-            customCss["border-right-color"] = inputStyles.borderRightColor;
-            customCss["border-right-style"] = inputStyles.borderRightStyle;
-            customCss["border-right-width"] = inputStyles.borderRightWidth;
-            customCss["border-top-color"] = inputStyles.borderTopColor;
-            customCss["border-top-left-radius"] = inputStyles.borderTopLeftRadius;
-            customCss["border-top-right-radius"] = inputStyles.borderTopRightRadius;
-            customCss["border-top-style"] = inputStyles.borderTopStyle;
-            customCss["border-top-width"] = inputStyles.borderTopWidth;
-            customCss["border-width"] = inputStyles.borderWidth;
-            customCss["border-style"] = inputStyles.borderStyle;
-            customCss["border-radius"] = inputStyles.borderRadius;
-            customCss["border-color"] = inputStyles.borderColor;
-            customCss["background-color"] = inputStyles.backgroundColor;
-            customCss["box-shadow"] = inputStyles.boxShadow;
-            customCss["padding"] = inputStyles.padding;
-            customCss["font-size"] = inputStyles.fontSize;
-            customCss["height"] = inputStyles.height;
-            customCss["font-family"] = inputStyles.fontFamily;
-        }
-        const focusCss = {
-            "border-color": getComputedStyle(document.documentElement).getPropertyValue("--focus-state-border-color"),
-            "outline-style": "none"
-        };
-        const invalidCss = {};
-        if (inputInvalidStyleHook) {
-            invalidCss["border-color"] = getComputedStyle(inputInvalidStyleHook).borderColor;
-        }
-        const placeholderCss = {
-            "color": getComputedStyle(document.documentElement).getPropertyValue("--input-placeholder")
-        };
-        const options = {
-            paymentSelector: `${controlId} .js-payment-button`,
-            variant: "inline",
-            fields: {
-                ccnumber: {
-                    selector: `#${controlId} .js-credit-card-input`,
-                    title: "Card Number",
-                    placeholder: "0000 0000 0000 0000"
-                },
-                ccexp: {
-                    selector: `#${controlId} .js-credit-card-exp-input`,
-                    title: "Card Expiration",
-                    placeholder: "MM / YY"
-                },
-                cvv: {
-                    display: "show",
-                    selector: `#${controlId} .js-credit-card-cvv-input`,
-                    title: "CVV Code",
-                    placeholder: "CVV"
-                },
-                checkaccount: {
-                    selector: `#${controlId} .js-check-account-number-input`,
-                    title: "Account Number",
-                    placeholder: "Account Number"
-                },
-                checkaba: {
-                    selector: `#${controlId} .js-check-routing-number-input`,
-                    title: "Routing Number",
-                    placeholder: "Routing Number"
-                },
-                checkname: {
-                    selector: `#${controlId} .js-check-fullname-input`,
-                    title: "Name on Checking Account",
-                    placeholder: "Name on Account"
-                }
-            },
-            styleSniffer: false,
-            customCss,
-            focusCss,
-            invalidCss,
-            placeholderCss,
-            timeoutDuration: 10000,
-            callback: () => { }
-        };
-        return options;
-    }
-    function getFieldFriendlyName(field) {
-        if (field === "ccnumber") {
-            return "Card Number";
-        }
-        else if (field === "ccexp") {
-            return "Expiration Date";
-        }
-        else if (field === "cvv") {
-            return "CVV";
-        }
-        else if (field === "checkaccount") {
-            return "Account Number";
-        }
-        else if (field === "checkaba") {
-            return "Routing Number";
-        }
-        else if (field === "checkname") {
-            return "Account Owner's Name";
-        }
-        else {
-            return "Payment Information";
-        }
-    }
-    return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (loadingIndicator_1_1) {
-                loadingIndicator_1 = loadingIndicator_1_1;
-            },
-            function (guid_1_1) {
-                guid_1 = guid_1_1;
-            },
-            function (gatewayControl_1_1) {
-                gatewayControl_1 = gatewayControl_1_1;
-            }
-        ],
-        execute: function () {
-            standardStyling = `
+System.register(['tslib', 'vue', './loadingIndicator.js', '@Obsidian/Utility/guid', './gatewayControl.js', './javaScriptAnchor.js', './componentFromUrl.js', './alert.js'], (function (exports) {
+  'use strict';
+  var __awaiter, defineComponent, computed, ref, onMounted, LoadingIndicator, newGuid, onSubmitPayment;
+  return {
+    setters: [function (module) {
+      __awaiter = module.__awaiter;
+    }, function (module) {
+      defineComponent = module.defineComponent;
+      computed = module.computed;
+      ref = module.ref;
+      onMounted = module.onMounted;
+    }, function (module) {
+      LoadingIndicator = module["default"];
+    }, function (module) {
+      newGuid = module.newGuid;
+    }, function (module) {
+      onSubmitPayment = module.onSubmitPayment;
+    }, function () {}, function () {}, function () {}],
+    execute: (function () {
+
+      const standardStyling = `
 .nmi-payment-inputs .iframe-input {
   position: relative;
   -ms-flex: 0 0 100%;
@@ -262,190 +104,339 @@ System.register(["vue", "../Elements/loadingIndicator", "../Util/guid", "./gatew
   }
 }
 `;
-            exports_1("default", vue_1.defineComponent({
-                name: "NMIGatewayControl",
-                components: {
-                    LoadingIndicator: loadingIndicator_1.default
-                },
-                props: {
-                    settings: {
-                        type: Object,
-                        required: true
-                    }
-                },
-                setup(props, { emit }) {
-                    let hasAttemptedSubmit = false;
-                    let hasReceivedToken = false;
-                    const hasCreditCardPaymentType = vue_1.computed(() => {
-                        var _a, _b;
-                        return (_b = (_a = props.settings.enabledPaymentTypes) === null || _a === void 0 ? void 0 : _a.includes(0)) !== null && _b !== void 0 ? _b : false;
-                    });
-                    const hasBankAccountPaymentType = vue_1.computed(() => {
-                        var _a, _b;
-                        return (_b = (_a = props.settings.enabledPaymentTypes) === null || _a === void 0 ? void 0 : _a.includes(1)) !== null && _b !== void 0 ? _b : false;
-                    });
-                    const hasMultiplePaymentTypes = vue_1.computed(() => {
-                        return hasCreditCardPaymentType.value && hasBankAccountPaymentType.value;
-                    });
-                    const activePaymentType = vue_1.ref(props.settings.enabledPaymentTypes != null && props.settings.enabledPaymentTypes.length > 0 ? props.settings.enabledPaymentTypes[0] : null);
-                    const isCreditCardPaymentTypeActive = vue_1.computed(() => {
-                        return activePaymentType.value === 0;
-                    });
-                    const isBankAccountPaymentTypeActive = vue_1.computed(() => {
-                        return activePaymentType.value === 1;
-                    });
-                    const creditCardButtonClasses = vue_1.computed(() => {
-                        return isCreditCardPaymentTypeActive.value
-                            ? ["btn", "btn-default", "active", "payment-creditcard"]
-                            : ["btn", "btn-default", "payment-creditcard"];
-                    });
-                    const bankAccountButtonClasses = vue_1.computed(() => {
-                        return isBankAccountPaymentTypeActive.value
-                            ? ["btn", "btn-default", "active", "payment-ach"]
-                            : ["btn", "btn-default", "payment-ach"];
-                    });
-                    const loading = vue_1.ref(true);
-                    const failedToLoad = vue_1.ref(false);
-                    const validationMessage = vue_1.ref("");
-                    const activateCreditCard = () => {
-                        CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.clearInputs();
-                        activePaymentType.value = 0;
-                    };
-                    const activateBankAccount = () => {
-                        CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.clearInputs();
-                        activePaymentType.value = 1;
-                    };
-                    const tokenResponseSent = vue_1.ref(false);
-                    const controlId = `nmi_${guid_1.newGuid()}`;
-                    const inputStyleHook = vue_1.ref(null);
-                    const inputInvalidStyleHook = vue_1.ref(null);
-                    const paymentInputs = vue_1.ref(null);
-                    const validationFieldStatus = {
-                        ccnumber: { field: getFieldFriendlyName("ccnumber"), status: false, message: "is required" },
-                        ccexp: { field: getFieldFriendlyName("ccexp"), status: false, message: "is required" },
-                        cvv: { field: getFieldFriendlyName("cvv"), status: false, message: "is required" },
-                        checkaccount: { field: getFieldFriendlyName("checkaccount"), status: false, message: "is required" },
-                        checkaba: { field: getFieldFriendlyName("checkaba"), status: false, message: "is required" },
-                        checkname: { field: getFieldFriendlyName("checkname"), status: false, message: "is required" }
-                    };
-                    const validateInputs = function () {
-                        var _a, _b, _c, _d;
-                        let hasValidationError = false;
-                        const errors = {};
-                        for (const validationFieldKey in validationFieldStatus) {
-                            const validationField = validationFieldStatus[validationFieldKey];
-                            const inputField = document.querySelector((_b = (_a = CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.config.fields[validationFieldKey]) === null || _a === void 0 ? void 0 : _a.selector) !== null && _b !== void 0 ? _b : "");
-                            const fieldVisible = ((_c = inputField === null || inputField === void 0 ? void 0 : inputField.offsetWidth) !== null && _c !== void 0 ? _c : 0) !== 0 || ((_d = inputField === null || inputField === void 0 ? void 0 : inputField.offsetHeight) !== null && _d !== void 0 ? _d : 0) !== 0;
-                            if (fieldVisible && !validationField.status) {
-                                hasValidationError = true;
-                                const validationFieldTitle = getFieldFriendlyName(validationFieldKey);
-                                errors[validationFieldTitle] = validationField.message || "unknown validation error";
-                            }
-                        }
-                        return {
-                            isValid: !hasValidationError,
-                            errors
-                        };
-                    };
-                    const timeoutCallback = () => {
-                        if (tokenResponseSent.value) {
-                            return;
-                        }
-                        console.log("The tokenization didn't respond in the expected timeframe. This could be due to an invalid or incomplete field or poor connectivity - " + Date());
-                        const validationResult = validateInputs();
-                        if (!validationResult.isValid) {
-                            emit("validation", validationResult.errors);
-                        }
-                        else {
-                            console.log("Timeout happened for unknown reason, probably poor connectivity since we already validated inputs.");
-                            emit("validation", {
-                                "Payment Timeout": "Response from gateway timed out. This could be do to poor connectivity or invalid payment values."
-                            });
-                        }
-                    };
-                    const validationCallback = (field, validated, message) => {
-                        var _a;
-                        if (message === "Field is empty") {
-                            message = "is required";
-                        }
-                        validationFieldStatus[field] = {
-                            field: field,
-                            status: validated,
-                            message: message
-                        };
-                        const validationResult = validateInputs();
-                        if (hasAttemptedSubmit && !((_a = CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.inSubmission) !== null && _a !== void 0 ? _a : false) && !hasReceivedToken) {
-                            emit("validation", validationResult.errors);
-                        }
-                    };
-                    gatewayControl_1.onSubmitPayment(() => {
-                        if (loading.value || failedToLoad.value) {
-                            return;
-                        }
-                        tokenResponseSent.value = false;
-                        setTimeout(() => {
-                            const validationResult = validateInputs();
-                            hasAttemptedSubmit = true;
-                            if (validationResult.isValid) {
-                                CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.startPaymentRequest();
-                            }
-                            else {
-                                emit("validation", validationResult.errors);
-                            }
-                        }, 0);
-                    });
-                    const handleTokenResponse = (tokenResponse) => {
-                        hasReceivedToken = true;
-                        emit("success", tokenResponse.token);
-                    };
-                    vue_1.onMounted(() => __awaiter(this, void 0, void 0, function* () {
-                        var _a;
-                        yield loadStandardStyleTagAsync();
-                        if (!(yield loadCollectJSAsync((_a = props.settings.tokenizationKey) !== null && _a !== void 0 ? _a : ""))) {
-                            emit("error", "Error configuring hosted gateway. This could be due to an invalid or missing Tokenization Key. Please verify that Tokenization Key is configured correctly in gateway settings.");
-                            return;
-                        }
-                        if (paymentInputs.value) {
-                            paymentInputs.value.querySelectorAll(".iframe-input").forEach(el => {
-                                el.innerHTML = "";
-                            });
-                        }
-                        try {
-                            const options = getCollectJSOptions(controlId, inputStyleHook.value, inputInvalidStyleHook.value);
-                            options.timeoutCallback = timeoutCallback;
-                            options.validationCallback = validationCallback;
-                            options.callback = handleTokenResponse;
-                            options.fieldsAvailableCallback = () => {
-                                loading.value = false;
-                            };
-                            CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.configure(options);
-                        }
-                        catch (_b) {
-                            failedToLoad.value = true;
-                            emit("error", "Error configuring hosted gateway. This could be due to an invalid or missing Tokenization Key. Please verify that Tokenization Key is configured correctly in gateway settings.");
-                            return;
-                        }
-                    }));
-                    return {
-                        controlId,
-                        loading,
-                        failedToLoad,
-                        hasMultiplePaymentTypes,
-                        hasCreditCardPaymentType,
-                        hasBankAccountPaymentType,
-                        isCreditCardPaymentTypeActive,
-                        isBankAccountPaymentTypeActive,
-                        creditCardButtonClasses,
-                        bankAccountButtonClasses,
-                        validationMessage,
-                        activateCreditCard,
-                        activateBankAccount,
-                        inputStyleHook,
-                        inputInvalidStyleHook,
-                        paymentInputs
-                    };
-                },
-                template: `
+      function loadCollectJSAsync(tokenizationKey) {
+          return __awaiter(this, void 0, void 0, function* () {
+              if (window.CollectJS === undefined) {
+                  const script = document.createElement("script");
+                  script.type = "text/javascript";
+                  script.src = "https://secure.tnbcigateway.com/token/Collect.js";
+                  script.setAttribute("data-tokenization-key", tokenizationKey);
+                  script.setAttribute("data-variant", "inline");
+                  document.getElementsByTagName("head")[0].appendChild(script);
+                  try {
+                      yield new Promise((resolve, reject) => {
+                          script.addEventListener("load", () => resolve());
+                          script.addEventListener("error", () => reject());
+                      });
+                  }
+                  catch (_a) {
+                      return false;
+                  }
+              }
+              return window.CollectJS !== undefined;
+          });
+      }
+      function loadStandardStyleTagAsync() {
+          return __awaiter(this, void 0, void 0, function* () {
+              const style = document.createElement("style");
+              style.type = "text/css";
+              style.innerText = standardStyling;
+              yield new Promise((resolve, reject) => {
+                  style.addEventListener("load", () => resolve());
+                  style.addEventListener("error", () => reject());
+                  document.getElementsByTagName("head")[0].appendChild(style);
+              });
+          });
+      }
+      function getCollectJSOptions(controlId, inputStyleHook, inputInvalidStyleHook) {
+          const customCss = {
+              "margin-bottom": "5px",
+              "margin-top": "0"
+          };
+          if (inputStyleHook) {
+              const inputStyles = getComputedStyle(inputStyleHook);
+              customCss["color"] = inputStyles.color;
+              customCss["border-bottom-color"] = inputStyles.borderBottomColor;
+              customCss["border-bottom-left-radius"] = inputStyles.borderBottomLeftRadius;
+              customCss["border-bottom-right-radius"] = inputStyles.borderBottomRightRadius;
+              customCss["border-bottom-style"] = inputStyles.borderBottomStyle;
+              customCss["border-bottom-width"] = inputStyles.borderBottomWidth;
+              customCss["border-left-color"] = inputStyles.borderLeftColor;
+              customCss["border-left-style"] = inputStyles.borderLeftStyle;
+              customCss["border-left-width"] = inputStyles.borderLeftWidth;
+              customCss["border-right-color"] = inputStyles.borderRightColor;
+              customCss["border-right-style"] = inputStyles.borderRightStyle;
+              customCss["border-right-width"] = inputStyles.borderRightWidth;
+              customCss["border-top-color"] = inputStyles.borderTopColor;
+              customCss["border-top-left-radius"] = inputStyles.borderTopLeftRadius;
+              customCss["border-top-right-radius"] = inputStyles.borderTopRightRadius;
+              customCss["border-top-style"] = inputStyles.borderTopStyle;
+              customCss["border-top-width"] = inputStyles.borderTopWidth;
+              customCss["border-width"] = inputStyles.borderWidth;
+              customCss["border-style"] = inputStyles.borderStyle;
+              customCss["border-radius"] = inputStyles.borderRadius;
+              customCss["border-color"] = inputStyles.borderColor;
+              customCss["background-color"] = inputStyles.backgroundColor;
+              customCss["box-shadow"] = inputStyles.boxShadow;
+              customCss["padding"] = inputStyles.padding;
+              customCss["font-size"] = inputStyles.fontSize;
+              customCss["height"] = inputStyles.height;
+              customCss["font-family"] = inputStyles.fontFamily;
+          }
+          const focusCss = {
+              "border-color": getComputedStyle(document.documentElement).getPropertyValue("--focus-state-border-color"),
+              "outline-style": "none"
+          };
+          const invalidCss = {};
+          if (inputInvalidStyleHook) {
+              invalidCss["border-color"] = getComputedStyle(inputInvalidStyleHook).borderColor;
+          }
+          const placeholderCss = {
+              "color": getComputedStyle(document.documentElement).getPropertyValue("--input-placeholder")
+          };
+          const options = {
+              paymentSelector: `${controlId} .js-payment-button`,
+              variant: "inline",
+              fields: {
+                  ccnumber: {
+                      selector: `#${controlId} .js-credit-card-input`,
+                      title: "Card Number",
+                      placeholder: "0000 0000 0000 0000"
+                  },
+                  ccexp: {
+                      selector: `#${controlId} .js-credit-card-exp-input`,
+                      title: "Card Expiration",
+                      placeholder: "MM / YY"
+                  },
+                  cvv: {
+                      display: "show",
+                      selector: `#${controlId} .js-credit-card-cvv-input`,
+                      title: "CVV Code",
+                      placeholder: "CVV"
+                  },
+                  checkaccount: {
+                      selector: `#${controlId} .js-check-account-number-input`,
+                      title: "Account Number",
+                      placeholder: "Account Number"
+                  },
+                  checkaba: {
+                      selector: `#${controlId} .js-check-routing-number-input`,
+                      title: "Routing Number",
+                      placeholder: "Routing Number"
+                  },
+                  checkname: {
+                      selector: `#${controlId} .js-check-fullname-input`,
+                      title: "Name on Checking Account",
+                      placeholder: "Name on Account"
+                  }
+              },
+              styleSniffer: false,
+              customCss,
+              focusCss,
+              invalidCss,
+              placeholderCss,
+              timeoutDuration: 10000,
+              callback: () => { }
+          };
+          return options;
+      }
+      function getFieldFriendlyName(field) {
+          if (field === "ccnumber") {
+              return "Card Number";
+          }
+          else if (field === "ccexp") {
+              return "Expiration Date";
+          }
+          else if (field === "cvv") {
+              return "CVV";
+          }
+          else if (field === "checkaccount") {
+              return "Account Number";
+          }
+          else if (field === "checkaba") {
+              return "Routing Number";
+          }
+          else if (field === "checkname") {
+              return "Account Owner's Name";
+          }
+          else {
+              return "Payment Information";
+          }
+      }
+      var nmiGatewayControl = exports('default', defineComponent({
+          name: "NMIGatewayControl",
+          components: {
+              LoadingIndicator
+          },
+          props: {
+              settings: {
+                  type: Object,
+                  required: true
+              }
+          },
+          setup(props, { emit }) {
+              let hasAttemptedSubmit = false;
+              let hasReceivedToken = false;
+              const hasCreditCardPaymentType = computed(() => {
+                  var _a, _b;
+                  return (_b = (_a = props.settings.enabledPaymentTypes) === null || _a === void 0 ? void 0 : _a.includes(0)) !== null && _b !== void 0 ? _b : false;
+              });
+              const hasBankAccountPaymentType = computed(() => {
+                  var _a, _b;
+                  return (_b = (_a = props.settings.enabledPaymentTypes) === null || _a === void 0 ? void 0 : _a.includes(1)) !== null && _b !== void 0 ? _b : false;
+              });
+              const hasMultiplePaymentTypes = computed(() => {
+                  return hasCreditCardPaymentType.value && hasBankAccountPaymentType.value;
+              });
+              const activePaymentType = ref(props.settings.enabledPaymentTypes != null && props.settings.enabledPaymentTypes.length > 0 ? props.settings.enabledPaymentTypes[0] : null);
+              const isCreditCardPaymentTypeActive = computed(() => {
+                  return activePaymentType.value === 0;
+              });
+              const isBankAccountPaymentTypeActive = computed(() => {
+                  return activePaymentType.value === 1;
+              });
+              const creditCardButtonClasses = computed(() => {
+                  return isCreditCardPaymentTypeActive.value
+                      ? ["btn", "btn-default", "active", "payment-creditcard"]
+                      : ["btn", "btn-default", "payment-creditcard"];
+              });
+              const bankAccountButtonClasses = computed(() => {
+                  return isBankAccountPaymentTypeActive.value
+                      ? ["btn", "btn-default", "active", "payment-ach"]
+                      : ["btn", "btn-default", "payment-ach"];
+              });
+              const loading = ref(true);
+              const failedToLoad = ref(false);
+              const validationMessage = ref("");
+              const activateCreditCard = () => {
+                  CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.clearInputs();
+                  activePaymentType.value = 0;
+              };
+              const activateBankAccount = () => {
+                  CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.clearInputs();
+                  activePaymentType.value = 1;
+              };
+              const tokenResponseSent = ref(false);
+              const controlId = `nmi_${newGuid()}`;
+              const inputStyleHook = ref(null);
+              const inputInvalidStyleHook = ref(null);
+              const paymentInputs = ref(null);
+              const validationFieldStatus = {
+                  ccnumber: { field: getFieldFriendlyName("ccnumber"), status: false, message: "is required" },
+                  ccexp: { field: getFieldFriendlyName("ccexp"), status: false, message: "is required" },
+                  cvv: { field: getFieldFriendlyName("cvv"), status: false, message: "is required" },
+                  checkaccount: { field: getFieldFriendlyName("checkaccount"), status: false, message: "is required" },
+                  checkaba: { field: getFieldFriendlyName("checkaba"), status: false, message: "is required" },
+                  checkname: { field: getFieldFriendlyName("checkname"), status: false, message: "is required" }
+              };
+              const validateInputs = function () {
+                  var _a, _b, _c, _d;
+                  let hasValidationError = false;
+                  const errors = {};
+                  for (const validationFieldKey in validationFieldStatus) {
+                      const validationField = validationFieldStatus[validationFieldKey];
+                      const inputField = document.querySelector((_b = (_a = CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.config.fields[validationFieldKey]) === null || _a === void 0 ? void 0 : _a.selector) !== null && _b !== void 0 ? _b : "");
+                      const fieldVisible = ((_c = inputField === null || inputField === void 0 ? void 0 : inputField.offsetWidth) !== null && _c !== void 0 ? _c : 0) !== 0 || ((_d = inputField === null || inputField === void 0 ? void 0 : inputField.offsetHeight) !== null && _d !== void 0 ? _d : 0) !== 0;
+                      if (fieldVisible && !validationField.status) {
+                          hasValidationError = true;
+                          const validationFieldTitle = getFieldFriendlyName(validationFieldKey);
+                          errors[validationFieldTitle] = validationField.message || "unknown validation error";
+                      }
+                  }
+                  return {
+                      isValid: !hasValidationError,
+                      errors
+                  };
+              };
+              const timeoutCallback = () => {
+                  if (tokenResponseSent.value) {
+                      return;
+                  }
+                  console.log("The tokenization didn't respond in the expected timeframe. This could be due to an invalid or incomplete field or poor connectivity - " + Date());
+                  const validationResult = validateInputs();
+                  if (!validationResult.isValid) {
+                      emit("validation", validationResult.errors);
+                  }
+                  else {
+                      console.log("Timeout happened for unknown reason, probably poor connectivity since we already validated inputs.");
+                      emit("validation", {
+                          "Payment Timeout": "Response from gateway timed out. This could be do to poor connectivity or invalid payment values."
+                      });
+                  }
+              };
+              const validationCallback = (field, validated, message) => {
+                  var _a;
+                  if (message === "Field is empty") {
+                      message = "is required";
+                  }
+                  validationFieldStatus[field] = {
+                      field: field,
+                      status: validated,
+                      message: message
+                  };
+                  const validationResult = validateInputs();
+                  if (hasAttemptedSubmit && !((_a = CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.inSubmission) !== null && _a !== void 0 ? _a : false) && !hasReceivedToken) {
+                      emit("validation", validationResult.errors);
+                  }
+              };
+              onSubmitPayment(() => {
+                  if (loading.value || failedToLoad.value) {
+                      return;
+                  }
+                  tokenResponseSent.value = false;
+                  setTimeout(() => {
+                      const validationResult = validateInputs();
+                      hasAttemptedSubmit = true;
+                      if (validationResult.isValid) {
+                          CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.startPaymentRequest();
+                      }
+                      else {
+                          emit("validation", validationResult.errors);
+                      }
+                  }, 0);
+              });
+              const handleTokenResponse = (tokenResponse) => {
+                  hasReceivedToken = true;
+                  emit("success", tokenResponse.token);
+              };
+              onMounted(() => __awaiter(this, void 0, void 0, function* () {
+                  var _a;
+                  yield loadStandardStyleTagAsync();
+                  if (!(yield loadCollectJSAsync((_a = props.settings.tokenizationKey) !== null && _a !== void 0 ? _a : ""))) {
+                      emit("error", "Error configuring hosted gateway. This could be due to an invalid or missing Tokenization Key. Please verify that Tokenization Key is configured correctly in gateway settings.");
+                      return;
+                  }
+                  if (paymentInputs.value) {
+                      paymentInputs.value.querySelectorAll(".iframe-input").forEach(el => {
+                          el.innerHTML = "";
+                      });
+                  }
+                  try {
+                      const options = getCollectJSOptions(controlId, inputStyleHook.value, inputInvalidStyleHook.value);
+                      options.timeoutCallback = timeoutCallback;
+                      options.validationCallback = validationCallback;
+                      options.callback = handleTokenResponse;
+                      options.fieldsAvailableCallback = () => {
+                          loading.value = false;
+                      };
+                      CollectJS === null || CollectJS === void 0 ? void 0 : CollectJS.configure(options);
+                  }
+                  catch (_b) {
+                      failedToLoad.value = true;
+                      emit("error", "Error configuring hosted gateway. This could be due to an invalid or missing Tokenization Key. Please verify that Tokenization Key is configured correctly in gateway settings.");
+                      return;
+                  }
+              }));
+              return {
+                  controlId,
+                  loading,
+                  failedToLoad,
+                  hasMultiplePaymentTypes,
+                  hasCreditCardPaymentType,
+                  hasBankAccountPaymentType,
+                  isCreditCardPaymentTypeActive,
+                  isBankAccountPaymentTypeActive,
+                  creditCardButtonClasses,
+                  bankAccountButtonClasses,
+                  validationMessage,
+                  activateCreditCard,
+                  activateBankAccount,
+                  inputStyleHook,
+                  inputInvalidStyleHook,
+                  paymentInputs
+              };
+          },
+          template: `
 <div>
     <div v-if="loading" class="text-center">
         <LoadingIndicator />
@@ -474,7 +465,8 @@ System.register(["vue", "../Elements/loadingIndicator", "../Util/guid", "./gatew
             <button type="button" style="display: none;" class="payment-button js-payment-button"></button>
         </div>
 
-        <div v-show="validationMessage" v-text="validationMessage" class="alert alert-validation">
+        <div v-show="validationMessage" class="alert alert-validation">
+            {{ validationMessage }}
         </div>
     </div>
 
@@ -484,8 +476,8 @@ System.register(["vue", "../Elements/loadingIndicator", "../Util/guid", "./gatew
         <input ref="inputInvalidStyleHook" type="text" class="form-control">
     </div>
 </div>`
-            }));
-        }
-    };
-});
-//# sourceMappingURL=nmiGatewayControl.js.map
+      }));
+
+    })
+  };
+}));

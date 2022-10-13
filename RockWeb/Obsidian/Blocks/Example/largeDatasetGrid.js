@@ -1,41 +1,33 @@
-System.register(["../../Templates/paneledBlockTemplate", "vue", "../../Controls/gridRow", "../../Controls/gridColumn", "../../Controls/gridProfileLinkColumn", "../../Controls/blockActionSourcedGrid", "../../Controls/dialog"], function (exports_1, context_1) {
-    "use strict";
-    var paneledBlockTemplate_1, vue_1, gridRow_1, gridColumn_1, gridProfileLinkColumn_1, blockActionSourcedGrid_1, dialog_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['@Obsidian/Templates/block', 'vue', '@Obsidian/Controls/gridRow', '@Obsidian/Controls/gridColumn', '@Obsidian/Controls/gridProfileLinkColumn', '@Obsidian/Controls/blockActionSourcedGrid', '@Obsidian/Controls/dialog'], (function (exports) {
+    'use strict';
+    var Block, defineComponent, GridRow, GridColumn, GridProfileLinkColumn, BlockActionSourcedGrid, Dialog;
     return {
-        setters: [
-            function (paneledBlockTemplate_1_1) {
-                paneledBlockTemplate_1 = paneledBlockTemplate_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (gridRow_1_1) {
-                gridRow_1 = gridRow_1_1;
-            },
-            function (gridColumn_1_1) {
-                gridColumn_1 = gridColumn_1_1;
-            },
-            function (gridProfileLinkColumn_1_1) {
-                gridProfileLinkColumn_1 = gridProfileLinkColumn_1_1;
-            },
-            function (blockActionSourcedGrid_1_1) {
-                blockActionSourcedGrid_1 = blockActionSourcedGrid_1_1;
-            },
-            function (dialog_1_1) {
-                dialog_1 = dialog_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            Block = module["default"];
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            GridRow = module["default"];
+        }, function (module) {
+            GridColumn = module["default"];
+        }, function (module) {
+            GridProfileLinkColumn = module["default"];
+        }, function (module) {
+            BlockActionSourcedGrid = module["default"];
+        }, function (module) {
+            Dialog = module["default"];
+        }],
+        execute: (function () {
+
+            var largeDatasetGrid = exports('default', defineComponent({
                 name: "Example.LargeDatasetGrid",
                 components: {
-                    PaneledBlockTemplate: paneledBlockTemplate_1.default,
-                    BlockActionSourcedGrid: blockActionSourcedGrid_1.default,
-                    GridColumn: gridColumn_1.default,
-                    GridRow: gridRow_1.default,
-                    GridProfileLinkColumn: gridProfileLinkColumn_1.default,
-                    Dialog: dialog_1.default
+                    Block,
+                    BlockActionSourcedGrid,
+                    GridColumn,
+                    GridRow,
+                    GridProfileLinkColumn,
+                    Dialog
                 },
                 data() {
                     return {
@@ -50,11 +42,7 @@ System.register(["../../Templates/paneledBlockTemplate", "vue", "../../Controls/
                     }
                 },
                 template: `
-<PaneledBlockTemplate>
-    <template #title>
-        <i class="fa fa-dumbbell"></i>
-        Large Dataset Grid
-    </template>
+<Block title="Large Dataset Grid">
     <template #default>
         <div class="grid grid-panel">
             <BlockActionSourcedGrid blockActionName="GetAttributeValues" #default="rowContext" rowItemText="Attribute Values" rowIdKey="Id">
@@ -75,9 +63,9 @@ System.register(["../../Templates/paneledBlockTemplate", "vue", "../../Controls/
             </template>
         </Dialog>
     </template>
-</PaneledBlockTemplate>`
+</Block>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=largeDatasetGrid.js.map
+}));

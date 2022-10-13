@@ -1,31 +1,29 @@
-System.register(["vue", "../Util/treeItemProviders", "../Util/util", "./treeItemPicker"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, treeItemProviders_1, util_1, treeItemPicker_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', '@Obsidian/Utility/treeItemProviders', '@Obsidian/Utility/component', './treeItemPicker.js', './rockButton.js', 'tslib', '@Obsidian/Utility/promiseUtils', './rockFormField.js', '@Obsidian/Utility/form', '@Obsidian/Utility/guid', '@Obsidian/ValidationRules', './rockLabel.js', './helpBlock.js', './javaScriptAnchor.js', './treeList.js'], (function (exports) {
+    'use strict';
+    var defineComponent, ref, watch, CategoryTreeItemProvider, updateRefValue, TreeItemPicker;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (treeItemProviders_1_1) {
-                treeItemProviders_1 = treeItemProviders_1_1;
-            },
-            function (util_1_1) {
-                util_1 = util_1_1;
-            },
-            function (treeItemPicker_1_1) {
-                treeItemPicker_1 = treeItemPicker_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            ref = module.ref;
+            watch = module.watch;
+        }, function (module) {
+            CategoryTreeItemProvider = module.CategoryTreeItemProvider;
+        }, function (module) {
+            updateRefValue = module.updateRefValue;
+        }, function (module) {
+            TreeItemPicker = module["default"];
+        }, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            var CategoryPicker = exports('default', defineComponent({
                 name: "CategoryPicker",
                 components: {
-                    TreeItemPicker: treeItemPicker_1.default
+                    TreeItemPicker
                 },
                 props: {
                     modelValue: {
-                        type: Object
+                        type: Object,
+                        required: false
                     },
                     rootCategoryGuid: {
                         type: String
@@ -38,20 +36,47 @@ System.register(["vue", "../Util/treeItemProviders", "../Util/util", "./treeItem
                     },
                     entityTypeQualifierValue: {
                         type: String
+                    },
+                    securityGrantToken: {
+                        type: String,
+                        required: false
+                    },
+                    multiple: {
+                        type: Boolean,
+                        default: false
                     }
                 },
+                emits: {
+                    "update:modelValue": (_value) => true
+                },
                 setup(props, { emit }) {
-                    const internalValue = vue_1.ref(props.modelValue ? [props.modelValue] : []);
-                    const itemProvider = new treeItemProviders_1.CategoryTreeItemProvider();
-                    itemProvider.rootCategoryGuid = props.rootCategoryGuid;
-                    itemProvider.entityTypeGuid = props.entityTypeGuid;
-                    itemProvider.entityTypeQualifierColumn = props.entityTypeQualifierColumn;
-                    itemProvider.entityTypeQualifierValue = props.entityTypeQualifierValue;
-                    vue_1.watch(internalValue, () => {
-                        emit("update:modelValue", internalValue.value.length > 0 ? internalValue.value[0] : undefined);
+                    var _a;
+                    const internalValue = ref((_a = props.modelValue) !== null && _a !== void 0 ? _a : null);
+                    const itemProvider = ref(new CategoryTreeItemProvider());
+                    itemProvider.value.rootCategoryGuid = props.rootCategoryGuid;
+                    itemProvider.value.entityTypeGuid = props.entityTypeGuid;
+                    itemProvider.value.entityTypeQualifierColumn = props.entityTypeQualifierColumn;
+                    itemProvider.value.entityTypeQualifierValue = props.entityTypeQualifierValue;
+                    itemProvider.value.securityGrantToken = props.securityGrantToken;
+                    watch(() => props.securityGrantToken, () => {
+                        itemProvider.value.securityGrantToken = props.securityGrantToken;
                     });
-                    vue_1.watch(() => props.modelValue, () => {
-                        util_1.updateRefValue(internalValue, props.modelValue ? [props.modelValue] : []);
+                    watch(() => props.entityTypeGuid, () => {
+                        const oldProvider = itemProvider.value;
+                        const newProvider = new CategoryTreeItemProvider();
+                        newProvider.rootCategoryGuid = oldProvider.rootCategoryGuid;
+                        newProvider.entityTypeQualifierColumn = oldProvider.entityTypeQualifierColumn;
+                        newProvider.entityTypeQualifierValue = oldProvider.entityTypeQualifierValue;
+                        newProvider.securityGrantToken = oldProvider.securityGrantToken;
+                        newProvider.entityTypeGuid = props.entityTypeGuid;
+                        itemProvider.value = newProvider;
+                    });
+                    watch(internalValue, () => {
+                        emit("update:modelValue", internalValue.value);
+                    });
+                    watch(() => props.modelValue, () => {
+                        var _a;
+                        updateRefValue(internalValue, (_a = props.modelValue) !== null && _a !== void 0 ? _a : null);
                     });
                     return {
                         internalValue,
@@ -63,10 +88,11 @@ System.register(["vue", "../Util/treeItemProviders", "../Util/util", "./treeItem
     formGroupClasses="category-picker"
     iconCssClass="fa fa-folder-open"
     :provider="itemProvider"
+    :multiple="multiple"
 />
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=categoryPicker.js.map
+}));

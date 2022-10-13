@@ -1,21 +1,18 @@
-System.register(["vue", "../Fields/index", "../Util/component"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, index_1, component_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', '@Obsidian/Utility/fieldTypes', '@Obsidian/Utility/component'], (function (exports) {
+    'use strict';
+    var defineComponent, computed, getFieldType, useVModelPassthrough;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (index_1_1) {
-                index_1 = index_1_1;
-            },
-            function (component_1_1) {
-                component_1 = component_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            computed = module.computed;
+        }, function (module) {
+            getFieldType = module.getFieldType;
+        }, function (module) {
+            useVModelPassthrough = module.useVModelPassthrough;
+        }],
+        execute: (function () {
+
+            var RockAttributeFilter = exports('default', defineComponent({
                 name: "RockAttributeFilter",
                 props: {
                     modelValue: {
@@ -39,12 +36,13 @@ System.register(["vue", "../Fields/index", "../Util/component"], function (expor
                     "update:modelValue"
                 ],
                 setup(props, { emit }) {
-                    const internalValue = component_1.useVModelPassthrough(props, "modelValue", emit);
-                    const field = vue_1.computed(() => {
-                        return index_1.getFieldType(props.attribute.fieldTypeGuid);
+                    const internalValue = useVModelPassthrough(props, "modelValue", emit);
+                    const field = computed(() => {
+                        var _a;
+                        return getFieldType((_a = props.attribute.fieldTypeGuid) !== null && _a !== void 0 ? _a : "");
                     });
-                    const filterComponent = vue_1.computed(() => { var _a; return (_a = field.value) === null || _a === void 0 ? void 0 : _a.getFilterComponent(); });
-                    const configurationValues = vue_1.computed(() => { var _a; return (_a = props.attribute.configurationValues) !== null && _a !== void 0 ? _a : {}; });
+                    const filterComponent = computed(() => { var _a; return (_a = field.value) === null || _a === void 0 ? void 0 : _a.getFilterComponent(); });
+                    const configurationValues = computed(() => { var _a; return (_a = props.attribute.configurationValues) !== null && _a !== void 0 ? _a : {}; });
                     return {
                         configurationValues,
                         filterComponent,
@@ -59,7 +57,7 @@ System.register(["vue", "../Fields/index", "../Util/component"], function (expor
     :filterMode="filterMode" />
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=rockAttributeFilter.js.map
+}));

@@ -61,7 +61,7 @@
                 <asp:Panel ID="pnlSmartSearchEdit" runat="server" Visible="false">
                     <div class="row">
                         <div class="col-md-6">
-                            <Rock:RockCheckBoxList ID="cblSmartSearchEntities" runat="server" Label="Search Entities" Help="Select the entities you would like to be search via the Smart Search feature. If no value is selected all entities will be searched." />
+                            <Rock:RockCheckBoxList ID="cblSmartSearchEntities" runat="server" Label="Search Entities" Help="Select the entities you would like to be searched via the Smart Search feature. If no value is selected all entities will be searched." />
                         </div>
                         <div class="col-md-6">
                             <Rock:RockDropDownList ID="ddlSearchType" runat="server" Label="Search Type" />
@@ -90,8 +90,8 @@
                         <Columns>
                             <Rock:RockBoundField DataField="Name" HeaderText="Entity Name" SortExpression="Name" />
                             <Rock:BoolField DataField="IsIndexingEnabled" HeaderText="Indexing Enabled" SortExpression="IsIndexingEnabled" />
-                            <Rock:LinkButtonField CssClass="btn btn-default" HeaderText="Bulk Load Documents" HeaderStyle-HorizontalAlign="Center" ItemStyle-HorizontalAlign="Center" Text="<i class='fa fa-download'></i>" OnClick="gBulkLoad_Click" />
-                            <Rock:LinkButtonField CssClass="btn btn-default" HeaderText="Recreate Index" HeaderStyle-HorizontalAlign="Center" ItemStyle-HorizontalAlign="Center" Text="<i class='fa fa-refresh'></i>" OnClick="gRefresh_Click" />
+                            <Rock:LinkButtonField CssClass="btn btn-default" HeaderText="Bulk Load Documents" HeaderStyle-HorizontalAlign="Center" ItemStyle-HorizontalAlign="Center" Text="<i class='fa fa-download'></i>" OnClick="gBulkLoad_Click" OnDataBound="gEntityList_BulkLoadDocuments_DataBound" />
+                            <Rock:LinkButtonField CssClass="btn btn-default" HeaderText="Recreate Index" HeaderStyle-HorizontalAlign="Center" ItemStyle-HorizontalAlign="Center" Text="<i class='fa fa-refresh'></i>" OnClick="gRefresh_Click" OnDataBound="gEntityList_RecreateIndex_DataBound" />
                         </Columns>
                     </Rock:Grid>
                 </div>

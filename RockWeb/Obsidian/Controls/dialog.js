@@ -1,24 +1,24 @@
-System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, rockButton_1, page_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', './rockButton.js', '@Obsidian/Utility/page', 'tslib', '@Obsidian/Utility/promiseUtils'], (function (exports) {
+    'use strict';
+    var defineComponent, ref, computed, watch, nextTick, RockButton, trackModalState;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (page_1_1) {
-                page_1 = page_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            ref = module.ref;
+            computed = module.computed;
+            watch = module.watch;
+            nextTick = module.nextTick;
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            trackModalState = module.trackModalState;
+        }, function () {}, function () {}],
+        execute: (function () {
+
+            var dialog = exports('default', defineComponent({
                 name: "Dialog",
                 components: {
-                    RockButton: rockButton_1.default
+                    RockButton
                 },
                 props: {
                     modelValue: {
@@ -31,9 +31,9 @@ System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exp
                     }
                 },
                 setup(props, { emit, slots }) {
-                    const doShake = vue_1.ref(false);
-                    const modalDiv = vue_1.ref(null);
-                    const hasHeader = vue_1.computed(() => !!slots.header);
+                    const doShake = ref(false);
+                    const modalDiv = ref(null);
+                    const hasHeader = computed(() => !!slots.header);
                     const close = () => {
                         emit("update:modelValue", false);
                     };
@@ -44,7 +44,7 @@ System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exp
                         }
                     };
                     const centerOnScreen = () => {
-                        vue_1.nextTick(() => {
+                        nextTick(() => {
                             if (!modalDiv.value) {
                                 return;
                             }
@@ -54,10 +54,10 @@ System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exp
                         });
                     };
                     if (props.modelValue) {
-                        page_1.trackModalState(true);
+                        trackModalState(true);
                     }
-                    vue_1.watch(() => props.modelValue, () => {
-                        page_1.trackModalState(props.modelValue);
+                    watch(() => props.modelValue, () => {
+                        trackModalState(props.modelValue);
                     });
                     return {
                         centerOnScreen,
@@ -96,7 +96,7 @@ System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exp
 </teleport>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=dialog.js.map
+}));

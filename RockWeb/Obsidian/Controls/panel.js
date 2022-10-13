@@ -1,32 +1,30 @@
-System.register(["vue", "../Util/component", "../Elements/rockButton", "../Elements/fullscreen", "../Elements/transitionVerticalCollapse"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, component_1, rockButton_1, fullscreen_1, transitionVerticalCollapse_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', '@Obsidian/Utility/component', './rockButton.js', './fullscreen.js', './transitionVerticalCollapse.js', 'tslib', '@Obsidian/Utility/promiseUtils'], (function (exports) {
+    'use strict';
+    var defineComponent, ref, computed, watch, nextTick, useVModelPassthrough, RockButton, Fullscreen, TransitionVerticalCollapse;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (component_1_1) {
-                component_1 = component_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (fullscreen_1_1) {
-                fullscreen_1 = fullscreen_1_1;
-            },
-            function (transitionVerticalCollapse_1_1) {
-                transitionVerticalCollapse_1 = transitionVerticalCollapse_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            ref = module.ref;
+            computed = module.computed;
+            watch = module.watch;
+            nextTick = module.nextTick;
+        }, function (module) {
+            useVModelPassthrough = module.useVModelPassthrough;
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            Fullscreen = module["default"];
+        }, function (module) {
+            TransitionVerticalCollapse = module["default"];
+        }, function () {}, function () {}],
+        execute: (function () {
+
+            var Panel = exports('default', defineComponent({
                 name: "Panel",
                 components: {
-                    Fullscreen: fullscreen_1.default,
-                    RockButton: rockButton_1.default,
-                    TransitionVerticalCollapse: transitionVerticalCollapse_1.default
+                    Fullscreen,
+                    RockButton,
+                    TransitionVerticalCollapse
                 },
                 inheritAttrs: false,
                 props: {
@@ -52,7 +50,7 @@ System.register(["vue", "../Util/component", "../Elements/rockButton", "../Eleme
                     },
                     isFullscreenPageOnly: {
                         type: Boolean,
-                        default: true
+                        default: false
                     },
                     type: {
                         type: String,
@@ -62,9 +60,13 @@ System.register(["vue", "../Util/component", "../Elements/rockButton", "../Eleme
                         type: String,
                         default: ""
                     },
-                    titleIconClass: {
+                    titleIconCssClass: {
                         type: String,
                         default: ""
+                    },
+                    headerSecondaryActions: {
+                        type: Array,
+                        required: false
                     }
                 },
                 emits: [
@@ -73,12 +75,15 @@ System.register(["vue", "../Util/component", "../Elements/rockButton", "../Eleme
                     "update:isFullscreen"
                 ],
                 setup(props, { emit }) {
-                    const internalValue = component_1.useVModelPassthrough(props, "modelValue", emit);
-                    const isDrawerOpen = component_1.useVModelPassthrough(props, "isDrawerOpen", emit);
-                    const isFullscreen = component_1.useVModelPassthrough(props, "isFullscreen", emit);
-                    const panelElement = vue_1.ref(null);
-                    const hasCollapseAction = vue_1.computed(() => props.hasCollapse && !isFullscreen.value);
-                    const panelClass = vue_1.computed(() => {
+                    const internalValue = useVModelPassthrough(props, "modelValue", emit);
+                    const isDrawerOpen = useVModelPassthrough(props, "isDrawerOpen", emit);
+                    const isFullscreen = useVModelPassthrough(props, "isFullscreen", emit);
+                    const panelElement = ref(null);
+                    const hasCollapseAction = computed(() => props.hasCollapse && !isFullscreen.value);
+                    const hasHeaderSecondaryActions = computed(() => !!props.headerSecondaryActions && props.headerSecondaryActions.length > 0);
+                    const isHelpOpen = ref(false);
+                    const headerSecondaryActionMenu = ref(null);
+                    const panelClass = computed(() => {
                         const classes = ["panel", "panel-flex"];
                         classes.push(`panel-${props.type}`);
                         if (isFullscreen.value) {
@@ -86,19 +91,43 @@ System.register(["vue", "../Util/component", "../Elements/rockButton", "../Eleme
                         }
                         return classes;
                     });
-                    const panelHeadingClass = vue_1.computed(() => {
+                    const panelHeadingClass = computed(() => {
                         const classes = ["panel-heading"];
                         if (props.hasCollapse) {
-                            classes.push("clickable");
+                            classes.push("cursor-pointer");
                         }
                         return classes;
                     });
-                    const panelTabIndex = vue_1.computed(() => isFullscreen.value ? "0" : undefined);
-                    const isPanelOpen = vue_1.computed(() => !props.hasCollapse || internalValue.value !== false || isFullscreen.value);
+                    const panelTabIndex = computed(() => isFullscreen.value ? "0" : undefined);
+                    const isPanelOpen = computed(() => !props.hasCollapse || internalValue.value !== false || isFullscreen.value);
+                    const getHeaderSecondaryActionIconClass = (action) => {
+                        if (action.iconCssClass) {
+                            let iconClass = action.iconCssClass;
+                            if (action.type !== "default" && action.type !== "link") {
+                                iconClass += ` text-${action.type}`;
+                            }
+                            return iconClass;
+                        }
+                        else {
+                            return "";
+                        }
+                    };
+                    const getHeaderSecondaryActionItemClass = (action) => {
+                        return action.disabled ? "disabled" : "";
+                    };
+                    const onIgnoreClick = () => { };
                     const onDrawerPullClick = () => {
                         isDrawerOpen.value = !isDrawerOpen.value;
                     };
+                    const onHelpClick = () => {
+                        isHelpOpen.value = !isHelpOpen.value;
+                    };
                     const onPanelHeadingClick = () => {
+                        if (props.hasCollapse) {
+                            internalValue.value = !isPanelOpen.value;
+                        }
+                    };
+                    const onPanelExpandClick = () => {
                         if (props.hasCollapse) {
                             internalValue.value = !isPanelOpen.value;
                         }
@@ -114,18 +143,43 @@ System.register(["vue", "../Util/component", "../Elements/rockButton", "../Eleme
                             isFullscreen.value = !isFullscreen.value;
                         }
                     };
-                    vue_1.watch(isFullscreen, () => {
+                    const onActionClick = (action, event) => {
+                        if (action.disabled) {
+                            return;
+                        }
+                        if (headerSecondaryActionMenu.value) {
+                            $(headerSecondaryActionMenu.value).dropdown("toggle");
+                        }
+                        if (action.handler) {
+                            action.handler(event);
+                        }
+                    };
+                    watch(isFullscreen, () => {
                         if (isFullscreen.value) {
-                            vue_1.nextTick(() => { var _a; return (_a = panelElement.value) === null || _a === void 0 ? void 0 : _a.focus(); });
+                            nextTick(() => { var _a; return (_a = panelElement.value) === null || _a === void 0 ? void 0 : _a.focus(); });
+                        }
+                    });
+                    watch(headerSecondaryActionMenu, () => {
+                        if (headerSecondaryActionMenu.value) {
+                            $(headerSecondaryActionMenu.value).dropdown();
                         }
                     });
                     return {
+                        getHeaderSecondaryActionIconClass,
+                        getHeaderSecondaryActionItemClass,
                         hasCollapseAction,
+                        hasHeaderSecondaryActions,
+                        headerSecondaryActionMenu,
                         isDrawerOpen,
                         isFullscreen,
+                        isHelpOpen,
                         isPanelOpen,
+                        onActionClick,
                         onDrawerPullClick,
                         onFullscreenClick,
+                        onHelpClick,
+                        onIgnoreClick,
+                        onPanelExpandClick,
                         onPanelHeadingClick,
                         onPanelKeyDown,
                         panelClass,
@@ -137,105 +191,64 @@ System.register(["vue", "../Util/component", "../Elements/rockButton", "../Eleme
                 template: `
 <Fullscreen v-model="isFullscreen" :isPageOnly="isFullscreenPageOnly">
     <div :class="panelClass" ref="panelElement" v-bind="$attrs" :tabIndex="panelTabIndex" @keydown="onPanelKeyDown">
-        <v-style>
-            .panel.panel-flex {
-                display: flex;
-                flex-direction: column;
-            }
-
-            .panel.panel-flex > .panel-heading {
-                display: flex;
-                align-items: center;
-                padding: 0;
-                line-height: 1em;
-                min-height: 48px;
-            }
-
-            .panel.panel-flex > .panel-heading > .panel-title {
-                padding: 0px 24px;
-                flex-grow: 1;
-            }
-
-            .panel.panel-flex > .panel-heading > .panel-aside {
-                padding: 0px 24px 0px 0px;
-            }
-
-            .panel.panel-flex > .panel-heading > .panel-action {
-                display: flex;
-                border-left: 1px solid #ccc;
-                align-self: stretch;
-                align-items: center;
-                width: 48px;
-                justify-content: center;
-                cursor: pointer;
-            }
-
-            .panel.panel-fullscreen {
-                margin: 0px;
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100vw;
-                height: 100vh;
-            }
-
-            .panel.panel-fullscreen,
-            .panel.panel-fullscreen > .panel-heading {
-                border-radius: 0px;
-            }
-
-            .panel.panel-flex .panel-flex-fill-body {
-                margin: -24px;
-            }
-
-            .panel.panel-flex.panel-fullscreen > .panel-body {
-                flex-grow: 1;
-                position: relative;
-                overflow-y: auto;
-            }
-
-            .page-fullscreen-capable .panel.panel-block.panel-flex {
-                overflow-y: hidden;
-            }
-
-            .page-fullscreen-capable .panel.panel-flex.panel-block > .panel-body {
-                position: relative;
-            }
-
-            .page-fullscreen-capable .panel.panel-flex.panel-block .panel-flex-fill-body,
-            body.is-fullscreen .panel.panel-flex.panel-block .panel-flex-fill-body {
-                position: absolute;
-                left: 0px;
-                top: 0px;
-                right: 0px;
-                bottom: 0px;
-                margin: 0px;
-            }
-        </v-style>
 
         <div :class="panelHeadingClass" @click="onPanelHeadingClick">
             <h1 class="panel-title">
                 <slot v-if="$slots.title" name="title" />
                 <template v-else>
-                    <i v-if="titleIconClass" :class="titleIconClass"></i>
+                    <i v-if="titleIconCssClass" :class="titleIconCssClass"></i>
                     {{ title }}
                 </template>
             </h1>
 
-            <div class="panel-aside">
-                <slot name="titleAside" />
+            <div class="panel-header-actions" @click.prevent.stop="onIgnoreClick">
+                <slot name="headerActions" />
 
-                <template v-if="hasCollapseAction">
-                    <i v-if="isPanelOpen" class="fa fa-chevron-up fa-xs ml-2"></i>
-                    <i v-else class="fa fa-chevron-down fa-xs ml-2"></i>
+                <span v-if="$slots.helpContent" class="action clickable" @click="onHelpClick">
+                    <i class="fa fa-question"></i>
+                </span>
+
+                <span v-if="hasFullscreen" class="action clickable" @click="onFullscreenClick">
+                    <i class="fa fa-expand"></i>
+                </span>
+
+                <template v-if="hasHeaderSecondaryActions">
+                    <span class="action clickable" style="position: relative;">
+                        <i class="fa fa-ellipsis-v" data-toggle="dropdown" ref="headerSecondaryActionMenu"></i>
+                        <ul class="dropdown-menu dropdown-menu-right">
+                            <li v-for="action in headerSecondaryActions" :class="getHeaderSecondaryActionItemClass(action)">
+                                <a href="#" @click.prevent.stop="onActionClick(action, $event)">
+                                    <i :class="getHeaderSecondaryActionIconClass(action)"></i>
+                                    {{ action.title }}
+                                </a>
+                            </li>
+                        </ul>
+                    </span>
                 </template>
+
+                <span v-if="hasCollapseAction" class="action clickable" @click="onPanelExpandClick">
+                    <i v-if="isPanelOpen" class="fa fa-chevron-up"></i>
+                    <i v-else class="fa fa-chevron-down"></i>
+                </span>
+            </div>
+        </div>
+
+        <div v-if="$slots.subheaderLeft || $slots.subheaderRight" class="panel-sub-header">
+            <div class="panel-sub-header-left">
+                <slot name="subheaderLeft" />
             </div>
 
-            <slot name="actionAside" />
+            <div class="panel-sub-header-right">
+                <slot name="subheaderRight" />
+            </div>
+        </div>
 
-            <span v-if="hasFullscreen" class="panel-action" @click.prevent.stop="onFullscreenClick">
-                <i class="fa fa-expand"></i>
-            </span>
+        <div v-if="$slots.helpContent" class="panel-help">
+            <TransitionVerticalCollapse>
+                <div v-show="isHelpOpen" class="help-content">
+                    <slot name="helpContent" />
+                </div>
+            </TransitionVerticalCollapse>
         </div>
 
         <div v-if="$slots.drawer" class="panel-drawer rock-panel-drawer" :class="isDrawerOpen ? 'open' : ''">
@@ -253,13 +266,23 @@ System.register(["vue", "../Util/component", "../Elements/rockButton", "../Eleme
         <TransitionVerticalCollapse>
             <div v-show="isPanelOpen" class="panel-body">
                 <slot />
+
+                <div v-if="$slots.footerActions || $slots.footerSecondaryActions" class="actions">
+                    <div class="footer-actions">
+                        <slot name="footerActions" />
+                    </div>
+
+                    <div class="footer-secondary-actions">
+                        <slot name="footerSecondaryActions" />
+                    </div>
+                </div>
             </div>
         </TransitionVerticalCollapse>
     </div>
 </Fullscreen>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=panel.js.map
+}));

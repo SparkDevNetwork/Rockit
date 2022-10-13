@@ -981,7 +981,7 @@
         </member>
         <member name="F:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap">
             <summary>
-            Default claim type maping for outbound claims.
+            Default claim type mapping for outbound claims.
             </summary>
         </member>
         <member name="F:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimFilter">
@@ -1008,9 +1008,9 @@
             <summary>
             Gets or sets the <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.InboundClaimTypeMap"/> which is used when setting the <see cref="P:System.Security.Claims.Claim.Type"/> for claims in the <see cref="T:System.Security.Claims.ClaimsPrincipal"/> extracted when validating a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>. 
             <para>The <see cref="P:System.Security.Claims.Claim.Type"/> is set to the JSON claim 'name' after translating using this mapping.</para>
-            <para>The default value is ClaimTypeMapping.InboundClaimTypeMap</para>
+            <para>The default value is ClaimTypeMapping.InboundClaimTypeMap.</para>
             </summary>
-            <exception cref="T:System.ArgumentNullException">'value is null.</exception>
+            <exception cref="T:System.ArgumentNullException">'value' is null.</exception>
         </member>
         <member name="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap">
             <summary>
@@ -1029,7 +1029,7 @@
         <member name="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.InboundClaimFilter">
             <summary>Gets or sets the <see cref="T:System.Collections.Generic.ISet`1"/> used to filter claims when populating a <see cref="T:System.Security.Claims.ClaimsIdentity"/> claims form a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.
             When a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> is validated, claims with types found in this <see cref="T:System.Collections.Generic.ISet`1"/> will not be added to the <see cref="T:System.Security.Claims.ClaimsIdentity"/>.
-            <para>The default value is ClaimTypeMapping.InboundClaimFliter</para>
+            <para>The default value is ClaimTypeMapping.InboundClaimFilter.</para>
             </summary>
             <exception cref="T:System.ArgumentNullException">'value' is null.</exception>
         </member>
@@ -1038,26 +1038,26 @@
             Gets or sets the property name of <see cref="P:System.Security.Claims.Claim.Properties"/> the will contain the original JSON claim 'name' if a mapping occurred when the <see cref="T:System.Security.Claims.Claim"/>(s) were created.
             <para>See <seealso cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.InboundClaimTypeMap"/> for more information.</para>
             </summary>
-            <exception cref="T:System.ArgumentException">If <see cref="T:System.String"/>.IsIsNullOrWhiteSpace('value') is true.</exception>
+            <exception cref="T:System.ArgumentException">If <see cref="T:System.String"/>.IsNullOrWhiteSpace('value') is true.</exception>
         </member>
         <member name="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.JsonClaimTypeProperty">
             <summary>
-            Gets or sets the property name of <see cref="P:System.Security.Claims.Claim.Properties"/> the will contain .Net type that was recogninzed when JwtPayload.Claims serialized the value to JSON.
+            Gets or sets the property name of <see cref="P:System.Security.Claims.Claim.Properties"/> the will contain .Net type that was recognized when JwtPayload.Claims serialized the value to JSON.
             <para>See <seealso cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.InboundClaimTypeMap"/> for more information.</para>
             </summary>
-            <exception cref="T:System.ArgumentException">If <see cref="T:System.String"/>.IsIsNullOrWhiteSpace('value') is true.</exception>
+            <exception cref="T:System.ArgumentException">If <see cref="T:System.String"/>.IsNullOrWhiteSpace('value') is true.</exception>
         </member>
         <member name="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CanValidateToken">
             <summary>
-            Returns 'true' which indicates this instance can validate a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.
+            Returns a value that indicates if this handler can validate a <see cref="T:Microsoft.IdentityModel.Tokens.SecurityToken"/>.
             </summary>
+            <returns>'true', indicating this instance can validate a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.</returns>
         </member>
         <member name="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CanWriteToken">
             <summary>
-            Gets a value indicating whether the class provides serialization functionality to serialize token handled 
-            by this instance.
+            Gets the value that indicates if this instance can write a <see cref="T:Microsoft.IdentityModel.Tokens.SecurityToken"/>.
             </summary>
-            <returns>true if the WriteToken method can serialize this token.</returns>
+            <returns>'true', indicating this instance can write a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.</returns>
         </member>
         <member name="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.TokenLifetimeInMinutes">
             <summary>
@@ -1072,18 +1072,12 @@
             </summary>
             <return>The type of <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/></return>
         </member>
-        <member name="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.MaximumTokenSizeInBytes">
-            <summary>
-            Gets and sets the maximum size in bytes, that a will be processed.
-            </summary>
-            <exception cref="T:System.ArgumentOutOfRangeException">'value' less than 1.</exception>
-        </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CanReadToken(System.String)">
             <summary>
             Determines if the string is a well formed Json Web Token (JWT).
             <para>see: http://tools.ietf.org/html/rfc7519 </para>
             </summary>
-            <param name="tokenString">String that should represent a valid JWT.</param>
+            <param name="token">String that should represent a valid JWT.</param>
             <remarks>Uses <see cref="M:System.Text.RegularExpressions.Regex.IsMatch(System.String,System.String)"/> matching one of:
             <para>JWS: @"^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$"</para>
             <para>JWE: (dir): @"^[A-Za-z0-9-_]+\.\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$"</para>
@@ -1091,7 +1085,7 @@
             </remarks>
             <returns>
             <para>'false' if the token is null or whitespace.</para>
-            <para>'false' if token.Length * 2 >  <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.MaximumTokenSizeInBytes"/>.</para>
+            <para>'false' if token.Length * 2 >  <see cref="P:Microsoft.IdentityModel.Tokens.SecurityTokenHandler.MaximumTokenSizeInBytes"/>.</para>
             <para>'true' if the token is in JSON compact serialization format.</para>
             </returns>
         </member>
@@ -1103,7 +1097,7 @@
             <remarks>A JWS and JWE can be returned.
             <para>If <see cref="P:Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor.EncryptingCredentials"/>is provided, then a JWE will be created.</para>
             <para>If <see cref="P:Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor.SigningCredentials"/> is provided then a JWS will be created.</para>
-            <para>If both are provided then a JWE with an embeded JWS will be created.</para>
+            <para>If both are provided then a JWE with an embedded JWS will be created.</para>
             </remarks>
         </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CreateEncodedJwt(System.String,System.String,System.Security.Claims.ClaimsIdentity,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Nullable{System.DateTime},Microsoft.IdentityModel.Tokens.SigningCredentials)">
@@ -1120,7 +1114,7 @@
             <remarks>If <see cref="P:System.Security.Claims.ClaimsIdentity.Actor"/> is not null, then a claim { actort, 'value' } will be added to the payload. See <see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CreateActorValue(System.Security.Claims.ClaimsIdentity)"/> for details on how the value is created.
             <para>See <seealso cref="T:System.IdentityModel.Tokens.Jwt.JwtHeader"/> for details on how the HeaderParameters are added to the header.</para>
             <para>See <seealso cref="T:System.IdentityModel.Tokens.Jwt.JwtPayload"/> for details on how the values are added to the payload.</para>
-            <para>Each <see cref="T:System.Security.Claims.Claim"/> in the <paramref name="subject"/> will map <see cref="P:System.Security.Claims.Claim.Type"/> by applying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/>. Modifying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/> could change outbound Json .</para>
+            <para>Each <see cref="T:System.Security.Claims.Claim"/> in the <paramref name="subject"/> will map <see cref="P:System.Security.Claims.Claim.Type"/> by applying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/>. Modifying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/> could change the outbound JWT.</para>
             <para>If <see cref="T:Microsoft.IdentityModel.Tokens.SigningCredentials"/> is provided, then a JWS will be created.</para>
             </remarks>
             <returns>A Base64UrlEncoded string in 'Compact Serialization Format'.</returns>
@@ -1135,12 +1129,12 @@
             <param name="notBefore">Translated into 'epoch time' and assigned to 'nbf'.</param>
             <param name="expires">Translated into 'epoch time' and assigned to 'exp'.</param>
             <param name="issuedAt">Translated into 'epoch time' and assigned to 'iat'.</param>
-            <param name="signingCredentials">Contains cryptographic material for signint.</param>
+            <param name="signingCredentials">Contains cryptographic material for signing.</param>
             <param name="encryptingCredentials">Contains cryptographic material for encrypting.</param>
             <remarks>If <see cref="P:System.Security.Claims.ClaimsIdentity.Actor"/> is not null, then a claim { actort, 'value' } will be added to the payload. <see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CreateActorValue(System.Security.Claims.ClaimsIdentity)"/> for details on how the value is created.
             <para>See <seealso cref="T:System.IdentityModel.Tokens.Jwt.JwtHeader"/> for details on how the HeaderParameters are added to the header.</para>
             <para>See <seealso cref="T:System.IdentityModel.Tokens.Jwt.JwtPayload"/> for details on how the values are added to the payload.</para>
-            <para>Each <see cref="T:System.Security.Claims.Claim"/> in the <paramref name="subject"/> will map <see cref="P:System.Security.Claims.Claim.Type"/> by applying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/>. Modifying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/> could change outbound Json .</para>
+            <para>Each <see cref="T:System.Security.Claims.Claim"/> in the <paramref name="subject"/> will map <see cref="P:System.Security.Claims.Claim.Type"/> by applying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/>. Modifying <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.OutboundClaimTypeMap"/> could change the outbound JWT.</para>
             </remarks>
             <returns>A Base64UrlEncoded string in 'Compact Serialization Format'.</returns>
             <exception cref="T:System.ArgumentException">If 'expires' &lt;= 'notBefore'.</exception>
@@ -1210,7 +1204,7 @@
             <param name="token">A 'JSON Web Token' (JWT) in JWS or JWE Compact Serialization Format.</param>
             <returns>A <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/></returns>
             <exception cref="T:System.ArgumentNullException">'token' is null or empty.</exception>
-            <exception cref="T:System.ArgumentException">'token.Length * 2' > MaximumTokenSizeInBytes.</exception>
+            <exception cref="T:System.ArgumentException">'token.Length' > <see cref="P:Microsoft.IdentityModel.Tokens.SecurityTokenHandler.MaximumTokenSizeInBytes"/>.</exception>
             <exception cref="T:System.ArgumentException"><see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CanReadToken(System.String)"/></exception>
             <remarks><para>If the 'token' is in JWE Compact Serialization format, only the protected header will be deserialized.</para>
             This method is unable to decrypt the payload. Use <see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ValidateToken(System.String,Microsoft.IdentityModel.Tokens.TokenValidationParameters,Microsoft.IdentityModel.Tokens.SecurityToken@)"/>to obtain the payload.</remarks>
@@ -1222,7 +1216,7 @@
             <param name="token">A 'JSON Web Token' (JWT) in JWS or JWE Compact Serialization Format.</param>
             <returns>A <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/></returns>
             <exception cref="T:System.ArgumentNullException">'token' is null or empty.</exception>
-            <exception cref="T:System.ArgumentException">'token.Length * 2' > MaximumTokenSizeInBytes.</exception>
+            <exception cref="T:System.ArgumentException">'token.Length * 2' > <see cref="P:Microsoft.IdentityModel.Tokens.SecurityTokenHandler.MaximumTokenSizeInBytes"/>.</exception>
             <exception cref="T:System.ArgumentException"><see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CanReadToken(System.String)"/></exception>
             <remarks><para>If the 'token' is in JWE Compact Serialization format, only the protected header will be deserialized.</para>
             This method is unable to decrypt the payload. Use <see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ValidateToken(System.String,Microsoft.IdentityModel.Tokens.TokenValidationParameters,Microsoft.IdentityModel.Tokens.SecurityToken@)"/>to obtain the payload.</remarks>
@@ -1243,18 +1237,34 @@
             <param name="token">the JWT encoded as JWE or JWS</param>
             <param name="validationParameters">Contains validation parameters for the <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.</param>
             <param name="validatedToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> that was validated.</param>
-            <exception cref="T:System.ArgumentNullException">'token' is null or whitespace.</exception>
-            <exception cref="T:System.ArgumentNullException">'validationParameters' is null.</exception>
-            <exception cref="T:System.ArgumentNullException">token.Length * 2 > MamimumTokenSizeInBytes.</exception>
-            <exception cref="T:System.ArgumentException">'token' does not have 3 or 5 parts.</exception>
-            <returns>A <see cref="T:System.Security.Claims.ClaimsPrincipal"/> from the jwt. Does not include the header claims.</returns>
-            <remarks><see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ReadToken(System.String)"/> for additional exceptions.</remarks>
+            <exception cref="T:System.ArgumentNullException"><paramref name="token"/> is null or whitespace.</exception>
+            <exception cref="T:System.ArgumentNullException"><paramref name="validationParameters"/> is null.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="token"/>.Length > MamimumTokenSizeInBytes.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="token"/> does not have 3 or 5 parts.</exception>
+            <exception cref="T:System.ArgumentException"><see cref="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CanReadToken(System.String)"/> returns false.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenDecryptionFailedException"><paramref name="token"/> was a JWE was not able to be decrypted.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenEncryptionKeyNotFoundException"><paramref name="token"/> 'kid' header claim is not null AND decryption fails.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenException"><paramref name="token"/> 'enc' header claim is null or empty.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException"><paramref name="token"/> 'exp' claim is &lt; DateTime.UtcNow.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenInvalidAudienceException"><see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidAudience"/> is null or whitespace and <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidAudiences"/> is null. Audience is not validated if <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidateAudience"/> is set to false.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenInvalidAudienceException"><paramref name="token"/> 'aud' claim did not match either <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidAudience"/> or one of <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.ValidAudiences"/>.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenInvalidLifetimeException"><paramref name="token"/> 'nbf' claim is &gt; 'exp' claim.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenInvalidSignatureException"><paramref name="token"/>.signature is not properly formatted.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenNoExpirationException"><paramref name="token"/> 'exp' claim is missing and <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.RequireExpirationTime"/> is true.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenNoExpirationException"><see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.TokenReplayCache"/> is not null and expirationTime.HasValue is false. When a TokenReplayCache is set, tokens require an expiration time.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenNotYetValidException"><paramref name="token"/> 'nbf' claim is &gt; DateTime.UtcNow.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenReplayAddFailedException"><paramref name="token"/> could not be added to the <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.TokenReplayCache"/>.</exception>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenReplayDetectedException"><paramref name="token"/> is found in the cache.</exception>
+            <returns> A <see cref="T:System.Security.Claims.ClaimsPrincipal"/> from the JWT. Does not include claims found in the JWT header.</returns>
+            <remarks> 
+            Many of the exceptions listed above are not thrown directly from this method. See <see cref="T:Microsoft.IdentityModel.Tokens.Validators"/> to examin the call graph.
+            </remarks>
         </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ValidateTokenPayload(System.IdentityModel.Tokens.Jwt.JwtSecurityToken,Microsoft.IdentityModel.Tokens.TokenValidationParameters)">
             <summary>
             Validates the JSON payload of a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.
             </summary>
-            <param name="jwt">The token to validate.</param>
+            <param name="jwtToken">The token to validate.</param>
             <param name="validationParameters">Contains validation parameters for the <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.</param>
             <returns>A <see cref="T:System.Security.Claims.ClaimsPrincipal"/> from the jwt. Does not include the header claims.</returns>
         </member>
@@ -1287,14 +1297,14 @@
         </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ValidateSignature(System.Byte[],System.Byte[],Microsoft.IdentityModel.Tokens.SecurityKey,System.String,Microsoft.IdentityModel.Tokens.TokenValidationParameters)">
             <summary>
-            Obtains a SignatureProvider and validates the signature.
+            Obtains a <see cref="T:Microsoft.IdentityModel.Tokens.SignatureProvider"/> and validates the signature.
             </summary>
-            <param name="encodedBytes">bytes to validate.</param>
-            <param name="signature">signature to compare against.</param>
-            <param name="key"><see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/> to use.</param>
-            <param name="algorithm">crypto algorithm to use.</param>
-            <param name="validationParameters">priority will be given to <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.CryptoProviderFactory"/> over <see cref="P:Microsoft.IdentityModel.Tokens.SecurityKey.CryptoProviderFactory"/>.</param>
-            <returns>true if signature is valid.</returns>
+            <param name="encodedBytes">Bytes to validate.</param>
+            <param name="signature">Signature to compare against.</param>
+            <param name="key"><See cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/> to use.</param>
+            <param name="algorithm">Crypto algorithm to use.</param>
+            <param name="validationParameters">Priority will be given to <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.CryptoProviderFactory"/> over <see cref="P:Microsoft.IdentityModel.Tokens.SecurityKey.CryptoProviderFactory"/>.</param>
+            <returns>'true' if signature is valid.</returns>
         </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ValidateSignature(System.String,Microsoft.IdentityModel.Tokens.TokenValidationParameters)">
             <summary>
@@ -1307,16 +1317,16 @@
             <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenValidationException">If a signature is not found and <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.RequireSignedTokens"/> is true.</exception>
             <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenSignatureKeyNotFoundException">If the 'token' has a key identifier and none of the <see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/>(s) provided result in a validated signature. 
             This can indicate that a key refresh is required.</exception>
-            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenInvalidSignatureException">If after trying all the <see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/>(s), none result in a validated signture AND the 'token' does not have a key identifier.</exception>
-            <returns><see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> that has the signature validated if token was signed and <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.RequireSignedTokens"/> is true.</returns>
+            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenInvalidSignatureException">If after trying all the <see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/>(s), none result in a validated signature AND the 'token' does not have a key identifier.</exception>
+            <returns>A <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> that has the signature validated if token was signed.</returns>
             <remarks><para>If the 'token' is signed, the signature is validated even if <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.RequireSignedTokens"/> is false.</para>
-            <para>If the 'token' signature is validated, then the <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityToken.SigningKey"/> will be set to the key that signed the 'token'.</para></remarks>
+            <para>If the 'token' signature is validated, then the <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityToken.SigningKey"/> will be set to the key that signed the 'token'.It is the responsibility of <see cref="P:Microsoft.IdentityModel.Tokens.TokenValidationParameters.SignatureValidator"/> to set the <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityToken.SigningKey"/></para></remarks>
         </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.CreateClaimsIdentity(System.IdentityModel.Tokens.Jwt.JwtSecurityToken,System.String,Microsoft.IdentityModel.Tokens.TokenValidationParameters)">
             <summary>
             Creates a <see cref="T:System.Security.Claims.ClaimsIdentity"/> from a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.
             </summary>
-            <param name="jwt">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> to use as a <see cref="T:System.Security.Claims.Claim"/> source.</param>
+            <param name="jwtToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> to use as a <see cref="T:System.Security.Claims.Claim"/> source.</param>
             <param name="issuer">The value to set <see cref="P:System.Security.Claims.Claim.Issuer"/></param>
             <param name="validationParameters"> Contains parameters for validating the token.</param>
             <returns>A <see cref="T:System.Security.Claims.ClaimsIdentity"/> containing the <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityToken.Claims"/>.</returns>
@@ -1342,7 +1352,7 @@
             Determines if the audiences found in a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> are valid.
             </summary>
             <param name="audiences">The audiences found in the <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.</param>
-            <param name="securityToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> being validated.</param>
+            <param name="jwtToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> being validated.</param>
             <param name="validationParameters"><see cref="T:Microsoft.IdentityModel.Tokens.TokenValidationParameters"/> required for validation.</param>
             <remarks>See <see cref="M:Microsoft.IdentityModel.Tokens.Validators.ValidateAudience(System.Collections.Generic.IEnumerable{System.String},Microsoft.IdentityModel.Tokens.SecurityToken,Microsoft.IdentityModel.Tokens.TokenValidationParameters)"/> for additional details.</remarks>
         </member>
@@ -1350,21 +1360,29 @@
             <summary>
             Validates the lifetime of a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>.
             </summary>
-            <param name="notBefore">The <see cref="T:System.DateTime"/> value of the 'nbf' claim if it exists in the 'jwt'.</param>
-            <param name="expires">The <see cref="T:System.DateTime"/> value of the 'exp' claim if it exists in the 'jwt'.</param>
-            <param name="securityToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> being validated.</param>
+            <param name="notBefore">The <see cref="T:System.DateTime"/> value of the 'nbf' claim if it exists in the 'jwtToken'.</param>
+            <param name="expires">The <see cref="T:System.DateTime"/> value of the 'exp' claim if it exists in the 'jwtToken'.</param>
+            <param name="jwtToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> being validated.</param>
             <param name="validationParameters"><see cref="T:Microsoft.IdentityModel.Tokens.TokenValidationParameters"/> required for validation.</param>
             <remarks><see cref="M:Microsoft.IdentityModel.Tokens.Validators.ValidateLifetime(System.Nullable{System.DateTime},System.Nullable{System.DateTime},Microsoft.IdentityModel.Tokens.SecurityToken,Microsoft.IdentityModel.Tokens.TokenValidationParameters)"/> for additional details.</remarks>
         </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ValidateIssuer(System.String,System.IdentityModel.Tokens.Jwt.JwtSecurityToken,Microsoft.IdentityModel.Tokens.TokenValidationParameters)">
             <summary>
-            Determines if an issuer found in a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> is valid.
+            Determines if the issuer found in a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> is valid.
             </summary>
             <param name="issuer">The issuer to validate</param>
-            <param name="securityToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> that is being validated.</param>
+            <param name="jwtToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> that is being validated.</param>
             <param name="validationParameters"><see cref="T:Microsoft.IdentityModel.Tokens.TokenValidationParameters"/> required for validation.</param>
             <returns>The issuer to use when creating the <see cref="T:System.Security.Claims.Claim"/>(s) in the <see cref="T:System.Security.Claims.ClaimsIdentity"/>.</returns>
             <remarks><see cref="M:Microsoft.IdentityModel.Tokens.Validators.ValidateIssuer(System.String,Microsoft.IdentityModel.Tokens.SecurityToken,Microsoft.IdentityModel.Tokens.TokenValidationParameters)"/> for additional details.</remarks>
+        </member>
+        <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ValidateTokenReplay(System.Nullable{System.DateTime},System.String,Microsoft.IdentityModel.Tokens.TokenValidationParameters)">
+            <summary>
+            Determines if a <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> is already validated.
+            </summary>
+            <param name="expires">The <see cref="T:System.DateTime"/> value of the 'exp' claim if it exists in the <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/>'.</param>
+            <param name="securityToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> that is being validated.</param>
+            <param name="validationParameters"><see cref="T:Microsoft.IdentityModel.Tokens.TokenValidationParameters"/> required for validation.</param>
         </member>
         <member name="M:System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.ResolveIssuerSigningKey(System.String,System.IdentityModel.Tokens.Jwt.JwtSecurityToken,Microsoft.IdentityModel.Tokens.TokenValidationParameters)">
             <summary>
@@ -1396,7 +1414,6 @@
             <exception cref="T:System.ArgumentNullException">if 'jwtToken' is null.</exception>
             <exception cref="T:System.ArgumentNullException">if 'validationParameters' is null.</exception>
             <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenException">if 'jwtToken.Header.enc' is null or empty.</exception>
-            <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenException">if 'jwtToken.Header.alg' is not equal to 'dir'.</exception>
             <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenEncryptionKeyNotFoundException">if 'jwtToken.Header.kid' is not null AND decryption fails.</exception>
             <exception cref="T:Microsoft.IdentityModel.Tokens.SecurityTokenDecryptionFailedException">if the JWE was not able to be decrypted.</exception>
         </member>
@@ -1410,7 +1427,7 @@
             <summary>
             Validates the <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityToken.SigningKey"/> is an expected value.
             </summary>
-            <param name="securityKey">The <see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/> that signed the <see cref="T:Microsoft.IdentityModel.Tokens.SecurityToken"/>.</param>
+            <param name="key">The <see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/> that signed the <see cref="T:Microsoft.IdentityModel.Tokens.SecurityToken"/>.</param>
             <param name="securityToken">The <see cref="T:System.IdentityModel.Tokens.Jwt.JwtSecurityToken"/> to validate.</param>
             <param name="validationParameters">The current <see cref="T:Microsoft.IdentityModel.Tokens.TokenValidationParameters"/>.</param>
             <remarks>If the <see cref="P:System.IdentityModel.Tokens.Jwt.JwtSecurityToken.SigningKey"/> is a <see cref="T:Microsoft.IdentityModel.Tokens.X509SecurityKey"/> then the X509Certificate2 will be validated using the CertificateValidator.</remarks>

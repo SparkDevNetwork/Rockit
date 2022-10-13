@@ -64,6 +64,7 @@ namespace RockWeb.Blocks.Crm
         Order = 3,
         Key = AttributeKeys.ShowSecurityButton )]
     #endregion Block Attributes
+    [Rock.SystemGuid.BlockTypeGuid( "A8456E2D-1930-4FF7-8A46-FB0800AC31E0" )]
     public partial class Documents : RockBlock, ISecondaryBlock
     {
         private static class AttributeKeys
@@ -110,10 +111,9 @@ namespace RockWeb.Blocks.Crm
 
             // Configure security button
             var securityColumn = gFileList.ColumnsOfType<SecurityField>().FirstOrDefault();
-            if ( this.ContextEntity() != null )
-            {
-                securityColumn.EntityTypeId = this.ContextEntity().TypeId;
-            }
+
+            // Set the security on the document and not the entity the document is for.
+            securityColumn.EntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.DOCUMENT ).Value;
         }
 
         protected override void OnLoad( EventArgs e )
@@ -563,15 +563,21 @@ namespace RockWeb.Blocks.Crm
 
         protected void ddlAddEditDocumentType_SelectedIndexChanged( object sender, EventArgs e )
         {
-            // Get the selected DocumentType from cache and update the BinaryFileTypeGuid in the FileUploader
-            var documentTypeCache = DocumentTypeCache.Get( ddlAddEditDocumentType.SelectedValueAsInt() ?? 0 );
-            fuUploader.BinaryFileTypeGuid = new BinaryFileTypeService( new RockContext() ).GetGuid( documentTypeCache.BinaryFileTypeId ).Value;
 
             if ( tbDocumentName.Text.IsNotNullOrWhiteSpace() || ddlAddEditDocumentType.SelectedIndex == 0 )
             {
                 // If there is already a name or nothing is selected then do do anything.
+                fuUploader.Visible = false;
+                nbSelectDocumentType.Visible = true;
                 return;
             }
+
+            // Get the selected DocumentType from cache and update the BinaryFileTypeGuid in the FileUploader
+            var documentTypeCache = DocumentTypeCache.Get( ddlAddEditDocumentType.SelectedValueAsInt() ?? 0 );
+            fuUploader.BinaryFileTypeGuid = new BinaryFileTypeService( new RockContext() ).GetGuid( documentTypeCache.BinaryFileTypeId ).Value;
+
+            fuUploader.Visible = true;
+            nbSelectDocumentType.Visible = false;
 
             string template = documentTypeCache.DefaultDocumentNameTemplate;
             if ( template.IsNotNullOrWhiteSpace() )

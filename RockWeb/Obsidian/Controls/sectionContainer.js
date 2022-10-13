@@ -1,32 +1,27 @@
-System.register(["vue", "../Elements/inlineSwitch", "../Elements/transitionVerticalCollapse", "../Util/component", "./header"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, inlineSwitch_1, transitionVerticalCollapse_1, component_1, header_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', './inlineSwitch.js', './transitionVerticalCollapse.js', '@Obsidian/Utility/component', './sectionHeader.js', '@Obsidian/Utility/guid'], (function (exports) {
+    'use strict';
+    var defineComponent, computed, InlineSwitch, TransitionVerticalCollapse, useVModelPassthrough, SectionHeader;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (inlineSwitch_1_1) {
-                inlineSwitch_1 = inlineSwitch_1_1;
-            },
-            function (transitionVerticalCollapse_1_1) {
-                transitionVerticalCollapse_1 = transitionVerticalCollapse_1_1;
-            },
-            function (component_1_1) {
-                component_1 = component_1_1;
-            },
-            function (header_1_1) {
-                header_1 = header_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            computed = module.computed;
+        }, function (module) {
+            InlineSwitch = module["default"];
+        }, function (module) {
+            TransitionVerticalCollapse = module["default"];
+        }, function (module) {
+            useVModelPassthrough = module.useVModelPassthrough;
+        }, function (module) {
+            SectionHeader = module["default"];
+        }, function () {}],
+        execute: (function () {
+
+            var sectionContainer = exports('default', defineComponent({
                 name: "SectionContainer",
                 components: {
-                    Header: header_1.default,
-                    InlineSwitch: inlineSwitch_1.default,
-                    TransitionVerticalCollapse: transitionVerticalCollapse_1.default
+                    SectionHeader,
+                    InlineSwitch,
+                    TransitionVerticalCollapse
                 },
                 props: {
                     modelValue: {
@@ -50,8 +45,8 @@ System.register(["vue", "../Elements/inlineSwitch", "../Elements/transitionVerti
                     "update:modelValue"
                 ],
                 setup(props, { emit }) {
-                    const enabled = component_1.useVModelPassthrough(props, "modelValue", emit);
-                    const showContent = vue_1.computed(() => enabled.value || !props.toggleText);
+                    const enabled = useVModelPassthrough(props, "modelValue", emit);
+                    const showContent = computed(() => enabled.value || !props.toggleText);
                     return {
                         enabled,
                         showContent
@@ -61,7 +56,9 @@ System.register(["vue", "../Elements/inlineSwitch", "../Elements/transitionVerti
 <div class="section-container well">
     <div class="section-header">
         <div class="section-header-content">
-            <Header :title="title" :description="description" />
+            <SectionHeader :title="title" :description="description" :isSeparatorHidden="true">
+                <template #actions><slot name="actions" /></template>
+            </SectionHeader>
         </div>
 
         <div v-if="toggleText" class="section-header-toggle align-self-end">
@@ -71,15 +68,14 @@ System.register(["vue", "../Elements/inlineSwitch", "../Elements/transitionVerti
 
     <TransitionVerticalCollapse>
         <div v-if="showContent">
-            <hr class="section-header-hr" />
-
+            <hr class="section-header-hr">
             <slot />
         </div>
     </TransitionVerticalCollapse>
 </div>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=sectionContainer.js.map
+}));

@@ -116,7 +116,16 @@ namespace RockWeb.Blocks.Connection
         DefaultBooleanValue = true,
         Order = 10,
         Key = AttributeKey.ExcludeNonPublicAttributes )]
+
+    [TextField("Comment Field Label",
+        Description = "The label to apply to the comment field.",
+        DefaultValue = "Comments",
+        IsRequired = false,
+        Order = 11,
+        Key = AttributeKey.CommentFieldLabel)]
+
     #endregion Block Attributes
+    [Rock.SystemGuid.BlockTypeGuid( Rock.SystemGuid.BlockType.CONNECTION_OPPORTUNITY_SIGNUP )]
     public partial class ConnectionOpportunitySignup : RockBlock
     {
         #region Attribute Keys
@@ -136,6 +145,7 @@ namespace RockWeb.Blocks.Connection
             public const string IncludeAttributeCategories = "IncludeAttributeCategories";
             public const string ExcludeAttributeCategories = "ExcludeAttributeCategories";
             public const string ExcludeNonPublicAttributes = "ExcludeNonPublicAttributes";
+            public const string CommentFieldLabel = "CommentFieldLabel";
         }
 
         #endregion
@@ -262,9 +272,9 @@ namespace RockWeb.Blocks.Connection
                         }
                     }
                     else if ( CurrentPerson != null &&
-                      CurrentPerson.LastName.Equals( lastName, StringComparison.OrdinalIgnoreCase ) &&
-                      ( CurrentPerson.NickName.Equals( firstName, StringComparison.OrdinalIgnoreCase ) || CurrentPerson.FirstName.Equals( firstName, StringComparison.OrdinalIgnoreCase ) ) &&
-                      CurrentPerson.Email.Equals( email, StringComparison.OrdinalIgnoreCase ) )
+                      lastName.Equals( CurrentPerson.LastName, StringComparison.OrdinalIgnoreCase ) &&
+                      ( firstName.Equals( CurrentPerson.NickName, StringComparison.OrdinalIgnoreCase ) || firstName.Equals( CurrentPerson.FirstName, StringComparison.OrdinalIgnoreCase ) ) &&
+                      email.Equals( CurrentPerson.Email, StringComparison.OrdinalIgnoreCase ) )
                     {
                         // If the name and email entered are the same as current person (wasn't changed), use the current person
                         person = personService.Get( CurrentPerson.Id );
@@ -415,9 +425,15 @@ namespace RockWeb.Blocks.Connection
                 }
 
                 lTitle.Text = opportunity.Name;
+                tbComments.Label = GetAttributeValue( AttributeKey.CommentFieldLabel );
 
-                pnHome.Visible = GetAttributeValue( AttributeKey.DisplayHomePhone ).AsBoolean();
-                pnMobile.Visible = GetAttributeValue( AttributeKey.DisplayMobilePhone ).AsBoolean();
+                // Hide show home phone
+                pnlHomePhone.Visible = GetAttributeValue( AttributeKey.DisplayHomePhone ).AsBoolean(); // hide column
+                pnHome.Visible = GetAttributeValue( AttributeKey.DisplayHomePhone ).AsBoolean(); // hide control
+
+                // Hide show mobile phone
+                pnlMobilePhone.Visible = GetAttributeValue( AttributeKey.DisplayMobilePhone ).AsBoolean(); // hide column
+                pnMobile.Visible = GetAttributeValue( AttributeKey.DisplayMobilePhone ).AsBoolean(); // hide control
 
                 Person registrant = null;
 

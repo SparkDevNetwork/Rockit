@@ -4,26 +4,6 @@
         <name>Microsoft.AspNetCore.Cryptography.Internal</name>
     </assembly>
     <members>
-        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.Int32)">
-            <summary>
-            Securely clears a memory buffer.
-            </summary>
-        </member>
-        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.UInt32)">
-            <summary>
-            Securely clears a memory buffer.
-            </summary>
-        </member>
-        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.UInt64)">
-            <summary>
-            Securely clears a memory buffer.
-            </summary>
-        </member>
-        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.IntPtr)">
-            <summary>
-            Securely clears a memory buffer.
-            </summary>
-        </member>
         <member name="T:Microsoft.AspNetCore.Cryptography.Cng.BCryptUtil">
             <summary>
             Wraps utility BCRYPT APIs that don't work directly with handles.
@@ -180,6 +160,26 @@
         <member name="M:Microsoft.AspNetCore.Cryptography.SafeHandles.SecureLocalAllocHandle.Allocate(System.IntPtr)">
             <summary>
             Allocates some amount of memory using LocalAlloc.
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.Int32)">
+            <summary>
+            Securely clears a memory buffer.
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.UInt32)">
+            <summary>
+            Securely clears a memory buffer.
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.UInt64)">
+            <summary>
+            Securely clears a memory buffer.
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.Cryptography.UnsafeBufferUtil.SecureZeroMemory(System.Byte*,System.IntPtr)">
+            <summary>
+            Securely clears a memory buffer.
             </summary>
         </member>
     </members>

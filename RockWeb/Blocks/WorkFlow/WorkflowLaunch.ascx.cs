@@ -79,6 +79,7 @@ namespace RockWeb.Blocks.WorkFlow
 
     #endregion Block Attributes
 
+    [Rock.SystemGuid.BlockTypeGuid( "D7C15C1B-7487-42C3-A485-AD154F46558A" )]
     public partial class WorkflowLaunch : Rock.Web.UI.RockBlock
     {
 
@@ -366,7 +367,7 @@ namespace RockWeb.Blocks.WorkFlow
             var entitySetId = GetEntitySetId();
             var rockContext = new RockContext();
             var entitySetService = new EntitySetService( rockContext );
-            entitySetService.LaunchWorkflows( entitySetId, workflowType.Id, workflowAttributes );
+            entitySetService.LaunchWorkflows( entitySetId, workflowType.Id, CurrentPersonAliasId, workflowAttributes );
         }
 
         /// <summary>
