@@ -1,0 +1,13 @@
+/ASPNETDB.MDF
+/aspnetdb_log.LDF
+/Files
+/RockShop
+InstalledStorePackages.json
+RockModelViews.xml
+/SlingshotFiles
+/Communication Images
+/Communication Attachments
+/LuceneSearchIndex/
+/LuceneContentCollectionIndex/
+/ChromeEngine/
+Run.Migration.bat
