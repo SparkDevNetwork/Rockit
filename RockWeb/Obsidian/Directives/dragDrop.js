@@ -1,47 +1,18 @@
-System.register(["../Util/page"], function (exports_1, context_1) {
-    "use strict";
-    var page_1, dragulaScriptPromise, DragDropService, knownServices, DragSource, DragTarget;
-    var __moduleName = context_1 && context_1.id;
-    function getExistingDragDropService(identifier) {
-        return knownServices[identifier];
-    }
-    function getDragDropService(identifier) {
-        if (knownServices[identifier]) {
-            return knownServices[identifier];
-        }
-        const service = new DragDropService(identifier);
-        knownServices[identifier] = service;
-        return service;
-    }
-    function destroyService(service) {
-        service.destroy();
-        delete knownServices[service.id];
-    }
-    function getTargetOptions(value) {
-        if (!value) {
-            return null;
-        }
-        if (typeof value === "string") {
-            return {
-                id: value
-            };
-        }
-        else if (typeof value === "object" && value.id) {
-            return value;
-        }
-        else {
-            return null;
-        }
-    }
+System.register(['@Obsidian/Utility/page', '@Obsidian/Utility/guid'], (function (exports) {
+    'use strict';
+    var loadJavaScriptAsync, newGuid;
     return {
-        setters: [
-            function (page_1_1) {
-                page_1 = page_1_1;
-            }
-        ],
-        execute: function () {
-            dragulaScriptPromise = page_1.loadJavaScriptAsync("/Scripts/dragula.min.js", () => window.dragula !== undefined);
-            DragDropService = class DragDropService {
+        setters: [function (module) {
+            loadJavaScriptAsync = module.loadJavaScriptAsync;
+        }, function (module) {
+            newGuid = module.newGuid;
+        }],
+        execute: (function () {
+
+            exports('useDragReorder', useDragReorder);
+
+            const dragulaScriptPromise = loadJavaScriptAsync("/Scripts/dragula.min.js", () => window.dragula !== undefined);
+            class DragDropService {
                 constructor(identifier) {
                     this.sourceContainers = [];
                     this.targetContainers = [];
@@ -132,7 +103,7 @@ System.register(["../Util/page"], function (exports_1, context_1) {
                     if (!elementOptions) {
                         return false;
                     }
-                    this.options.mirrorContainer = elementOptions.options.mirrorContainer;
+                    this.options.mirrorContainer = elementOptions.options.mirrorContainer || container;
                     if (elementOptions.options.startDrag) {
                         const sourceIndex = Array.from(container.children).indexOf(el);
                         return elementOptions.options.startDrag({
@@ -143,7 +114,8 @@ System.register(["../Util/page"], function (exports_1, context_1) {
                         }, handle);
                     }
                     if (elementOptions.options.handleSelector) {
-                        return Array.from(container.querySelectorAll(elementOptions.options.handleSelector)).includes(handle);
+                        return Array.from(container.querySelectorAll(elementOptions.options.handleSelector))
+                            .some(n => n.contains(handle));
                     }
                     return true;
                 }
@@ -239,9 +211,40 @@ System.register(["../Util/page"], function (exports_1, context_1) {
                         sourceOptions.options.dragShadow(Object.assign(Object.assign({}, this.internalOperation), { shadow: el }));
                     }
                 }
-            };
-            knownServices = {};
-            exports_1("DragSource", DragSource = {
+            }
+            const knownServices = {};
+            function getExistingDragDropService(identifier) {
+                return knownServices[identifier];
+            }
+            function getDragDropService(identifier) {
+                if (knownServices[identifier]) {
+                    return knownServices[identifier];
+                }
+                const service = new DragDropService(identifier);
+                knownServices[identifier] = service;
+                return service;
+            }
+            function destroyService(service) {
+                service.destroy();
+                delete knownServices[service.id];
+            }
+            function getTargetOptions(value) {
+                if (!value) {
+                    return null;
+                }
+                if (typeof value === "string") {
+                    return {
+                        id: value
+                    };
+                }
+                else if (typeof value === "object" && value.id) {
+                    return value;
+                }
+                else {
+                    return null;
+                }
+            }
+            const DragSource = exports('DragSource', {
                 mounted(element, binding) {
                     if (!binding.value || !binding.value.id) {
                         console.error("DragSource must have a valid identifier.");
@@ -265,7 +268,7 @@ System.register(["../Util/page"], function (exports_1, context_1) {
                     }
                 }
             });
-            exports_1("DragTarget", DragTarget = {
+            const DragTarget = exports('DragTarget', {
                 mounted(element, binding) {
                     const options = getTargetOptions(binding.value);
                     if (!options) {
@@ -293,7 +296,58 @@ System.register(["../Util/page"], function (exports_1, context_1) {
                     }
                 }
             });
-        }
+            const DragReorder = exports('DragReorder', {
+                mounted(element, binding) {
+                    if (!binding.value || !binding.value.id) {
+                        console.error("DragReorder must have a valid identifier.");
+                        return;
+                    }
+                    dragulaScriptPromise.then(() => {
+                        const service = getDragDropService(binding.value.id);
+                        service.addSourceContainer(element, binding.value);
+                        service.addTargetContainer(element, binding.value);
+                    });
+                },
+                unmounted(element, binding) {
+                    if (!binding.value || !binding.value.id) {
+                        return;
+                    }
+                    const service = getExistingDragDropService(binding.value.id);
+                    if (service) {
+                        service.removeTargetContainer(element);
+                        service.removeSourceContainer(element);
+                        if (service.isFinished()) {
+                            destroyService(service);
+                        }
+                    }
+                }
+            });
+            function useDragReorder(values, reorder) {
+                return {
+                    id: newGuid(),
+                    copyElement: false,
+                    handleSelector: ".reorder-handle",
+                    dragDrop(operation) {
+                        if (operation.targetIndex === undefined || operation.sourceIndex === operation.targetIndex) {
+                            return;
+                        }
+                        if (!values.value || operation.sourceIndex >= values.value.length) {
+                            return;
+                        }
+                        const targetIndex = operation.sourceIndex > operation.targetIndex
+                            ? operation.targetIndex
+                            : operation.targetIndex + 1;
+                        const value = values.value[operation.sourceIndex];
+                        const beforeValue = targetIndex < values.value.length ? values.value[targetIndex] : null;
+                        values.value.splice(operation.sourceIndex, 1);
+                        values.value.splice(operation.targetIndex, 0, value);
+                        if (reorder) {
+                            reorder(value, beforeValue);
+                        }
+                    }
+                };
+            }
+
+        })
     };
-});
-//# sourceMappingURL=dragDrop.js.map
+}));

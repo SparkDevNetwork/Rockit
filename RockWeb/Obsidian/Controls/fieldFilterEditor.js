@@ -1,27 +1,25 @@
-System.register(["vue", "../Elements/dropDownList", "../Util/guid", "../Util/util", "./fieldFilterRuleRow"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, dropDownList_1, guid_1, util_1, fieldFilterRuleRow_1, filterExpressionTypeMap, filterExpressionToShowHideMap, filterExpressionToAllAnyMap, showHideOptions, allAnyOptions;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', './dropDownList.js', '@Obsidian/Utility/guid', '@Obsidian/Utility/component', './fieldFilterRuleRow.js', 'ant-design-vue', './rockFormField.js', '@Obsidian/Utility/form', '@Obsidian/ValidationRules', './rockLabel.js', './helpBlock.js', './javaScriptAnchor.js', '@Obsidian/Utility/util', '@Obsidian/Utility/stringUtils', './textBox.js', './rockAttributeFilter.js', '@Obsidian/Utility/fieldTypes'], (function (exports) {
+    'use strict';
+    var defineComponent, TransitionGroup, ref, watch, DropDownList, newGuid, areEqual, updateRefValue, FieldFilterRuleRow;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (dropDownList_1_1) {
-                dropDownList_1 = dropDownList_1_1;
-            },
-            function (guid_1_1) {
-                guid_1 = guid_1_1;
-            },
-            function (util_1_1) {
-                util_1 = util_1_1;
-            },
-            function (fieldFilterRuleRow_1_1) {
-                fieldFilterRuleRow_1 = fieldFilterRuleRow_1_1;
-            }
-        ],
-        execute: function () {
-            filterExpressionTypeMap = {
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            TransitionGroup = module.TransitionGroup;
+            ref = module.ref;
+            watch = module.watch;
+        }, function (module) {
+            DropDownList = module["default"];
+        }, function (module) {
+            newGuid = module.newGuid;
+            areEqual = module.areEqual;
+        }, function (module) {
+            updateRefValue = module.updateRefValue;
+        }, function (module) {
+            FieldFilterRuleRow = module.FieldFilterRuleRow;
+        }, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            const filterExpressionTypeMap = {
                 Show: {
                     All: 1,
                     Any: 2
@@ -31,22 +29,22 @@ System.register(["vue", "../Elements/dropDownList", "../Util/guid", "../Util/uti
                     Any: 4
                 }
             };
-            filterExpressionToShowHideMap = ["Show", "Show", "Hide", "Hide"];
-            filterExpressionToAllAnyMap = ["All", "Any", "All", "Any"];
-            showHideOptions = [
+            const filterExpressionToShowHideMap = ["Show", "Show", "Hide", "Hide"];
+            const filterExpressionToAllAnyMap = ["All", "Any", "All", "Any"];
+            const showHideOptions = [
                 { text: "Show", value: "Show" },
                 { text: "Hide", value: "Hide" }
             ];
-            allAnyOptions = [
+            const allAnyOptions = [
                 { text: "All", value: "All" },
                 { text: "Any", value: "Any" }
             ];
-            exports_1("default", vue_1.defineComponent({
+            var fieldFilterEditor = exports('default', defineComponent({
                 name: "FieldVisibilityRulesEditor",
                 components: {
-                    TransitionGroup: vue_1.TransitionGroup,
-                    DropDownList: dropDownList_1.default,
-                    FieldFilterRuleRow: fieldFilterRuleRow_1.FieldFilterRuleRow
+                    TransitionGroup,
+                    DropDownList,
+                    FieldFilterRuleRow
                 },
                 props: {
                     modelValue: {
@@ -69,10 +67,10 @@ System.register(["vue", "../Elements/dropDownList", "../Util/guid", "../Util/uti
                 emits: ["update:modelValue"],
                 setup(props, { emit }) {
                     var _a;
-                    const showHide = vue_1.ref(filterExpressionToShowHideMap[props.modelValue.expressionType - 1]);
-                    const allAny = vue_1.ref(filterExpressionToAllAnyMap[props.modelValue.expressionType - 1]);
-                    const rules = vue_1.ref((_a = props.modelValue.rules) !== null && _a !== void 0 ? _a : []);
-                    vue_1.watch(() => props.allowNestedGroups, () => {
+                    const showHide = ref(filterExpressionToShowHideMap[props.modelValue.expressionType - 1]);
+                    const allAny = ref(filterExpressionToAllAnyMap[props.modelValue.expressionType - 1]);
+                    const rules = ref((_a = props.modelValue.rules) !== null && _a !== void 0 ? _a : []);
+                    watch(() => props.allowNestedGroups, () => {
                         if (props.allowNestedGroups === true) {
                             console.warn("Nested Filter Groups are not supported yet. Please set `allowNestedGroups` to `false`.");
                         }
@@ -82,7 +80,7 @@ System.register(["vue", "../Elements/dropDownList", "../Util/guid", "../Util/uti
                         rules.value = [
                             ...rules.value,
                             {
-                                guid: guid_1.newGuid(),
+                                guid: newGuid(),
                                 comparisonType: 0,
                                 value: "",
                                 sourceType: 0,
@@ -92,22 +90,22 @@ System.register(["vue", "../Elements/dropDownList", "../Util/guid", "../Util/uti
                     }
                     const onUpdateRule = (rule) => {
                         const newRules = [...rules.value];
-                        const ruleIndex = newRules.findIndex(r => guid_1.areEqual(r.guid, rule.guid));
+                        const ruleIndex = newRules.findIndex(r => areEqual(r.guid, rule.guid));
                         if (ruleIndex !== -1) {
                             newRules.splice(ruleIndex, 1, rule);
                             rules.value = newRules;
                         }
                     };
                     function onRemoveRule(rule) {
-                        rules.value = (rules.value || []).filter((val) => !guid_1.areEqual(val.guid, rule.guid));
+                        rules.value = (rules.value || []).filter((val) => !areEqual(val.guid, rule.guid));
                     }
-                    vue_1.watch(() => props.modelValue, () => {
+                    watch(() => props.modelValue, () => {
                         var _a;
                         showHide.value = filterExpressionToShowHideMap[props.modelValue.expressionType - 1];
                         allAny.value = filterExpressionToAllAnyMap[props.modelValue.expressionType - 1];
-                        util_1.updateRefValue(rules, (_a = props.modelValue.rules) !== null && _a !== void 0 ? _a : []);
+                        updateRefValue(rules, (_a = props.modelValue.rules) !== null && _a !== void 0 ? _a : []);
                     });
-                    vue_1.watch([showHide, allAny, rules], () => {
+                    watch([showHide, allAny, rules], () => {
                         const newValue = Object.assign(Object.assign({}, props.modelValue), { expressionType: filterExpressionTypeMap[showHide.value][allAny.value], rules: rules.value });
                         emit("update:modelValue", newValue);
                     });
@@ -126,11 +124,11 @@ System.register(["vue", "../Elements/dropDownList", "../Util/guid", "../Util/uti
 <div class="filtervisibilityrules-container">
     <div class="filtervisibilityrules-rulesheader">
         <div class="filtervisibilityrules-type form-inline form-inline-all">
-            <DropDownList v-model="showHide" :options="showHideOptions" :show-blank-item="false" formControlClasses="input-width-sm margin-r-sm" />
+            <DropDownList v-model="showHide" :items="showHideOptions" :show-blank-item="false" formControlClasses="input-width-sm margin-r-sm" />
             <div class="form-control-static margin-r-sm">
                 <span class="filtervisibilityrules-fieldname">{{ title }}</span><span class="filtervisibilityrules-if"> if</span>
             </div>
-            <DropDownList v-model="allAny" :options="allAnyOptions" :show-blank-item="false" formControlClasses="input-width-sm margin-r-sm" />
+            <DropDownList v-model="allAny" :items="allAnyOptions" :show-blank-item="false" formControlClasses="input-width-sm margin-r-sm" />
             <span class="form-control-static">of the following match:</span>
         </div>
     </div>
@@ -145,7 +143,7 @@ System.register(["vue", "../Elements/dropDownList", "../Util/guid", "../Util/uti
 </div>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=fieldFilterEditor.js.map
+}));

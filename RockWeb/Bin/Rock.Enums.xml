@@ -1,0 +1,222 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Rock.Enums</name>
+    </assembly>
+    <members>
+        <member name="T:Rock.Enums.Blocks.Cms.ContentCollectionView.SearchOrder">
+            <summary>
+            The search order options available in the Content Collection View block.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Blocks.Cms.ContentCollectionView.SearchOrder.Relevance">
+            <summary>
+            The most relevant will be displayed first, this is based on the score.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Blocks.Cms.ContentCollectionView.SearchOrder.Newest">
+            <summary>
+            The document with the highest relevance date time will be displayed first.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Blocks.Cms.ContentCollectionView.SearchOrder.Oldest">
+            <summary>
+            The document with the oldest relevance date time will be displayed first.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Blocks.Cms.ContentCollectionView.SearchOrder.Trending">
+            <summary>
+            The most popular documents will be displayed first. This is determined
+            by the trending values and will then fall back to best match.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Blocks.Cms.ContentCollectionView.SearchOrder.Alphabetical">
+            <summary>
+            The documents will be displayed alphabetically, A-Z.
+            </summary>
+        </member>
+        <member name="T:Rock.Enums.Cms.ContentCollectionFilterControl">
+            <summary>
+            Defines the type of UI controls that can be rendered for filters
+            on the content collection pages.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Cms.ContentCollectionFilterControl.Pills">
+            <summary>
+            Filter will be rendered as a pill and will behave as either a
+            radio button or checkbox.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Cms.ContentCollectionFilterControl.Dropdown">
+            <summary>
+            Filter will be rendered as a dropdown selection.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Cms.ContentCollectionFilterControl.Boolean">
+            <summary>
+            Filter will be rendered as a single boolean option.
+            </summary>
+        </member>
+        <member name="T:Rock.Enums.Controls.SlidingDateRangeType">
+            <summary>
+            Also defined in Rock.Web.UI.Controls.SlidingDateRangePicker, so if changed, please update there as well
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.SlidingDateRangeType.All">
+            <summary>
+            All
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.SlidingDateRangeType.Last">
+            <summary>
+            The last X days,weeks,months, etc (inclusive of current day,week,month,...) but cuts off so it doesn't include future dates
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.SlidingDateRangeType.Current">
+            <summary>
+            The current day,week,month,year
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.SlidingDateRangeType.DateRange">
+            <summary>
+            The date range
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.SlidingDateRangeType.Previous">
+            <summary>
+            The previous X days,weeks,months, etc (excludes current day,week,month,...)
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.SlidingDateRangeType.Next">
+            <summary>
+            The next X days,weeks,months, etc (inclusive of current day,week,month,...), but cuts off so it doesn't include past dates
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.SlidingDateRangeType.Upcoming">
+            <summary>
+            The upcoming X days,weeks,months, etc (excludes current day,week,month,...)
+            </summary>
+        </member>
+        <member name="T:Rock.Enums.Controls.TimeUnitType">
+            <summary>
+            Also defined in Rock.Web.UI.Controls.SlidingDateRangePicker, so if changed, please update there as well
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.TimeUnitType.Hour">
+            <summary>
+            The hour
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.TimeUnitType.Day">
+            <summary>
+            The day
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.TimeUnitType.Week">
+            <summary>
+            The week
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.TimeUnitType.Month">
+            <summary>
+            The month
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Controls.TimeUnitType.Year">
+            <summary>
+            The year
+            </summary>
+        </member>
+        <member name="T:Rock.Enums.EnumDomainAttribute">
+            <summary>
+            Special use attribute to help the code generation tool know what domain
+            the legacy enums from the Rock.Model namespace actually belong to.
+            </summary>
+        </member>
+        <member name="P:Rock.Enums.EnumDomainAttribute.Domain">
+            <summary>
+            Gets the domain the Enum type belongs to.
+            </summary>
+        </member>
+        <member name="M:Rock.Enums.EnumDomainAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Rock.Enums.EnumDomainAttribute"/> class.
+            </summary>
+            <param name="domain">The domain.</param>
+        </member>
+        <member name="T:Rock.Enums.Event.InteractiveExperienceApprovalStatus">
+            <summary>
+            Represents the approval status for the Interactive Experience system.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Event.InteractiveExperienceApprovalStatus.Pending">
+            <summary>
+            Answer is pending and has not been reviewed by a moderator.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Event.InteractiveExperienceApprovalStatus.Approved">
+            <summary>
+            Answer has been approved by a moderator.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Event.InteractiveExperienceApprovalStatus.Rejected">
+            <summary>
+            Answer has been rejected by a moderator.
+            </summary>
+        </member>
+        <member name="T:Rock.Enums.Event.InteractiveExperiencePushNotificationType">
+            <summary>
+            Represents the type of push notification to use for the Interactive
+            Experience system when posting questions.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Event.InteractiveExperiencePushNotificationType.Never">
+            <summary>
+            A push notification is never sent when a question is posted.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Event.InteractiveExperiencePushNotificationType.EveryAction">
+            <summary>
+            A push notification is always sent when a question is posted.
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Event.InteractiveExperiencePushNotificationType.SpecificActions">
+            <summary>
+            The moderator decides if the push notification should be sent
+            when they post a question.
+            </summary>
+        </member>
+        <member name="T:Rock.Enums.Reporting.FieldFilterSourceType">
+            <summary>
+            The sources of current value that can be used when building custom
+            filtering logic.This currently has only Attribute, but would later be
+            expanded to include other sources (such as properties).
+            </summary>
+        </member>
+        <member name="F:Rock.Enums.Reporting.FieldFilterSourceType.Attribute">
+            <summary>
+            The value will be read from an entity attribute value.
+            </summary>
+        </member>
+        <member name="T:Rock.Model.Gender">
+            <summary>
+            The gender of a person
+            </summary>
+        </member>
+        <member name="F:Rock.Model.Gender.Unknown">
+            <summary>
+            Unknown
+            </summary>
+        </member>
+        <member name="F:Rock.Model.Gender.Male">
+            <summary>
+            Male
+            </summary>
+        </member>
+        <member name="F:Rock.Model.Gender.Female">
+            <summary>
+            Female
+            </summary>
+        </member>
+    </members>
+</doc>

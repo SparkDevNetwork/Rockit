@@ -6,8 +6,16 @@
     <members>
         <member name="T:Microsoft.Extensions.Configuration.ConfigurationExtensions">
             <summary>
-            Extension methods for <see cref="T:Microsoft.Extensions.Configuration.IConfiguration" />.
+            Extension methods for configuration classes./>.
             </summary>
+        </member>
+        <member name="M:Microsoft.Extensions.Configuration.ConfigurationExtensions.Add``1(Microsoft.Extensions.Configuration.IConfigurationBuilder,System.Action{``0})">
+            <summary>
+            Adds a new configuration source.
+            </summary>
+            <param name="builder">The <see cref="T:Microsoft.Extensions.Configuration.IConfigurationBuilder"/> to add to.</param>
+            <param name="configureSource">Configures the source secrets.</param>
+            <returns>The <see cref="T:Microsoft.Extensions.Configuration.IConfigurationBuilder"/>.</returns>
         </member>
         <member name="M:Microsoft.Extensions.Configuration.ConfigurationExtensions.GetConnectionString(Microsoft.Extensions.Configuration.IConfiguration,System.String)">
             <summary>
@@ -23,6 +31,19 @@
             </summary>
             <param name="configuration">The <see cref="T:Microsoft.Extensions.Configuration.IConfiguration"/> to enumerate.</param>
             <returns>An enumeration of key value pairs.</returns>
+        </member>
+        <member name="M:Microsoft.Extensions.Configuration.ConfigurationExtensions.AsEnumerable(Microsoft.Extensions.Configuration.IConfiguration,System.Boolean)">
+            <summary>
+            Get the enumeration of key value pairs within the <see cref="T:Microsoft.Extensions.Configuration.IConfiguration" />
+            </summary>
+            <param name="configuration">The <see cref="T:Microsoft.Extensions.Configuration.IConfiguration"/> to enumerate.</param>
+            <param name="makePathsRelative">If true, the child keys returned will have the current configuration's Path trimmed from the front.</param>
+            <returns>An enumeration of key value pairs.</returns>
+        </member>
+        <member name="M:Microsoft.Extensions.Configuration.ConfigurationExtensions.Exists(Microsoft.Extensions.Configuration.IConfigurationSection)">
+            <summary>
+            Determines whether the section has a <see cref="P:Microsoft.Extensions.Configuration.IConfigurationSection.Value"/> or has children 
+            </summary>
         </member>
         <member name="T:Microsoft.Extensions.Configuration.ConfigurationPath">
             <summary>
@@ -110,7 +131,7 @@
         </member>
         <member name="P:Microsoft.Extensions.Configuration.IConfigurationBuilder.Sources">
             <summary>
-            Gets the sources used to obtain configuation values
+            Gets the sources used to obtain configuration values
             </summary>
         </member>
         <member name="M:Microsoft.Extensions.Configuration.IConfigurationBuilder.Add(Microsoft.Extensions.Configuration.IConfigurationSource)">
@@ -176,6 +197,11 @@
         <member name="M:Microsoft.Extensions.Configuration.IConfigurationRoot.Reload">
             <summary>
             Force the configuration values to be reloaded from the underlying <see cref="T:Microsoft.Extensions.Configuration.IConfigurationProvider"/>s.
+            </summary>
+        </member>
+        <member name="P:Microsoft.Extensions.Configuration.IConfigurationRoot.Providers">
+            <summary>
+            The <see cref="T:Microsoft.Extensions.Configuration.IConfigurationProvider"/>s for this configuration.
             </summary>
         </member>
         <member name="T:Microsoft.Extensions.Configuration.IConfigurationSection">

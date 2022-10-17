@@ -58,40 +58,18 @@
             If true, only the broker topology will be deployed
             </summary>
         </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.Hosts">
-            <summary>
-            Returns all the hosts
-            </summary>
-        </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.TryGetHost(System.Uri,MassTransit.AzureServiceBusTransport.Configuration.IServiceBusHostConfiguration@)">
-            <summary>
-            Return the host associated with the specified address, if present.
-            </summary>
-            <param name="address"></param>
-            <param name="host"></param>
-            <returns></returns>
-        </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.TryGetHost(MassTransit.AzureServiceBusTransport.IServiceBusHost,MassTransit.AzureServiceBusTransport.Configuration.IServiceBusHostConfiguration@)">
-            <summary>
-            Return the host if it is part of the configuration
-            </summary>
-            <param name="host"></param>
-            <returns></returns>
-            <param name="hostConfiguration"></param>
-        </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.CreateHostConfiguration(MassTransit.AzureServiceBusTransport.ServiceBusHost)">
+        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.CreateHostConfiguration(MassTransit.AzureServiceBusTransport.ServiceBusHostSettings)">
             <summary>
             Create a host configuration, by adding a host to the bus
             </summary>
-            <param name="host"></param>
+            <param name="settings"></param>
             <returns></returns>
         </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.CreateReceiveEndpointConfiguration(System.String,MassTransit.AzureServiceBusTransport.Configuration.IServiceBusEndpointConfiguration)">
+        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.CreateReceiveEndpointConfiguration(System.String)">
             <summary>
             Create a receive endpoint configuration for the default host
             </summary>
             <param name="queueName"></param>
-            <param name="endpointConfiguration"></param>
             <returns></returns>
         </member>
         <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.CreateReceiveEndpointConfiguration(MassTransit.AzureServiceBusTransport.Settings.ReceiveEndpointSettings,MassTransit.AzureServiceBusTransport.Configuration.IServiceBusEndpointConfiguration)">
@@ -102,12 +80,11 @@
             <param name="endpointConfiguration"></param>
             <returns></returns>
         </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.CreateSubscriptionEndpointConfiguration(System.String,System.String,MassTransit.AzureServiceBusTransport.Configuration.IServiceBusEndpointConfiguration)">
+        <member name="M:MassTransit.AzureServiceBusTransport.Configuration.IServiceBusBusConfiguration.CreateSubscriptionEndpointConfiguration(System.String,System.String)">
             <summary>
             Create a subscription endpoint configuration for the default host
             </summary>
             <param name="subscriptionName"></param>
-            <param name="endpointConfiguration"></param>
             <param name="topicPath"></param>
             <returns></returns>
         </member>
@@ -124,16 +101,6 @@
             </summary>
             <param name="settings"></param>
             <returns></returns>
-        </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.Configurators.IEventDataReceiverConfigurator.InputAddress">
-            <summary>
-            Set the input address of the receiver 
-            </summary>
-        </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.Configurators.IEventDataReceiverConfigurator.Log">
-            <summary>
-            Set the logger for the receiver
-            </summary>
         </member>
         <member name="P:MassTransit.AzureServiceBusTransport.Configurators.IReceiverConfigurator.InputAddress">
             <summary>
@@ -185,6 +152,15 @@
             <param name="host">The host for this endpoint</param>
             <param name="queueName">The input queue name</param>
             <param name="configure">The configuration method</param>
+        </member>
+        <member name="M:MassTransit.AzureServiceBusTransport.IServiceBusBusFactoryConfigurator.ReceiveEndpoint(MassTransit.AzureServiceBusTransport.IServiceBusHost,MassTransit.IEndpointDefinition,MassTransit.IEndpointNameFormatter,System.Action{MassTransit.AzureServiceBusTransport.IServiceBusReceiveEndpointConfigurator})">
+            <summary>
+            Specify a receive endpoint for the bus, using an endpoint definition
+            </summary>
+            <param name="host"></param>
+            <param name="definition">An endpoint definition, which abstracts specific endpoint behaviors from the transport</param>
+            <param name="endpointNameFormatter"></param>
+            <param name="configureEndpoint">The configuration callback</param>
         </member>
         <member name="M:MassTransit.AzureServiceBusTransport.IServiceBusBusFactoryConfigurator.SubscriptionEndpoint``1(MassTransit.AzureServiceBusTransport.IServiceBusHost,System.String,System.Action{MassTransit.AzureServiceBusTransport.IServiceBusSubscriptionEndpointConfigurator})">
             <summary>
@@ -301,7 +277,7 @@
             Sets the batch flush interval to use with the messaging factory, default is 20ms. 
             </summary>
             <remarks>
-            Currently the Microsoft ServiceBus client defaults to 20ms. For more inforamtion
+            Currently the Microsoft ServiceBus client defaults to 20ms. For more information
             regarding batching and performance see: 
             https://azure.microsoft.com/en-us/blog/new-article-best-practices-for-performance-improvements-using-service-bus-brokered-messaging/
             </remarks>
@@ -409,18 +385,6 @@
             Specify a rule for the subscription
             </summary>
         </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.Contexts.EventDataSendEndpointContext.EntityPath">
-            <summary>
-            The path of the messaging entity
-            </summary>
-        </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.Contexts.EventDataSendEndpointContext.Send(Microsoft.ServiceBus.Messaging.EventData)">
-            <summary>
-            Send the message to the messaging entity
-            </summary>
-            <param name="message"></param>
-            <returns></returns>
-        </member>
         <member name="P:MassTransit.AzureServiceBusTransport.Contexts.SendEndpointContext.EntityPath">
             <summary>
             The path of the messaging entity
@@ -447,11 +411,6 @@
             </summary>
             <param name="sequenceNumber"></param>
             <returns></returns>
-        </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.EventHubSendContext.PartitionKey">
-            <summary>
-            Set the partition key for the message, which is used to split load across nodes in Azure
-            </summary>
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Hosting.ServiceBusAmqpTransportSettings">
             <summary>
@@ -511,17 +470,12 @@
             Returns the topology of the service bus host
             </summary>
         </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.IServiceBusHost.MessagingFactoryCache">
+        <member name="P:MassTransit.AzureServiceBusTransport.IServiceBusHost.MessagingFactoryContextSupervisor">
             <summary>
             The default messaging factory cache, could be AMQP or NET-TCP, depending upon configuration
             </summary>
         </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.IServiceBusHost.NetMessagingFactoryCache">
-            <summary>
-            The messaging factory cache for NET-TCP (may be the same as above, depending upon configuration)
-            </summary>
-        </member>
-        <member name="P:MassTransit.AzureServiceBusTransport.IServiceBusHost.NamespaceCache">
+        <member name="P:MassTransit.AzureServiceBusTransport.IServiceBusHost.NamespaceContextSupervisor">
             <summary>
             The namespace cache for operating on the service bus namespace (management)
             </summary>
@@ -532,12 +486,13 @@
             used for all operations against Azure.
             </summary>
         </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.IServiceBusHost.ConnectReceiveEndpoint(System.Action{MassTransit.AzureServiceBusTransport.IServiceBusReceiveEndpointConfigurator})">
+        <member name="M:MassTransit.AzureServiceBusTransport.IServiceBusHost.ConnectReceiveEndpoint(MassTransit.IEndpointDefinition,MassTransit.IEndpointNameFormatter,System.Action{MassTransit.AzureServiceBusTransport.IServiceBusReceiveEndpointConfigurator})">
             <summary>
-            Create a temporary receive endpoint on the host, with a separate handle for stopping/removing the endpoint
+            Connect a receive endpoint for the host, using an endpoint definition
             </summary>
-            <param name="configure"></param>
-            <returns></returns>
+            <param name="definition">An endpoint definition, which abstracts specific endpoint behaviors from the transport</param>
+            <param name="endpointNameFormatter"></param>
+            <param name="configureEndpoint">The configuration callback</param>
         </member>
         <member name="M:MassTransit.AzureServiceBusTransport.IServiceBusHost.ConnectReceiveEndpoint(System.String,System.Action{MassTransit.AzureServiceBusTransport.IServiceBusReceiveEndpointConfigurator})">
             <summary>
@@ -692,33 +647,18 @@
             </summary>
             <typeparam name="TMessage"></typeparam>
         </member>
-        <member name="T:MassTransit.AzureServiceBusTransport.Scheduling.ServiceBusMessageScheduler">
-            <summary>
-            Schedules messages using the enqueue time of the brokered message
-            supported by service bus natively.
-            </summary>
-        </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Scheduling.ServiceBusScheduleMessagePipe`1">
             <summary>
-            Sets the message endqueue time when sending the message, and invokes
+            Sets the message enqueue time when sending the message, and invokes
             any developer-specified pipes.
             </summary>
             <typeparam name="T"></typeparam>
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Scheduling.ServiceBusScheduleMessagePipe">
             <summary>
-            Sets the message endqueue time when sending the message, and invokes
+            Sets the message enqueue time when sending the message, and invokes
             any developer-specified pipes.
             </summary>
-        </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.ServiceBusAddressExtensions.ManagementEndpoint(MassTransit.AzureServiceBusTransport.IServiceBusBusFactoryConfigurator,MassTransit.AzureServiceBusTransport.IServiceBusHost,System.Action{MassTransit.IReceiveEndpointConfigurator})">
-            <summary>
-            Creates a management endpoint which can be used by controllable filters on a bus intance
-            </summary>
-            <param name="configurator"></param>
-            <param name="host">The service bus host</param>
-            <param name="configure"></param>
-            <returns></returns>
         </member>
         <member name="M:MassTransit.AzureServiceBusTransport.ServiceBusConfigurationExtensions.CreateUsingAzureServiceBus(MassTransit.IBusFactorySelector,System.Action{MassTransit.AzureServiceBusTransport.IServiceBusBusFactoryConfigurator})">
             <summary>
@@ -727,6 +667,15 @@
             <param name="selector">Hang off the selector interface for visibility</param>
             <param name="configure">The configuration callback to configure the bus</param>
             <returns></returns>
+        </member>
+        <member name="M:MassTransit.AzureServiceBusTransport.ServiceBusEndpointDefinitionExtensions.Apply(MassTransit.AzureServiceBusTransport.IServiceBusReceiveEndpointConfigurator,MassTransit.IEndpointDefinition,System.Action{MassTransit.AzureServiceBusTransport.IServiceBusReceiveEndpointConfigurator})">
+            <summary>
+            We may want to have a builder/endpoint context that could store things like management endpoint, etc. to configure
+            filters and add configuration interfaces for things like concurrency limit and prefetch count
+            </summary>
+            <param name="configurator"></param>
+            <param name="definition"></param>
+            <param name="configure">The callback to invoke after the definition configuration has been applied</param>
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.ServiceBusHostSettings">
             <summary>
@@ -1104,7 +1053,7 @@
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Topology.Entities.Queue">
             <summary>
-            The queue details used to declare the queue to RabbitMQ
+            The queue details used to declare the queue to Azure Service Bus
             </summary>
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Topology.Entities.QueueSubscription">
@@ -1134,7 +1083,7 @@
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Topology.Entities.Topic">
             <summary>
-            The exchange details used to declare the exchange to RabbitMQ
+            The exchange details used to declare the exchange to Azure Service Bus
             </summary>
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Topology.Entities.TopicSubscription">
@@ -1263,25 +1212,7 @@
             Get the input address for the client on the specified host
             </summary>
         </member>
-        <member name="T:MassTransit.AzureServiceBusTransport.Transport.EventDataReceiver">
-            <summary>
-            Receives <see cref="T:Microsoft.ServiceBus.Messaging.EventData"/> from Event Hub
-            </summary>
-        </member>
-        <member name="T:MassTransit.AzureServiceBusTransport.Transport.EventHubSendTransport">
-            <summary>
-            Send message to an Event Hub
-            </summary>
-        </member>
         <member name="M:MassTransit.AzureServiceBusTransport.Transport.IBrokeredMessageReceiver.Handle(Microsoft.ServiceBus.Messaging.BrokeredMessage,System.Action{MassTransit.ReceiveContext})">
-            <summary>
-            Handles the <paramref name="message"/>
-            </summary>
-            <param name="message"></param>
-            <param name="contextCallback">Callback to adjust the context</param>
-            <returns></returns>
-        </member>
-        <member name="M:MassTransit.AzureServiceBusTransport.Transport.IEventDataReceiver.Handle(Microsoft.ServiceBus.Messaging.EventData,System.Action{MassTransit.ReceiveContext})">
             <summary>
             Handles the <paramref name="message"/>
             </summary>
@@ -1338,12 +1269,12 @@
             </summary>
         </member>
         <member name="T:MassTransit.AzureServiceBusTransport.Transport.ServiceBusSendTransport">
-            <summary>
-            Send messages to an azure transport using the message sender.
+             <summary>
+             Send messages to an azure transport using the message sender.
             
-            May be sensible to create a IBatchSendTransport that allows multiple
-            messages to be sent as a single batch (perhaps using Tx support?)
-            </summary>
+             May be sensible to create a IBatchSendTransport that allows multiple
+             messages to be sent as a single batch (perhaps using Tx support?)
+             </summary>
         </member>
         <member name="M:MassTransit.RenewLockConfigurationExtensions.UseRenewLock(GreenPipes.IPipeConfigurator{MassTransit.ConsumeContext},System.Nullable{System.TimeSpan})">
             <summary>
@@ -1379,6 +1310,17 @@
             </summary>
             <param name="configurator"></param>
             <param name="host"></param>
+            <param name="configure"></param>
+        </member>
+        <member name="M:MassTransit.ServiceBusBusFactoryConfiguratorExtensions.ReceiveEndpoint(MassTransit.AzureServiceBusTransport.IServiceBusBusFactoryConfigurator,MassTransit.AzureServiceBusTransport.IServiceBusHost,MassTransit.IEndpointDefinition,System.Action{MassTransit.AzureServiceBusTransport.IServiceBusReceiveEndpointConfigurator})">
+            <summary>
+            Declare a ReceiveEndpoint using a unique generated queue name. This queue defaults to auto-delete
+            and non-durable. By default all services bus instances include a default receiveEndpoint that is
+            of this type (created automatically upon the first receiver binding).
+            </summary>
+            <param name="configurator"></param>
+            <param name="host"></param>
+            <param name="definition"></param>
             <param name="configure"></param>
         </member>
         <member name="M:MassTransit.ServiceBusRequestClientExtensions.CreateRequestClient``2(MassTransit.AzureServiceBusTransport.IServiceBusHost,System.Uri,System.TimeSpan,System.Nullable{System.TimeSpan},System.Action{MassTransit.SendContext{``0}})">

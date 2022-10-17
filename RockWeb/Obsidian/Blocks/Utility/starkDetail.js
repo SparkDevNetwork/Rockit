@@ -1,48 +1,37 @@
-System.register(["../../Util/block", "vue", "../../Elements/alert", "../../Elements/rockButton", "../../Templates/paneledBlockTemplate"], function (exports_1, context_1) {
-    "use strict";
-    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-    var block_1, vue_1, alert_1, rockButton_1, paneledBlockTemplate_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['tslib', '@Obsidian/Utility/block', 'vue', '@Obsidian/Controls/alert', '@Obsidian/Controls/rockButton', '@Obsidian/Templates/block'], (function (exports) {
+    'use strict';
+    var __awaiter, useInvokeBlockAction, useConfigurationValues, defineComponent, ref, Alert, RockButton, Block;
     return {
-        setters: [
-            function (block_1_1) {
-                block_1 = block_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (alert_1_1) {
-                alert_1 = alert_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (paneledBlockTemplate_1_1) {
-                paneledBlockTemplate_1 = paneledBlockTemplate_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            __awaiter = module.__awaiter;
+        }, function (module) {
+            useInvokeBlockAction = module.useInvokeBlockAction;
+            useConfigurationValues = module.useConfigurationValues;
+        }, function (module) {
+            defineComponent = module.defineComponent;
+            ref = module.ref;
+        }, function (module) {
+            Alert = module["default"];
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            Block = module["default"];
+        }],
+        execute: (function () {
+
+            var starkDetail = exports('default', defineComponent({
                 name: "Utility.StarkDetailOptions",
                 components: {
-                    PaneledBlockTemplate: paneledBlockTemplate_1.default,
-                    Alert: alert_1.default,
-                    RockButton: rockButton_1.default
+                    Block,
+                    Alert,
+                    RockButton
                 },
                 setup() {
                     var _a;
-                    const invokeBlockAction = block_1.useInvokeBlockAction();
-                    const configurationValues = block_1.useConfigurationValues();
-                    const configMessage = vue_1.ref((_a = configurationValues.message) !== null && _a !== void 0 ? _a : "");
-                    const blockActionMessage = vue_1.ref("");
+                    const invokeBlockAction = useInvokeBlockAction();
+                    const configurationValues = useConfigurationValues();
+                    const configMessage = ref((_a = configurationValues.message) !== null && _a !== void 0 ? _a : "");
+                    const blockActionMessage = ref("");
                     const invokeBlockActionClick = () => __awaiter(this, void 0, void 0, function* () {
                         const response = yield invokeBlockAction("GetMessage", {
                             paramFromClient: "This is a value sent to the server from the client."
@@ -61,16 +50,9 @@ System.register(["../../Util/block", "vue", "../../Elements/alert", "../../Eleme
                     };
                 },
                 template: `
-<PaneledBlockTemplate>
-    <template #title>
-        <i class="fa fa-star"></i>
-        Blank Detail Block
-    </template>
-
-    <template #titleAside>
-        <div class="panel-labels">
-            <span class="label label-info">Vue</span>
-        </div>
+<Block title="Blank Detail Block">
+    <template #headerActions>
+        <span class="action label label-info">Vue</span>
     </template>
 
     <template #drawer>
@@ -116,9 +98,9 @@ System.register(["../../Util/block", "vue", "../../Elements/alert", "../../Eleme
             </div>
         </div>
     </template>
-</PaneledBlockTemplate>`
+</Block>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=starkDetail.js.map
+}));

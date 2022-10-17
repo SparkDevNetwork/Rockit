@@ -1,15 +1,13 @@
-System.register(["vue"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue'], (function (exports) {
+    'use strict';
+    var defineComponent;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+        }],
+        execute: (function () {
+
+            var gridRow = exports('default', defineComponent({
                 name: "GridRow",
                 props: {
                     rowContext: {
@@ -37,7 +35,7 @@ System.register(["vue"], function (exports_1, context_1) {
     <slot />
 </tr>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=gridRow.js.map
+}));

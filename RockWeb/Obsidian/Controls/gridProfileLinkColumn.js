@@ -1,25 +1,23 @@
-System.register(["vue", "./gridColumn"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, gridColumn_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', './gridColumn.js', './javaScriptAnchor.js', './grid.js'], (function (exports) {
+    'use strict';
+    var defineComponent, inject, GridColumn;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (gridColumn_1_1) {
-                gridColumn_1 = gridColumn_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            inject = module.inject;
+        }, function (module) {
+            GridColumn = module["default"];
+        }, function () {}, function () {}],
+        execute: (function () {
+
+            var gridProfileLinkColumn = exports('default', defineComponent({
                 name: "GridProfileLinkColumn",
                 components: {
-                    GridColumn: gridColumn_1.default
+                    GridColumn
                 },
                 setup() {
                     return {
-                        rowContext: vue_1.inject("rowContext")
+                        rowContext: inject("rowContext")
                     };
                 },
                 props: {
@@ -50,7 +48,7 @@ System.register(["vue", "./gridColumn"], function (exports_1, context_1) {
     </a>
 </GridColumn>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=gridProfileLinkColumn.js.map
+}));

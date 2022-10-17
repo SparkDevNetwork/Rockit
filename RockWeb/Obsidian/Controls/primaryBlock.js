@@ -1,19 +1,16 @@
-System.register(["vue", "../Store/index"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, index_1, store;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', '@Obsidian/PageState'], (function (exports) {
+    'use strict';
+    var defineComponent, useStore;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (index_1_1) {
-                index_1 = index_1_1;
-            }
-        ],
-        execute: function () {
-            store = index_1.useStore();
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            useStore = module.useStore;
+        }],
+        execute: (function () {
+
+            const store = useStore();
+            var primaryBlock = exports('default', defineComponent({
                 name: "PrimaryBlock",
                 props: {
                     hideSecondaryBlocks: {
@@ -33,7 +30,7 @@ System.register(["vue", "../Store/index"], function (exports_1, context_1) {
                 },
                 template: `<slot />`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=primaryBlock.js.map
+}));

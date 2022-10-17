@@ -306,6 +306,78 @@
             this property returns <c>null</c>.
             </summary>
         </member>
+        <member name="T:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext">
+            <summary>
+            Represents an abstract base class used for certain event contexts.
+            </summary>
+        </member>
+        <member name="M:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext.#ctor(Microsoft.Owin.IOwinContext,Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions,AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest)">
+            <summary>
+            Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.DeserializeAccessTokenContext"/> class.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext.Request">
+            <summary>
+            Gets the OpenID Connect request.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext.Response">
+            <summary>
+            Gets the OpenID Connect response.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext.Ticket">
+            <summary>
+            Gets or sets the authentication ticket.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext.IsHandled">
+            <summary>
+            Gets a boolean indicating whether the
+            <see cref="M:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext.HandleDeserialization"/> method was called.
+            </summary>
+        </member>
+        <member name="M:Owin.Security.OpenIdConnect.Server.BaseDeserializingContext.HandleDeserialization">
+            <summary>
+            Marks the deserialization process as handled by the application code.
+            </summary>
+        </member>
+        <member name="T:Owin.Security.OpenIdConnect.Server.BaseSerializingContext">
+            <summary>
+            Represents an abstract base class used for certain event contexts.
+            </summary>
+        </member>
+        <member name="M:Owin.Security.OpenIdConnect.Server.BaseSerializingContext.#ctor(Microsoft.Owin.IOwinContext,Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions,AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest,AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectResponse,Microsoft.Owin.Security.AuthenticationTicket)">
+            <summary>
+            Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.DeserializeAccessTokenContext"/> class.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseSerializingContext.Request">
+            <summary>
+            Gets the OpenID Connect request.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseSerializingContext.Response">
+            <summary>
+            Gets the OpenID Connect response.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseSerializingContext.Ticket">
+            <summary>
+            Gets the authentication ticket.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.BaseSerializingContext.IsHandled">
+            <summary>
+            Gets a boolean indicating whether the
+            <see cref="M:Owin.Security.OpenIdConnect.Server.BaseSerializingContext.HandleSerialization"/> method was called.
+            </summary>
+        </member>
+        <member name="M:Owin.Security.OpenIdConnect.Server.BaseSerializingContext.HandleSerialization">
+            <summary>
+            Marks the serialization process as handled by the application code.
+            </summary>
+        </member>
         <member name="T:Owin.Security.OpenIdConnect.Server.BaseValidatingClientContext">
             <summary>
             Represents an abstract base class used for certain event contexts.
@@ -476,21 +548,6 @@
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.DeserializeAccessTokenContext"/> class.
             </summary>
         </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAccessTokenContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAccessTokenContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAccessTokenContext.Ticket">
-            <summary>
-            Gets or sets the authentication ticket.
-            </summary>
-        </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAccessTokenContext.TokenValidationParameters">
             <summary>
             Gets or sets the validation parameters used to verify the authenticity of access tokens.
@@ -525,21 +582,6 @@
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.DeserializeAuthorizationCodeContext"/> class.
             </summary>
         </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAuthorizationCodeContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAuthorizationCodeContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAuthorizationCodeContext.Ticket">
-            <summary>
-            Gets or sets the authentication ticket.
-            </summary>
-        </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeAuthorizationCodeContext.DataFormat">
             <summary>
             Gets or sets the data format used to deserialize the authentication ticket.
@@ -560,21 +602,6 @@
         <member name="M:Owin.Security.OpenIdConnect.Server.DeserializeIdentityTokenContext.#ctor(Microsoft.Owin.IOwinContext,Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions,AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest,System.String)">
             <summary>
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.DeserializeIdentityTokenContext"/> class.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeIdentityTokenContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeIdentityTokenContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeIdentityTokenContext.Ticket">
-            <summary>
-            Gets or sets the authentication ticket.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeIdentityTokenContext.TokenValidationParameters">
@@ -602,21 +629,6 @@
         <member name="M:Owin.Security.OpenIdConnect.Server.DeserializeRefreshTokenContext.#ctor(Microsoft.Owin.IOwinContext,Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions,AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest,System.String)">
             <summary>
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.DeserializeRefreshTokenContext"/> class.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeRefreshTokenContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeRefreshTokenContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeRefreshTokenContext.Ticket">
-            <summary>
-            Gets or sets the authentication ticket.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.DeserializeRefreshTokenContext.DataFormat">
@@ -1336,21 +1348,6 @@
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext"/> class.
             </summary>
         </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext.Ticket">
-            <summary>
-            Gets the authentication ticket.
-            </summary>
-        </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext.Issuer">
             <summary>
             Gets or sets the issuer address.
@@ -1369,6 +1366,11 @@
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext.Scopes">
             <summary>
             Gets or sets the scopes associated with the authentication ticket.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext.EncryptingCredentials">
+            <summary>
+            Gets or sets the encrypting credentials used to encrypt the access token.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAccessTokenContext.SigningCredentials">
@@ -1403,21 +1405,6 @@
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.SerializeAuthorizationCodeContext"/> class.
             </summary>
         </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAuthorizationCodeContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAuthorizationCodeContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAuthorizationCodeContext.Ticket">
-            <summary>
-            Gets the authentication ticket.
-            </summary>
-        </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeAuthorizationCodeContext.Presenters">
             <summary>
             Gets or sets the presenters associated with the authentication ticket.
@@ -1444,21 +1431,6 @@
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext"/> class.
             </summary>
         </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext.Ticket">
-            <summary>
-            Gets the authentication ticket.
-            </summary>
-        </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext.Issuer">
             <summary>
             Gets or sets the issuer address.
@@ -1472,6 +1444,11 @@
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext.Presenters">
             <summary>
             Gets or sets the presenters associated with the authentication ticket.
+            </summary>
+        </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext.EncryptingCredentials">
+            <summary>
+            Gets or sets the encrypting credentials used to encrypt the identity token.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeIdentityTokenContext.SigningCredentials">
@@ -1498,21 +1475,6 @@
         <member name="M:Owin.Security.OpenIdConnect.Server.SerializeRefreshTokenContext.#ctor(Microsoft.Owin.IOwinContext,Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions,AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest,AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectResponse,Microsoft.Owin.Security.AuthenticationTicket)">
             <summary>
             Creates a new instance of the <see cref="T:Owin.Security.OpenIdConnect.Server.SerializeRefreshTokenContext"/> class.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeRefreshTokenContext.Request">
-            <summary>
-            Gets the OpenID Connect request.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeRefreshTokenContext.Response">
-            <summary>
-            Gets the OpenID Connect response.
-            </summary>
-        </member>
-        <member name="P:Owin.Security.OpenIdConnect.Server.SerializeRefreshTokenContext.Ticket">
-            <summary>
-            Gets the authentication ticket.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.SerializeRefreshTokenContext.Presenters">
@@ -1677,7 +1639,7 @@
         </member>
         <member name="T:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerHandler">
             <summary>
-            Provides the logic necessary to extract, validate and handle  OpenID Connect requests.
+            Provides the logic necessary to extract, validate and handle OpenID Connect requests.
             </summary>
         </member>
         <member name="T:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerMiddleware">
@@ -1715,11 +1677,17 @@
             Unless <see cref="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.AllowInsecureHttp"/> has been set to true, an HTTPS address must be provided.
             </summary>
         </member>
+        <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.EncryptingCredentials">
+            <summary>
+            Gets the list of credentials used to encrypt the JWT access tokens issued by the
+            OpenID Connect server handler. Note: only symmetric credentials are supported.
+            </summary>
+        </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.SigningCredentials">
             <summary>
-            Gets the list of credentials used to sign the JWT tokens issued by the OpenID Connect server middleware.
+            Gets the list of credentials used to sign the JWT tokens issued by the OpenID Connect server handler.
             Both asymmetric and symmetric keys are supported, but only asymmetric keys can be used to sign identity tokens.
-            Note that only asymmetric RSA keys can be exposed by the JWKS metadata endpoint.
+            Note that only asymmetric RSA and ECDSA keys can be exposed by the JWKS metadata endpoint.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.AuthorizationEndpointPath">
@@ -1774,7 +1742,7 @@
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.Provider">
             <summary>
-            Gets or sets the <see cref="T:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerProvider"/> that the <see cref="T:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerMiddleware" />
+            Gets or sets the <see cref="T:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerProvider"/> that the OpenID Connect server
             invokes to enable developer control over the entire authentication/authorization process.
             </summary>
         </member>
@@ -1811,24 +1779,28 @@
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.AuthorizationCodeLifetime">
             <summary>
             Gets or sets the period of time the authorization codes remain valid after being issued.
+            While not recommended, this property can be set to <c>null</c> to issue codes that never expire.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.AccessTokenLifetime">
             <summary>
             Gets or sets the period of time access tokens remain valid after being issued. The default value is 1 hour.
             The client application is expected to refresh or acquire a new access token after the token has expired.
+            While not recommended, this property can be set to <c>null</c> to issue access tokens that never expire.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.IdentityTokenLifetime">
             <summary>
             Gets or sets the period of time identity tokens remain valid after being issued. The default value is 20 minutes.
             The client application is expected to refresh or acquire a new identity token after the token has expired.
+            While not recommended, this property can be set to <c>null</c> to issue identity tokens that never expire.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.RefreshTokenLifetime">
             <summary>
             Gets or sets the period of time refresh tokens remain valid after being issued. The default value is 14 days.
             The client application is expected to start a whole new authentication flow after the refresh token has expired.
+            While not recommended, this property can be set to <c>null</c> to issue refresh tokens that never expire.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.UseSlidingExpiration">
@@ -1865,12 +1837,12 @@
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.DataProtectionProvider">
             <summary>
             Gets or sets the data protection provider used to create the default
-            data protectors used by <see cref="T:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerMiddleware"/>.
+            data protectors used by the OpenID Connect server handler.
             </summary>
         </member>
         <member name="P:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions.Logger">
             <summary>
-            Gets or sets the logger used by <see cref="T:Owin.Security.OpenIdConnect.Server.OpenIdConnectServerMiddleware"/>.
+            Gets or sets the logger used by the OpenID Connect server handler.
             When unassigned, a default instance is created using the default logger factory.
             </summary>
         </member>
@@ -2486,7 +2458,7 @@
             <param name="options">The options controlling the behavior of the OpenID Connect server.</param>
             <returns>The application builder.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.Security.Cryptography.X509Certificates.X509Certificate2)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.Security.Cryptography.X509Certificates.X509Certificate2)">
             <summary>
             Adds a specific <see cref="T:System.Security.Cryptography.X509Certificates.X509Certificate2"/> to sign the tokens issued by the OpenID Connect server.
             </summary>
@@ -2494,7 +2466,7 @@
             <param name="certificate">The certificate used to sign security tokens issued by the server.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.Reflection.Assembly,System.String,System.String)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.Reflection.Assembly,System.String,System.String)">
             <summary>
             Adds a specific <see cref="T:System.Security.Cryptography.X509Certificates.X509Certificate2"/> retrieved from an
             embedded resource to sign the tokens issued by the OpenID Connect server.
@@ -2505,7 +2477,7 @@
             <param name="password">The password used to open the certificate.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.Reflection.Assembly,System.String,System.String,System.Security.Cryptography.X509Certificates.X509KeyStorageFlags)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.Reflection.Assembly,System.String,System.String,System.Security.Cryptography.X509Certificates.X509KeyStorageFlags)">
             <summary>
             Adds a specific <see cref="T:System.Security.Cryptography.X509Certificates.X509Certificate2"/> retrieved from an
             embedded resource to sign the tokens issued by the OpenID Connect server.
@@ -2517,7 +2489,7 @@
             <param name="flags">An enumeration of flags indicating how and where to store the private key of the certificate.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.IO.Stream,System.String)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.IO.Stream,System.String)">
             <summary>
             Adds a specific <see cref="T:System.Security.Cryptography.X509Certificates.X509Certificate2"/> contained in
             a stream to sign the tokens issued by the OpenID Connect server.
@@ -2527,10 +2499,10 @@
             <param name="password">The password used to open the certificate.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.IO.Stream,System.String,System.Security.Cryptography.X509Certificates.X509KeyStorageFlags)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.IO.Stream,System.String,System.Security.Cryptography.X509Certificates.X509KeyStorageFlags)">
             <summary>
             Adds a specific <see cref="T:System.Security.Cryptography.X509Certificates.X509Certificate2"/> contained in
-            a stream to sign tokens issued by the OpenID Connect server.
+            a stream to sign the tokens issued by the OpenID Connect server.
             </summary>
             <param name="credentials">The options used to configure the OpenID Connect server.</param>
             <param name="stream">The stream containing the certificate.</param>
@@ -2538,7 +2510,7 @@
             <param name="flags">An enumeration of flags indicating how and where to store the private key of the certificate.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.String)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.String)">
             <summary>
             Adds a specific <see cref="T:System.Security.Cryptography.X509Certificates.X509Certificate2"/> retrieved from the X.509
             user/machine store to sign the tokens issued by the OpenID Connect server.
@@ -2547,7 +2519,7 @@
             <param name="thumbprint">The thumbprint of the certificate used to identify it in the X.509 store.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.String,System.Security.Cryptography.X509Certificates.StoreName,System.Security.Cryptography.X509Certificates.StoreLocation)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddCertificate(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.String,System.Security.Cryptography.X509Certificates.StoreName,System.Security.Cryptography.X509Certificates.StoreLocation)">
             <summary>
             Adds a specific <see cref="T:System.Security.Cryptography.X509Certificates.X509Certificate2"/> retrieved from the given
             X.509 store to sign the tokens issued by the OpenID Connect server.
@@ -2558,7 +2530,7 @@
             <param name="location">The location of the X.509 store.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddEphemeralKey(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials})">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddEphemeralKey(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials})">
             <summary>
             Adds a new ephemeral key used to sign the tokens issued by the OpenID Connect server:
             the key is discarded when the application shuts down and tokens signed using this key
@@ -2568,7 +2540,7 @@
             <param name="credentials">The signing credentials.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddEphemeralKey(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.String)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddEphemeralKey(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},System.String)">
             <summary>
             Adds a new ephemeral key used to sign the tokens issued by the OpenID Connect server:
             the key is discarded when the application shuts down and tokens signed using this key
@@ -2579,15 +2551,23 @@
             <param name="algorithm">The algorithm associated with the signing key.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.AddKey(System.Collections.Generic.IList{System.IdentityModel.Tokens.SigningCredentials},System.IdentityModel.Tokens.SecurityKey)">
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddKey(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.EncryptingCredentials},Microsoft.IdentityModel.Tokens.SecurityKey)">
             <summary>
-            Adds a specific <see cref="T:System.IdentityModel.Tokens.SecurityKey"/> to sign the tokens issued by the OpenID Connect server.
+            Adds a specific <see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/> to encrypt the tokens issued by the OpenID Connect server.
+            </summary>
+            <param name="credentials">The options used to configure the OpenID Connect server.</param>
+            <param name="key">The key used to sign security tokens issued by the server.</param>
+            <returns>The encryption credentials.</returns>
+        </member>
+        <member name="M:Owin.OpenIdConnectServerExtensions.AddKey(System.Collections.Generic.IList{Microsoft.IdentityModel.Tokens.SigningCredentials},Microsoft.IdentityModel.Tokens.SecurityKey)">
+            <summary>
+            Adds a specific <see cref="T:Microsoft.IdentityModel.Tokens.SecurityKey"/> to sign the tokens issued by the OpenID Connect server.
             </summary>
             <param name="credentials">The options used to configure the OpenID Connect server.</param>
             <param name="key">The key used to sign security tokens issued by the server.</param>
             <returns>The signing credentials.</returns>
         </member>
-        <member name="M:Owin.OpenIdConnectServerExtensions.UseLogging(Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions,System.Action{Microsoft.Extensions.Logging.ILoggerFactory})">
+        <member name="M:Owin.OpenIdConnectServerExtensions.UseLogging(Owin.Security.OpenIdConnect.Server.OpenIdConnectServerOptions,System.Action{Microsoft.Extensions.Logging.LoggerFactory})">
             <summary>
             Configures the OpenID Connect server to enable logging.
             </summary>

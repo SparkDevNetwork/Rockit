@@ -28,13 +28,10 @@ using Rock.Web.UI.Controls;
 
 namespace RockWeb.Blocks.Tv
 {
-    /// <summary>
-    /// Template block for developers to use to start a new block.
-    ///
-    /// 10/15/2021 - JME
-    /// The code from this block was taken primarily from the MobileApplicationDetail.ascx block.
-    /// 
-    /// </summary>
+    /*
+    10/15/2021 - JME
+    The code from this block was taken primarily from the MobileApplicationDetail.ascx block.
+    */
     [DisplayName( "Remote Authentication" )]
     [Category( "TV > TV Apps" )]
     [Description( "Authenticates an individual for a remote system." )]
@@ -52,7 +49,11 @@ namespace RockWeb.Blocks.Tv
         300,
         false,
         "default",
-        "",
+        @"<div class=""mb-4"">
+    <h1>Hello
+    {{ CurrentPerson.NickName }}</h1>
+    <span>Enter your security code below to authenicate to your application.</span>
+</div>",
         1,
         AttributeKey.HeaderContent)]
 
@@ -62,8 +63,10 @@ namespace RockWeb.Blocks.Tv
         CodeEditorTheme.Rock,
         300,
         false,
-        "",
-        "",
+        "",@"<div>
+    <h1>Success!</h1>
+    <span>{{ CurrentPerson.NickName }}, you have successfully authenicated to your application.</span>
+</div>",
         2,
         AttributeKey.FooterContent )]
 
@@ -87,6 +90,7 @@ namespace RockWeb.Blocks.Tv
         AttributeKey.CodeExpirationDuration)]
     #endregion Block Attributes
 
+    [Rock.SystemGuid.BlockTypeGuid( "3080C707-4594-4DDD-95B5-DEF82141DE6A" )]
     public partial class RemoteAuthentication : Rock.Web.UI.RockBlock
     {
         #region Attribute Keys
@@ -129,7 +133,7 @@ namespace RockWeb.Blocks.Tv
             if ( !Page.IsPostBack )
             {
                 // Check to ensure that the person is logged in.
-                if ( CurrentPerson.IsNull() )
+                if ( CurrentPerson == null )
                 {
                     nbWarningMessages.Text = "This page requires that a person be authenticated to use.";
                     nbWarningMessages.Visible = true;
@@ -237,7 +241,7 @@ namespace RockWeb.Blocks.Tv
                                 .FirstOrDefault();
 
             // Check for code that does not exist
-            if ( authSession.IsNull() )
+            if ( authSession == null )
             {
                 nbAuthenticationMessages.Text = "The code provided is not valid. Please confirm that you have correctly entered the code.";
                 nbAuthenticationMessages.NotificationBoxType = NotificationBoxType.Warning;

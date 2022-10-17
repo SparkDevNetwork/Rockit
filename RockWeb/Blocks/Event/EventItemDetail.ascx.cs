@@ -29,6 +29,7 @@ using Rock.Constants;
 using Rock.Data;
 using Rock.Model;
 using Rock.Security;
+using Rock.Tasks;
 using Rock.Web;
 using Rock.Web.Cache;
 using Rock.Web.UI;
@@ -44,6 +45,7 @@ namespace RockWeb.Blocks.Event
     [Category( "Event" )]
     [Description( "Displays the details of the given calendar event item." )]
 
+    [Rock.SystemGuid.BlockTypeGuid( "39E3476D-1BA1-438D-887F-03DD23639221" )]
     public partial class EventItemDetail : RockBlock
     {
         #region Properties
@@ -457,7 +459,8 @@ namespace RockWeb.Blocks.Event
                     foreach ( EventCalendarItem eventCalendarItem in eventItem.EventCalendarItems )
                     {
                         eventCalendarItem.LoadAttributes();
-                        Rock.Attribute.Helper.GetEditValues( phAttributes, eventCalendarItem );
+                        Control attributeContainer = phAttributes.FindControl( $"phAttributes_{eventCalendarItem.EventCalendarId}" );
+                        Rock.Attribute.Helper.GetEditValues( attributeContainer, eventCalendarItem );
                         eventCalendarItem.SaveAttributeValues();
                     }
 
@@ -475,6 +478,14 @@ namespace RockWeb.Blocks.Event
                         }
                     }
                 } );
+
+
+                // Update the content collection index.
+                new ProcessContentCollectionDocument.Message
+                {
+                    EntityTypeId = eventItem.TypeId,
+                    EntityId = eventItem.Id
+                }.Send();
 
                 // Redirect back to same page so that item grid will show any attributes that were selected to show on grid
                 var qryParams = new Dictionary<string, string>();
@@ -844,10 +855,13 @@ namespace RockWeb.Blocks.Event
                         string value = eventCalendarItem.GetAttributeValue( attr.Key );
                         if ( !string.IsNullOrWhiteSpace( value ) )
                         {
-                            var rl = new RockLiteral();
-                            rl.ID = "attr_" + attr.Key;
-                            rl.Label = attr.Value.Name;
-                            rl.Text = attr.Value.FieldType.Field.FormatValueAsHtml( null, attr.Value.EntityTypeId, eventCalendarItem.Id, value, attr.Value.QualifierValues, false );
+                            var rl = new RockLiteral
+                            {
+                                ID = $"eci{eventCalendarItem.EventCalendarId}_attr_{attr.Key}",
+                                Label = attr.Value.Name,
+                                Text = attr.Value.FieldType.Field.FormatValueAsHtml( null, attr.Value.EntityTypeId, eventCalendarItem.Id, value, attr.Value.QualifierValues, false )
+                            };
+
                             phAttributesView.Controls.Add( rl );
                         }
                     }
@@ -925,10 +939,15 @@ namespace RockWeb.Blocks.Event
 
                     if ( eventCalendarItem.Attributes.Count > 0 )
                     {
+                        var calendarAttributeHtmlGenericContainer = new HtmlGenericContainer
+                        {
+                            ID = $"phAttributes_{eventCalendarId}"
+                        };
+
                         wpAttributes.Visible = true;
-                        phAttributes.Controls.Add( new LiteralControl( string.Format( "<h3>{0}</h3>", eventCalendarService.Get( eventCalendarId ).Name ) ) );
-                        PlaceHolder phcalAttributes = new PlaceHolder();
-                        Rock.Attribute.Helper.AddEditControls( eventCalendarItem, phAttributes, true, BlockValidationGroup );
+                        calendarAttributeHtmlGenericContainer.Controls.Add( new LiteralControl( string.Format( "<h3>{0}</h3>", eventCalendarService.Get( eventCalendarId ).Name ) ) );
+                        Rock.Attribute.Helper.AddEditControls( eventCalendarItem, calendarAttributeHtmlGenericContainer, true, BlockValidationGroup );
+                        phAttributes.Controls.Add( calendarAttributeHtmlGenericContainer );
                     }
                 }
             }
@@ -1031,9 +1050,7 @@ namespace RockWeb.Blocks.Event
         /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
         protected void dlgEventOccurrenceAttribute_SaveClick( object sender, EventArgs e )
         {
-#pragma warning disable 0618 // Type or member is obsolete
-            var attribute = SaveChangesToStateCollection( edtEventOccurrenceAttributes, EventOccurrenceAttributesState );
-#pragma warning restore 0618 // Type or member is obsolete
+            var attribute = edtEventOccurrenceAttributes.SaveChangesToStateCollection( EventOccurrenceAttributesState );
 
             if ( !attribute.IsValid )
             {
@@ -1251,49 +1268,5 @@ namespace RockWeb.Blocks.Event
             EventItemAudience,
             EventOccurrenceAttributes
         }
-
-        #region Obsolete Code
-
-        /// <summary>
-        /// Add or update the saved state of an Attribute using values from the AttributeEditor.
-        /// Non-editable system properties of the existing Attribute state are preserved.
-        /// </summary>
-        /// <param name="editor">The AttributeEditor that holds the updated Attribute values.</param>
-        /// <param name="attributeStateCollection">The stored state collection.</param>
-        [RockObsolete( "1.11" )]
-        [Obsolete( "This method is required for backward-compatibility - new blocks should use the AttributeEditor.SaveChangesToStateCollection() extension method instead." )]
-        private Rock.Model.Attribute SaveChangesToStateCollection( AttributeEditor editor, List<Rock.Model.Attribute> attributeStateCollection )
-        {
-            // Load the editor values into a new Attribute instance.
-            Rock.Model.Attribute attribute = new Rock.Model.Attribute();
-
-            editor.GetAttributeProperties( attribute );
-
-            // Get the stored state of the Attribute, and copy the values of the non-editable properties.
-            var attributeState = attributeStateCollection.Where( a => a.Guid.Equals( attribute.Guid ) ).FirstOrDefault();
-
-            if ( attributeState != null )
-            {
-                attribute.Order = attributeState.Order;
-                attribute.CreatedDateTime = attributeState.CreatedDateTime;
-                attribute.CreatedByPersonAliasId = attributeState.CreatedByPersonAliasId;
-                attribute.ForeignGuid = attributeState.ForeignGuid;
-                attribute.ForeignId = attributeState.ForeignId;
-                attribute.ForeignKey = attributeState.ForeignKey;
-
-                attributeStateCollection.RemoveEntity( attribute.Guid );
-            }
-            else
-            {
-                // Set the Order of the new entry as the last item in the collection.
-                attribute.Order = attributeStateCollection.Any() ? attributeStateCollection.Max( a => a.Order ) + 1 : 0;
-            }
-
-            attributeStateCollection.Add( attribute );
-
-            return attribute;
-        }
-
-        #endregion
     }
 }

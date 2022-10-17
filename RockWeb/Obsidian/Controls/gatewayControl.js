@@ -1,24 +1,23 @@
-System.register(["vue", "../Elements/javaScriptAnchor", "./componentFromUrl"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, javaScriptAnchor_1, componentFromUrl_1, submitPaymentCallbackSymbol, prepareSubmitPayment, onSubmitPayment, ValidationField;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', './javaScriptAnchor.js', './componentFromUrl.js', 'tslib', './alert.js', './loadingIndicator.js'], (function (exports) {
+    'use strict';
+    var defineComponent, computed, provide, inject, JavaScriptAnchor, ComponentFromUrl;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (javaScriptAnchor_1_1) {
-                javaScriptAnchor_1 = javaScriptAnchor_1_1;
-            },
-            function (componentFromUrl_1_1) {
-                componentFromUrl_1 = componentFromUrl_1_1;
-            }
-        ],
-        execute: function () {
-            submitPaymentCallbackSymbol = Symbol("gateway-submit-payment-callback");
-            exports_1("prepareSubmitPayment", prepareSubmitPayment = () => {
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            computed = module.computed;
+            provide = module.provide;
+            inject = module.inject;
+        }, function (module) {
+            JavaScriptAnchor = module["default"];
+        }, function (module) {
+            ComponentFromUrl = module["default"];
+        }, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            const submitPaymentCallbackSymbol = Symbol("gateway-submit-payment-callback");
+            const prepareSubmitPayment = exports('prepareSubmitPayment', () => {
                 const container = {};
-                vue_1.provide(submitPaymentCallbackSymbol, container);
+                provide(submitPaymentCallbackSymbol, container);
                 return () => {
                     if (container.callback) {
                         container.callback();
@@ -28,24 +27,24 @@ System.register(["vue", "../Elements/javaScriptAnchor", "./componentFromUrl"], f
                     }
                 };
             });
-            exports_1("onSubmitPayment", onSubmitPayment = (callback) => {
-                const container = vue_1.inject(submitPaymentCallbackSymbol);
+            const onSubmitPayment = exports('onSubmitPayment', (callback) => {
+                const container = inject(submitPaymentCallbackSymbol);
                 if (!container) {
                     throw "Gateway control has not been properly initialized.";
                 }
                 container.callback = callback;
             });
+            var ValidationField; exports('ValidationField', ValidationField);
             (function (ValidationField) {
                 ValidationField[ValidationField["CardNumber"] = 0] = "CardNumber";
                 ValidationField[ValidationField["Expiry"] = 1] = "Expiry";
                 ValidationField[ValidationField["SecurityCode"] = 2] = "SecurityCode";
-            })(ValidationField || (ValidationField = {}));
-            exports_1("ValidationField", ValidationField);
-            exports_1("default", vue_1.defineComponent({
+            })(ValidationField || (exports('ValidationField', ValidationField = {})));
+            var gatewayControl = exports('default', defineComponent({
                 name: "GatewayControl",
                 components: {
-                    ComponentFromUrl: componentFromUrl_1.default,
-                    JavaScriptAnchor: javaScriptAnchor_1.default
+                    ComponentFromUrl,
+                    JavaScriptAnchor
                 },
                 props: {
                     gatewayControlModel: {
@@ -62,9 +61,9 @@ System.register(["vue", "../Elements/javaScriptAnchor", "./componentFromUrl"], f
                     }
                 },
                 setup(props, { emit }) {
-                    const url = vue_1.computed(() => props.gatewayControlModel.fileUrl);
-                    const settings = vue_1.computed(() => props.gatewayControlModel.settings);
-                    const amountToPay = vue_1.computed(() => props.amountToPay);
+                    const url = computed(() => props.gatewayControlModel.fileUrl);
+                    const settings = computed(() => props.gatewayControlModel.settings);
+                    const amountToPay = computed(() => props.amountToPay);
                     const onSuccess = (token) => {
                         emit("success", token);
                     };
@@ -97,7 +96,7 @@ System.register(["vue", "../Elements/javaScriptAnchor", "./componentFromUrl"], f
 </div>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=gatewayControl.js.map
+}));

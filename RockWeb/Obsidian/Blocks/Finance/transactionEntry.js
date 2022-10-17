@@ -1,99 +1,77 @@
-System.register(["../../Elements/dropDownList", "../../Elements/currencyBox", "vue", "../../Elements/datePicker", "../../Elements/rockButton", "../../Util/guid", "../../Util/rockDateTime", "../../Elements/alert", "../../Services/number", "../../Util/block", "../../Elements/toggle", "../../Store/index", "../../Elements/textBox", "../../Services/string", "../../Controls/gatewayControl", "../../Controls/rockValidation"], function (exports_1, context_1) {
-    "use strict";
-    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-    var dropDownList_1, currencyBox_1, vue_1, datePicker_1, rockButton_1, guid_1, rockDateTime_1, alert_1, number_1, block_1, toggle_1, index_1, textBox_1, string_1, gatewayControl_1, rockValidation_1, store;
-    var __moduleName = context_1 && context_1.id;
+System.register(['tslib', '@Obsidian/Controls/dropDownList', '@Obsidian/Controls/currencyBox', 'vue', '@Obsidian/Controls/datePicker', '@Obsidian/Controls/rockButton', '@Obsidian/Utility/guid', '@Obsidian/Utility/rockDateTime', '@Obsidian/Controls/alert', '@Obsidian/Utility/numberUtils', '@Obsidian/Utility/block', '@Obsidian/Controls/toggle', '@Obsidian/PageState', '@Obsidian/Controls/textBox', '@Obsidian/Utility/stringUtils', '@Obsidian/Controls/gatewayControl', '@Obsidian/Controls/rockValidation'], (function (exports) {
+    'use strict';
+    var __awaiter, DropDownList, CurrencyBox, defineComponent, DatePicker, RockButton, newGuid, RockDateTime, Alert, asFormattedString, useInvokeBlockAction, useConfigurationValues, Toggle, useStore, TextBox, asCommaAnd, GatewayControl, prepareSubmitPayment, RockValidation;
     return {
-        setters: [
-            function (dropDownList_1_1) {
-                dropDownList_1 = dropDownList_1_1;
-            },
-            function (currencyBox_1_1) {
-                currencyBox_1 = currencyBox_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (datePicker_1_1) {
-                datePicker_1 = datePicker_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (guid_1_1) {
-                guid_1 = guid_1_1;
-            },
-            function (rockDateTime_1_1) {
-                rockDateTime_1 = rockDateTime_1_1;
-            },
-            function (alert_1_1) {
-                alert_1 = alert_1_1;
-            },
-            function (number_1_1) {
-                number_1 = number_1_1;
-            },
-            function (block_1_1) {
-                block_1 = block_1_1;
-            },
-            function (toggle_1_1) {
-                toggle_1 = toggle_1_1;
-            },
-            function (index_1_1) {
-                index_1 = index_1_1;
-            },
-            function (textBox_1_1) {
-                textBox_1 = textBox_1_1;
-            },
-            function (string_1_1) {
-                string_1 = string_1_1;
-            },
-            function (gatewayControl_1_1) {
-                gatewayControl_1 = gatewayControl_1_1;
-            },
-            function (rockValidation_1_1) {
-                rockValidation_1 = rockValidation_1_1;
-            }
-        ],
-        execute: function () {
-            store = index_1.useStore();
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            __awaiter = module.__awaiter;
+        }, function (module) {
+            DropDownList = module["default"];
+        }, function (module) {
+            CurrencyBox = module["default"];
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            DatePicker = module["default"];
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            newGuid = module.newGuid;
+        }, function (module) {
+            RockDateTime = module.RockDateTime;
+        }, function (module) {
+            Alert = module["default"];
+        }, function (module) {
+            asFormattedString = module.asFormattedString;
+        }, function (module) {
+            useInvokeBlockAction = module.useInvokeBlockAction;
+            useConfigurationValues = module.useConfigurationValues;
+        }, function (module) {
+            Toggle = module["default"];
+        }, function (module) {
+            useStore = module.useStore;
+        }, function (module) {
+            TextBox = module["default"];
+        }, function (module) {
+            asCommaAnd = module.asCommaAnd;
+        }, function (module) {
+            GatewayControl = module["default"];
+            prepareSubmitPayment = module.prepareSubmitPayment;
+        }, function (module) {
+            RockValidation = module["default"];
+        }],
+        execute: (function () {
+
+            const store = useStore();
+            var transactionEntry = exports('default', defineComponent({
                 name: "Finance.TransactionEntry",
                 components: {
-                    CurrencyBox: currencyBox_1.default,
-                    DropDownList: dropDownList_1.default,
-                    DatePicker: datePicker_1.default,
-                    RockButton: rockButton_1.default,
-                    Alert: alert_1.default,
-                    Toggle: toggle_1.default,
-                    TextBox: textBox_1.default,
-                    GatewayControl: gatewayControl_1.default,
-                    RockValidation: rockValidation_1.default
+                    CurrencyBox,
+                    DropDownList,
+                    DatePicker,
+                    RockButton,
+                    Alert,
+                    Toggle,
+                    TextBox,
+                    GatewayControl,
+                    RockValidation
                 },
                 setup() {
-                    const submitPayment = gatewayControl_1.prepareSubmitPayment();
+                    const submitPayment = prepareSubmitPayment();
                     return {
                         submitPayment,
-                        invokeBlockAction: block_1.useInvokeBlockAction(),
-                        configurationValues: block_1.useConfigurationValues()
+                        invokeBlockAction: useInvokeBlockAction(),
+                        configurationValues: useConfigurationValues()
                     };
                 },
                 data() {
-                    const configurationValues = block_1.useConfigurationValues();
+                    const configurationValues = useConfigurationValues();
                     const campuses = configurationValues["campuses"] || [];
                     const frequencies = configurationValues["frequencies"] || [];
                     return {
                         loading: false,
                         gatewayErrorMessage: "",
                         gatewayValidationFields: {},
-                        transactionGuid: guid_1.newGuid(),
+                        transactionGuid: newGuid(),
                         criticalError: "",
                         pageIndex: 1,
                         page1Error: "",
@@ -119,7 +97,7 @@ System.register(["../../Elements/dropDownList", "../../Elements/currencyBox", "v
                             campusGuid: campuses.length > 0 ? campuses[0].value : "",
                             businessGuid: null,
                             frequencyValueGuid: frequencies.length > 0 ? frequencies[0].value : "",
-                            giftDate: rockDateTime_1.RockDateTime.now().toASPString("yyyy-MM-dd"),
+                            giftDate: RockDateTime.now().toASPString("yyyy-MM-dd"),
                             isGiveAnonymously: false
                         }
                     };
@@ -127,13 +105,13 @@ System.register(["../../Elements/dropDownList", "../../Elements/currencyBox", "v
                 computed: {
                     totalAmount() {
                         let total = 0;
-                        for (const accountGuid in this.args.accountAmounts) {
-                            total += this.args.accountAmounts[accountGuid];
+                        for (const accountKey in this.args.accountAmounts) {
+                            total += this.args.accountAmounts[accountKey];
                         }
                         return total;
                     },
                     totalAmountFormatted() {
-                        return `$${number_1.asFormattedString(this.totalAmount, 2)}`;
+                        return `$${asFormattedString(this.totalAmount, 2)}`;
                     },
                     gatewayControlModel() {
                         return this.configurationValues["gatewayControl"];
@@ -159,25 +137,26 @@ System.register(["../../Elements/dropDownList", "../../Elements/currencyBox", "v
                         return this.configurationValues["frequencies"] || [];
                     },
                     campusName() {
+                        var _a;
                         if (this.args.campusGuid === null) {
                             return null;
                         }
                         const matchedCampuses = this.campuses.filter(c => c.value === this.args.campusGuid);
-                        return matchedCampuses.length >= 1 ? matchedCampuses[0].text : null;
+                        return matchedCampuses.length >= 1 ? (_a = matchedCampuses[0].text) !== null && _a !== void 0 ? _a : "" : null;
                     },
                     accountAndCampusString() {
                         const accountNames = [];
-                        for (const accountGuid in this.args.accountAmounts) {
-                            const account = this.accounts.find(a => guid_1.areEqual(accountGuid, a.guid));
+                        for (const accountKey in this.args.accountAmounts) {
+                            const account = this.accounts.find(a => a.idKey === accountKey);
                             if (!account || !account.publicName) {
                                 continue;
                             }
                             accountNames.push(account.publicName);
                         }
                         if (this.campusName) {
-                            return `${string_1.asCommaAnd(accountNames)} - ${this.campusName}`;
+                            return `${asCommaAnd(accountNames)} - ${this.campusName}`;
                         }
-                        return string_1.asCommaAnd(accountNames);
+                        return asCommaAnd(accountNames);
                     }
                 },
                 methods: {
@@ -259,8 +238,8 @@ System.register(["../../Elements/dropDownList", "../../Elements/currencyBox", "v
         <template v-for="account in accounts">
             <CurrencyBox :label="account.publicName" v-model="args.accountAmounts[account.guid]" />
         </template>
-        <DropDownList label="Campus" v-model="args.campusGuid" :showBlankItem="false" :options="campuses" />
-        <DropDownList label="Frequency" v-model="args.frequencyValueGuid" :showBlankItem="false" :options="frequencies" />
+        <DropDownList label="Campus" v-model="args.campusGuid" :showBlankItem="false" :items="campuses" />
+        <DropDownList label="Frequency" v-model="args.frequencyValueGuid" :showBlankItem="false" :items="frequencies" />
         <DatePicker label="Process Gift On" v-model="args.giftDate" />
         <Alert alertType="validation" v-if="page1Error">{{page1Error}}</Alert>
         <RockButton btnType="primary" @click="onPageOneSubmit">Give Now</RockButton>
@@ -314,7 +293,7 @@ System.register(["../../Elements/dropDownList", "../../Elements/currencyBox", "v
     </template>
 </div>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=transactionEntry.js.map
+}));

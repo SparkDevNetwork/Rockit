@@ -1,83 +1,64 @@
-System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../../Elements/rockButton", "../../Elements/textBox", "vue", "../../Store/index", "../../Elements/emailBox", "../../Controls/rockValidation", "../../Controls/rockForm", "../../Controls/loading", "../../Controls/primaryBlock", "../../Elements/datePicker", "../../Controls/addressControl", "../../Services/number", "../../Util/rockDateTime"], function (exports_1, context_1) {
-    "use strict";
-    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-    var bus_1, paneledBlockTemplate_1, rockButton_1, textBox_1, vue_1, index_1, emailBox_1, rockValidation_1, rockForm_1, loading_1, primaryBlock_1, datePicker_1, addressControl_1, number_1, rockDateTime_1, store;
-    var __moduleName = context_1 && context_1.id;
+System.register(['tslib', '@Obsidian/Utility/bus', '@Obsidian/Templates/block', '@Obsidian/Controls/rockButton', '@Obsidian/Controls/textBox', 'vue', '@Obsidian/PageState', '@Obsidian/Controls/emailBox', '@Obsidian/Controls/rockValidation', '@Obsidian/Controls/rockForm', '@Obsidian/Controls/loading', '@Obsidian/Controls/primaryBlock', '@Obsidian/Utility/block', '@Obsidian/Controls/datePicker', '@Obsidian/Controls/addressControl', '@Obsidian/Utility/numberUtils', '@Obsidian/Utility/rockDateTime'], (function (exports) {
+    'use strict';
+    var __awaiter, bus, Block, RockButton, TextBox, defineComponent, useStore, EmailBox, RockValidation, RockForm, Loading, PrimaryBlock, useInvokeBlockAction, DatePicker, AddressControl, getDefaultAddressControlModel, toNumber, RockDateTime, DateTimeFormat;
     return {
-        setters: [
-            function (bus_1_1) {
-                bus_1 = bus_1_1;
-            },
-            function (paneledBlockTemplate_1_1) {
-                paneledBlockTemplate_1 = paneledBlockTemplate_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (textBox_1_1) {
-                textBox_1 = textBox_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (index_1_1) {
-                index_1 = index_1_1;
-            },
-            function (emailBox_1_1) {
-                emailBox_1 = emailBox_1_1;
-            },
-            function (rockValidation_1_1) {
-                rockValidation_1 = rockValidation_1_1;
-            },
-            function (rockForm_1_1) {
-                rockForm_1 = rockForm_1_1;
-            },
-            function (loading_1_1) {
-                loading_1 = loading_1_1;
-            },
-            function (primaryBlock_1_1) {
-                primaryBlock_1 = primaryBlock_1_1;
-            },
-            function (datePicker_1_1) {
-                datePicker_1 = datePicker_1_1;
-            },
-            function (addressControl_1_1) {
-                addressControl_1 = addressControl_1_1;
-            },
-            function (number_1_1) {
-                number_1 = number_1_1;
-            },
-            function (rockDateTime_1_1) {
-                rockDateTime_1 = rockDateTime_1_1;
-            }
-        ],
-        execute: function () {
-            store = index_1.useStore();
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            __awaiter = module.__awaiter;
+        }, function (module) {
+            bus = module["default"];
+        }, function (module) {
+            Block = module["default"];
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            TextBox = module["default"];
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            useStore = module.useStore;
+        }, function (module) {
+            EmailBox = module["default"];
+        }, function (module) {
+            RockValidation = module["default"];
+        }, function (module) {
+            RockForm = module["default"];
+        }, function (module) {
+            Loading = module["default"];
+        }, function (module) {
+            PrimaryBlock = module["default"];
+        }, function (module) {
+            useInvokeBlockAction = module.useInvokeBlockAction;
+        }, function (module) {
+            DatePicker = module["default"];
+        }, function (module) {
+            AddressControl = module["default"];
+            getDefaultAddressControlModel = module.getDefaultAddressControlModel;
+        }, function (module) {
+            toNumber = module.toNumber;
+        }, function (module) {
+            RockDateTime = module.RockDateTime;
+            DateTimeFormat = module.DateTimeFormat;
+        }],
+        execute: (function () {
+
+            const store = useStore();
+            var personDetail = exports('default', defineComponent({
                 name: "Example.PersonDetail",
                 components: {
-                    PaneledBlockTemplate: paneledBlockTemplate_1.default,
-                    RockButton: rockButton_1.default,
-                    TextBox: textBox_1.default,
-                    EmailBox: emailBox_1.default,
-                    RockValidation: rockValidation_1.default,
-                    RockForm: rockForm_1.default,
-                    Loading: loading_1.default,
-                    PrimaryBlock: primaryBlock_1.default,
-                    DatePicker: datePicker_1.default,
-                    AddressControl: addressControl_1.default
+                    Block,
+                    RockButton,
+                    TextBox,
+                    EmailBox,
+                    RockValidation,
+                    RockForm,
+                    Loading,
+                    PrimaryBlock,
+                    DatePicker,
+                    AddressControl
                 },
                 setup() {
                     return {
-                        invokeBlockAction: vue_1.inject("invokeBlockAction")
+                        invokeBlockAction: useInvokeBlockAction()
                     };
                 },
                 data() {
@@ -89,7 +70,7 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                         receivedMessage: "",
                         isLoading: false,
                         birthdate: null,
-                        address: addressControl_1.getDefaultAddressControlModel()
+                        address: getDefaultAddressControlModel()
                     };
                 },
                 methods: {
@@ -114,9 +95,9 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                                 let birthMonth = null;
                                 let birthYear = null;
                                 if (match !== null) {
-                                    birthYear = number_1.toNumber(match[1]);
-                                    birthMonth = number_1.toNumber(match[2]);
-                                    birthDay = number_1.toNumber(match[3]);
+                                    birthYear = toNumber(match[1]);
+                                    birthMonth = toNumber(match[2]);
+                                    birthDay = toNumber(match[3]);
                                 }
                                 this.person = Object.assign(Object.assign({}, this.personForEditing), { birthDay: birthDay, birthMonth: birthMonth, birthYear: birthYear });
                                 this.isLoading = true;
@@ -129,7 +110,7 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                         });
                     },
                     doPublish() {
-                        bus_1.default.publish("PersonDetail:Message", this.messageToPublish);
+                        bus.publish("PersonDetail:Message", this.messageToPublish);
                         this.messageToPublish = "";
                     },
                     receiveMessage(message) {
@@ -142,36 +123,37 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                         if (!((_a = this.person) === null || _a === void 0 ? void 0 : _a.birthDay) || !this.person.birthMonth || !this.person.birthYear) {
                             return null;
                         }
-                        return rockDateTime_1.RockDateTime.fromParts(this.person.birthYear, this.person.birthMonth, this.person.birthDay);
+                        return RockDateTime.fromParts(this.person.birthYear, this.person.birthMonth, this.person.birthDay);
                     },
                     birthdateFormatted() {
                         if (!this.birthdateOrNull) {
                             return "Not Completed";
                         }
-                        return this.birthdateOrNull.toLocaleString(rockDateTime_1.DateTimeFormat.DateTimeShort);
+                        return this.birthdateOrNull.toLocaleString(DateTimeFormat.DateTimeShort);
                     },
                     blockTitle() {
                         return this.person ?
-                            `: ${this.person.nickName || this.person.firstName} ${this.person.lastName}` :
-                            "";
+                            `Edit Yourself: ${this.person.nickName || this.person.firstName} ${this.person.lastName}` :
+                            "Edit Yourself";
                     },
                     currentPerson() {
                         return store.state.currentPerson;
                     },
-                    currentPersonGuid() {
-                        return this.currentPerson ? this.currentPerson.guid : null;
+                    currentPersonKey() {
+                        var _a, _b;
+                        return (_b = (_a = this.currentPerson) === null || _a === void 0 ? void 0 : _a.idKey) !== null && _b !== void 0 ? _b : null;
                     }
                 },
                 watch: {
-                    currentPersonGuid: {
+                    currentPersonKey: {
                         immediate: true,
                         handler() {
                             return __awaiter(this, void 0, void 0, function* () {
-                                if (!this.currentPersonGuid) {
+                                if (!this.currentPersonKey) {
                                     this.person = null;
                                     return;
                                 }
-                                if (this.person && this.person.guid === this.currentPersonGuid) {
+                                if (this.person && this.person.idKey === this.currentPersonKey) {
                                     return;
                                 }
                                 this.isLoading = true;
@@ -182,16 +164,12 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                     }
                 },
                 created() {
-                    bus_1.default.subscribe("PersonSecondary:Message", this.receiveMessage);
+                    bus.subscribe("PersonSecondary:Message", this.receiveMessage);
                 },
                 template: `
 <PrimaryBlock :hideSecondaryBlocks="isEditMode">
-    <PaneledBlockTemplate>
-        <template v-slot:title>
-            <i class="fa fa-flask"></i>
-            Edit Yourself{{blockTitle}}
-        </template>
-        <template v-slot:default>
+    <Block :title="blockTitle">
+        <template #default>
             <Loading :isLoading="isLoading">
                 <p v-if="!person">
                     There is no person loaded.
@@ -247,10 +225,10 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                 </template>
             </Loading>
         </template>
-    </PaneledBlockTemplate>
+    </Block>
 </PrimaryBlock>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=personDetail.js.map
+}));

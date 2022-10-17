@@ -1,25 +1,22 @@
-System.register(["vue", "../../../../Util/component"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, component_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', '@Obsidian/Utility/component'], (function (exports) {
+    'use strict';
+    var defineComponent, useVModelPassthrough;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (component_1_1) {
-                component_1 = component_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            useVModelPassthrough = module.useVModelPassthrough;
+        }],
+        execute: (function () {
+
+            var SegmentedPicker = exports('default', defineComponent({
                 name: "SegmentedPicker",
                 props: {
                     modelValue: {
                         type: String,
                         default: ""
                     },
-                    options: {
+                    items: {
                         type: Array,
                         default: []
                     }
@@ -28,12 +25,13 @@ System.register(["vue", "../../../../Util/component"], function (exports_1, cont
                     "update:modelValue"
                 ],
                 setup(props, { emit }) {
-                    const internalValue = component_1.useVModelPassthrough(props, "modelValue", emit);
+                    const internalValue = useVModelPassthrough(props, "modelValue", emit);
                     const getButtonClass = (item) => {
                         return ["btn", item.value === internalValue.value ? "btn-primary" : "btn-default"];
                     };
                     const onItemClick = (item) => {
-                        internalValue.value = item.value;
+                        var _a;
+                        internalValue.value = (_a = item.value) !== null && _a !== void 0 ? _a : "";
                     };
                     return {
                         getButtonClass,
@@ -43,11 +41,11 @@ System.register(["vue", "../../../../Util/component"], function (exports_1, cont
                 },
                 template: `
 <div class="btn-group btn-group-xs mb-2" role="group">
-    <button v-for="item in options" :class="getButtonClass(item)" :key="item.value" type="button" @click="onItemClick(item)">{{ item.text }}</button>
+    <button v-for="item in items" :class="getButtonClass(item)" :key="item.value" type="button" @click="onItemClick(item)">{{ item.text }}</button>
 </div>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=segmentedPicker.js.map
+}));

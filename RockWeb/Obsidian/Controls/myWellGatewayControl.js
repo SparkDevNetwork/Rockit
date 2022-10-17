@@ -1,33 +1,24 @@
-System.register(["vue", "../Elements/loadingIndicator", "./gatewayControl"], function (exports_1, context_1) {
-    "use strict";
-    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-    var vue_1, loadingIndicator_1, gatewayControl_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['tslib', 'vue', './loadingIndicator.js', './gatewayControl.js', '@Obsidian/Utility/promiseUtils', './javaScriptAnchor.js', './componentFromUrl.js', './alert.js'], (function (exports) {
+    'use strict';
+    var __awaiter, defineComponent, LoadingIndicator, ValidationField, sleep;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (loadingIndicator_1_1) {
-                loadingIndicator_1 = loadingIndicator_1_1;
-            },
-            function (gatewayControl_1_1) {
-                gatewayControl_1 = gatewayControl_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            __awaiter = module.__awaiter;
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            LoadingIndicator = module["default"];
+        }, function (module) {
+            ValidationField = module.ValidationField;
+        }, function (module) {
+            sleep = module.sleep;
+        }, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            var myWellGatewayControl = exports('default', defineComponent({
                 name: "MyWellGatewayControl",
                 components: {
-                    LoadingIndicator: loadingIndicator_1.default
+                    LoadingIndicator
                 },
                 props: {
                     settings: {
@@ -54,9 +45,8 @@ System.register(["vue", "../Elements/loadingIndicator", "./gatewayControl"], fun
                                 script.type = "text/javascript";
                                 script.src = "https://sandbox.gotnpgateway.com/tokenizer/tokenizer.js";
                                 document.getElementsByTagName("head")[0].appendChild(script);
-                                const sleep = () => new Promise((resolve) => setTimeout(resolve, 20));
                                 while (!window[globalVarName]) {
-                                    yield sleep();
+                                    yield sleep(20);
                                 }
                             }
                             const settings = this.getTokenizerSettings();
@@ -84,10 +74,10 @@ System.register(["vue", "../Elements/loadingIndicator", "./gatewayControl"], fun
                             for (const myWellField of validationResponse.invalid) {
                                 switch (myWellField) {
                                     case "cc":
-                                        validationFields.push(gatewayControl_1.ValidationField.CardNumber);
+                                        validationFields.push(ValidationField.CardNumber);
                                         break;
                                     case "exp":
-                                        validationFields.push(gatewayControl_1.ValidationField.Expiry);
+                                        validationFields.push(ValidationField.Expiry);
                                         break;
                                     default:
                                         console.error("Unknown MyWell validation field", myWellField);
@@ -204,7 +194,7 @@ System.register(["vue", "../Elements/loadingIndicator", "./gatewayControl"], fun
     </div>
 </div>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=myWellGatewayControl.js.map
+}));

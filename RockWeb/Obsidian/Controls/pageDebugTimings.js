@@ -1,22 +1,18 @@
-System.register(["../Services/number", "vue", "../Store/index"], function (exports_1, context_1) {
-    "use strict";
-    var number_1, vue_1, index_1, store, pageDebugTimingRow;
-    var __moduleName = context_1 && context_1.id;
+System.register(['@Obsidian/Utility/numberUtils', 'vue', '@Obsidian/PageState'], (function (exports) {
+    'use strict';
+    var asFormattedString, defineComponent, useStore;
     return {
-        setters: [
-            function (number_1_1) {
-                number_1 = number_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (index_1_1) {
-                index_1 = index_1_1;
-            }
-        ],
-        execute: function () {
-            store = index_1.useStore();
-            pageDebugTimingRow = vue_1.defineComponent({
+        setters: [function (module) {
+            asFormattedString = module.asFormattedString;
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            useStore = module.useStore;
+        }],
+        execute: (function () {
+
+            const store = useStore();
+            const pageDebugTimingRow = defineComponent({
                 name: "PageDebugTimingRow",
                 props: {
                     viewModel: {
@@ -33,7 +29,7 @@ System.register(["../Services/number", "vue", "../Store/index"], function (expor
                     }
                 },
                 methods: {
-                    numberAsFormattedString: number_1.asFormattedString
+                    numberAsFormattedString: asFormattedString
                 },
                 computed: {
                     indentStyle() {
@@ -83,7 +79,7 @@ System.register(["../Services/number", "vue", "../Store/index"], function (expor
     </td>
 </tr>`
             });
-            exports_1("default", vue_1.defineComponent({
+            var pageDebugTimings = exports('default', defineComponent({
                 name: "PageDebugTimings",
                 components: {
                     PageDebugTimingRow: pageDebugTimingRow
@@ -163,7 +159,7 @@ System.register(["../Services/number", "vue", "../Store/index"], function (expor
     </table>
 </span>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=pageDebugTimings.js.map
+}));

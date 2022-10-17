@@ -73,6 +73,95 @@
             <param name="categoryName">The category name for messages produced by the logger.</param>
             <returns></returns>
         </member>
+        <member name="T:Microsoft.Extensions.Logging.Internal.FormattedLogValues">
+            <summary>
+            LogValues to enable formatting options supported by <see cref="M:string.Format"/>.
+            This also enables using {NamedformatItem} in the format string.
+            </summary>
+        </member>
+        <member name="T:Microsoft.Extensions.Logging.Internal.LogValuesFormatter">
+            <summary>
+            Formatter to convert the named format items like {NamedformatItem} to <see cref="M:string.Format"/> format.
+            </summary>
+        </member>
+        <member name="T:Microsoft.Extensions.Logging.Abstractions.Internal.NullScope">
+            <summary>
+            An empty scope without any logic
+            </summary>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.Internal.NullScope.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:Microsoft.Extensions.Logging.Abstractions.NullLogger">
+            <summary>
+            Minimalistic logger that does nothing.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger.BeginScope``1(``0)">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel)">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger.Log``1(Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,``0,System.Exception,System.Func{``0,System.Exception,System.String})">
+            <inheritdoc />
+        </member>
+        <member name="T:Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory">
+            <summary>
+            An <see cref="T:Microsoft.Extensions.Logging.ILoggerFactory"/> used to create instance of
+            <see cref="T:Microsoft.Extensions.Logging.Abstractions.NullLogger"/> that logs nothing.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.CreateLogger(System.String)">
+            <inheritdoc />
+            <remarks>
+            This returns a <see cref="T:Microsoft.Extensions.Logging.Abstractions.NullLogger"/> instance which logs nothing.
+            </remarks>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.AddProvider(Microsoft.Extensions.Logging.ILoggerProvider)">
+            <inheritdoc />
+            <remarks>
+            This method ignores the parameter and does nothing.
+            </remarks>
+        </member>
+        <member name="T:Microsoft.Extensions.Logging.Abstractions.NullLogger`1">
+            <summary>
+            Minimalistic logger that does nothing.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger`1.BeginScope``1(``0)">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger`1.Log``1(Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,``0,System.Exception,System.Func{``0,System.Exception,System.String})">
+            <inheritdoc />
+            <remarks>
+            This method ignores the parameters and does nothing.
+            </remarks>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger`1.IsEnabled(Microsoft.Extensions.Logging.LogLevel)">
+            <inheritdoc />
+        </member>
+        <member name="T:Microsoft.Extensions.Logging.Abstractions.NullLoggerProvider">
+            <summary>
+            Provider for the <see cref="T:Microsoft.Extensions.Logging.Abstractions.NullLogger"/>.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLoggerProvider.CreateLogger(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLoggerProvider.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="P:Microsoft.Extensions.Logging.Abstractions.Resource.UnexpectedNumberOfNamedParameters">
+            <summary>
+            The format string '{0}' does not have the expected number of named parameters. Expected {1} parameter(s) but found {2} parameter(s).
+            </summary>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.Abstractions.Resource.FormatUnexpectedNumberOfNamedParameters(System.Object,System.Object,System.Object)">
+            <summary>
+            The format string '{0}' does not have the expected number of named parameters. Expected {1} parameter(s) but found {2} parameter(s).
+            </summary>
+        </member>
         <member name="T:Microsoft.Extensions.Logging.LoggerExtensions">
             <summary>
             ILogger extension methods for common scenarios.
@@ -94,6 +183,15 @@
             </summary>
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
             <param name="eventId">The event id associated with the log.</param>
+            <param name="message">Format string of the log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[])">
+            <summary>
+            Formats and writes a debug log message.
+            </summary>
+            <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
+            <param name="exception">The exception to log.</param>
             <param name="message">Format string of the log message.</param>
             <param name="args">An object array that contains zero or more objects to format.</param>
         </member>
@@ -124,6 +222,15 @@
             <param name="message">Format string of the log message.</param>
             <param name="args">An object array that contains zero or more objects to format.</param>
         </member>
+        <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogTrace(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[])">
+            <summary>
+            Formats and writes a trace log message.
+            </summary>
+            <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
+            <param name="exception">The exception to log.</param>
+            <param name="message">Format string of the log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
         <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogTrace(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[])">
             <summary>
             Formats and writes a trace log message.
@@ -148,6 +255,15 @@
             </summary>
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
             <param name="eventId">The event id associated with the log.</param>
+            <param name="message">Format string of the log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[])">
+            <summary>
+            Formats and writes an informational log message.
+            </summary>
+            <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
+            <param name="exception">The exception to log.</param>
             <param name="message">Format string of the log message.</param>
             <param name="args">An object array that contains zero or more objects to format.</param>
         </member>
@@ -178,6 +294,15 @@
             <param name="message">Format string of the log message.</param>
             <param name="args">An object array that contains zero or more objects to format.</param>
         </member>
+        <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[])">
+            <summary>
+            Formats and writes a warning log message.
+            </summary>
+            <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
+            <param name="exception">The exception to log.</param>
+            <param name="message">Format string of the log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
         <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[])">
             <summary>
             Formats and writes a warning log message.
@@ -205,6 +330,15 @@
             <param name="message">Format string of the log message.</param>
             <param name="args">An object array that contains zero or more objects to format.</param>
         </member>
+        <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogError(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[])">
+            <summary>
+            Formats and writes an error log message.
+            </summary>
+            <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
+            <param name="exception">The exception to log.</param>
+            <param name="message">Format string of the log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
         <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogError(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[])">
             <summary>
             Formats and writes an error log message.
@@ -229,6 +363,15 @@
             </summary>
             <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
             <param name="eventId">The event id associated with the log.</param>
+            <param name="message">Format string of the log message.</param>
+            <param name="args">An object array that contains zero or more objects to format.</param>
+        </member>
+        <member name="M:Microsoft.Extensions.Logging.LoggerExtensions.LogCritical(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[])">
+            <summary>
+            Formats and writes a critical log message.
+            </summary>
+            <param name="logger">The <see cref="T:Microsoft.Extensions.Logging.ILogger"/> to write to.</param>
+            <param name="exception">The exception to log.</param>
             <param name="message">Format string of the log message.</param>
             <param name="args">An object array that contains zero or more objects to format.</param>
         </member>
@@ -447,60 +590,6 @@
         <member name="F:Microsoft.Extensions.Logging.LogLevel.None">
             <summary>
             Not used for writing log messages. Specifies that a logging category should not write any messages.
-            </summary>
-        </member>
-        <member name="T:Microsoft.Extensions.Logging.Abstractions.NullLogger">
-            <summary>
-            Minimalistic logger that does nothing.
-            </summary>
-        </member>
-        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger.BeginScope``1(``0)">
-            <inheritdoc />
-        </member>
-        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel)">
-            <inheritdoc />
-        </member>
-        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLogger.Log``1(Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,``0,System.Exception,System.Func{``0,System.Exception,System.String})">
-            <inheritdoc />
-        </member>
-        <member name="T:Microsoft.Extensions.Logging.Abstractions.NullLoggerProvider">
-            <summary>
-            Provider for the <see cref="T:Microsoft.Extensions.Logging.Abstractions.NullLogger"/>.
-            </summary>
-        </member>
-        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLoggerProvider.CreateLogger(System.String)">
-            <inheritdoc />
-        </member>
-        <member name="M:Microsoft.Extensions.Logging.Abstractions.NullLoggerProvider.Dispose">
-            <inheritdoc />
-        </member>
-        <member name="T:Microsoft.Extensions.Logging.Abstractions.Internal.NullScope">
-            <summary>
-            An empty scope without any logic
-            </summary>
-        </member>
-        <member name="M:Microsoft.Extensions.Logging.Abstractions.Internal.NullScope.Dispose">
-            <inheritdoc />
-        </member>
-        <member name="P:Microsoft.Extensions.Logging.Abstractions.Resource.UnexpectedNumberOfNamedParameters">
-            <summary>
-            The format string '{0}' does not have the expected number of named parameters. Expected {1} parameter(s) but found {2} parameter(s).
-            </summary>
-        </member>
-        <member name="M:Microsoft.Extensions.Logging.Abstractions.Resource.FormatUnexpectedNumberOfNamedParameters(System.Object,System.Object,System.Object)">
-            <summary>
-            The format string '{0}' does not have the expected number of named parameters. Expected {1} parameter(s) but found {2} parameter(s).
-            </summary>
-        </member>
-        <member name="T:Microsoft.Extensions.Logging.Internal.FormattedLogValues">
-            <summary>
-            LogValues to enable formatting options supported by <see cref="M:string.Format"/>.
-            This also enables using {NamedformatItem} in the format string.
-            </summary>
-        </member>
-        <member name="T:Microsoft.Extensions.Logging.Internal.LogValuesFormatter">
-            <summary>
-            Formatter to convert the named format items like {NamedformatItem} to <see cref="M:string.Format"/> format.
             </summary>
         </member>
     </members>

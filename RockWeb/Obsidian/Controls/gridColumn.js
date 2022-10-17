@@ -1,24 +1,21 @@
-System.register(["../Elements/javaScriptAnchor", "vue", "./grid"], function (exports_1, context_1) {
-    "use strict";
-    var javaScriptAnchor_1, vue_1, grid_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['./javaScriptAnchor.js', 'vue', './grid.js'], (function (exports) {
+    'use strict';
+    var JavaScriptAnchor, defineComponent, inject, SortDirection;
     return {
-        setters: [
-            function (javaScriptAnchor_1_1) {
-                javaScriptAnchor_1 = javaScriptAnchor_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (grid_1_1) {
-                grid_1 = grid_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            JavaScriptAnchor = module["default"];
+        }, function (module) {
+            defineComponent = module.defineComponent;
+            inject = module.inject;
+        }, function (module) {
+            SortDirection = module.SortDirection;
+        }],
+        execute: (function () {
+
+            var GridColumn = exports('default', defineComponent({
                 name: "GridColumn",
                 components: {
-                    JavaScriptAnchor: javaScriptAnchor_1.default
+                    JavaScriptAnchor
                 },
                 props: {
                     title: {
@@ -36,8 +33,8 @@ System.register(["../Elements/javaScriptAnchor", "vue", "./grid"], function (exp
                 },
                 setup() {
                     return {
-                        gridContext: vue_1.inject("gridContext"),
-                        rowContext: vue_1.inject("rowContext")
+                        gridContext: inject("gridContext"),
+                        rowContext: inject("rowContext")
                     };
                 },
                 computed: {
@@ -56,11 +53,11 @@ System.register(["../Elements/javaScriptAnchor", "vue", "./grid"], function (exp
                     },
                     isCurrentlySortedDesc() {
                         var _a;
-                        return this.isCurrentlySorted && ((_a = this.sortProperty) === null || _a === void 0 ? void 0 : _a.direction) === grid_1.SortDirection.Descending;
+                        return this.isCurrentlySorted && ((_a = this.sortProperty) === null || _a === void 0 ? void 0 : _a.direction) === SortDirection.Descending;
                     },
                     isCurrentlySortedAsc() {
                         var _a;
-                        return this.isCurrentlySorted && ((_a = this.sortProperty) === null || _a === void 0 ? void 0 : _a.direction) === grid_1.SortDirection.Ascending;
+                        return this.isCurrentlySorted && ((_a = this.sortProperty) === null || _a === void 0 ? void 0 : _a.direction) === SortDirection.Ascending;
                     }
                 },
                 methods: {
@@ -68,11 +65,11 @@ System.register(["../Elements/javaScriptAnchor", "vue", "./grid"], function (exp
                         this.$emit("click:header", this.property);
                         if (this.mySortExpression && this.sortProperty) {
                             if (this.isCurrentlySortedAsc) {
-                                this.sortProperty.direction = grid_1.SortDirection.Descending;
+                                this.sortProperty.direction = SortDirection.Descending;
                             }
                             else {
                                 this.sortProperty.property = this.mySortExpression;
-                                this.sortProperty.direction = grid_1.SortDirection.Ascending;
+                                this.sortProperty.direction = SortDirection.Ascending;
                             }
                         }
                     },
@@ -100,7 +97,7 @@ System.register(["../Elements/javaScriptAnchor", "vue", "./grid"], function (exp
     </slot>
 </td>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=gridColumn.js.map
+}));

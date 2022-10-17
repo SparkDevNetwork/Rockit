@@ -1,40 +1,32 @@
-System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../../Controls/secondaryBlock", "../../Elements/rockButton", "../../Elements/textBox", "vue", "../../Store/index"], function (exports_1, context_1) {
-    "use strict";
-    var bus_1, paneledBlockTemplate_1, secondaryBlock_1, rockButton_1, textBox_1, vue_1, index_1, store;
-    var __moduleName = context_1 && context_1.id;
+System.register(['@Obsidian/Utility/bus', '@Obsidian/Templates/block', '@Obsidian/Controls/secondaryBlock', '@Obsidian/Controls/rockButton', '@Obsidian/Controls/textBox', 'vue', '@Obsidian/PageState'], (function (exports) {
+    'use strict';
+    var bus, Block, SecondaryBlock, RockButton, TextBox, defineComponent, useStore;
     return {
-        setters: [
-            function (bus_1_1) {
-                bus_1 = bus_1_1;
-            },
-            function (paneledBlockTemplate_1_1) {
-                paneledBlockTemplate_1 = paneledBlockTemplate_1_1;
-            },
-            function (secondaryBlock_1_1) {
-                secondaryBlock_1 = secondaryBlock_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (textBox_1_1) {
-                textBox_1 = textBox_1_1;
-            },
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (index_1_1) {
-                index_1 = index_1_1;
-            }
-        ],
-        execute: function () {
-            store = index_1.useStore();
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            bus = module["default"];
+        }, function (module) {
+            Block = module["default"];
+        }, function (module) {
+            SecondaryBlock = module["default"];
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            TextBox = module["default"];
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            useStore = module.useStore;
+        }],
+        execute: (function () {
+
+            const store = useStore();
+            var personSecondary = exports('default', defineComponent({
                 name: "Example.PersonSecondary",
                 components: {
-                    PaneledBlockTemplate: paneledBlockTemplate_1.default,
-                    SecondaryBlock: secondaryBlock_1.default,
-                    TextBox: textBox_1.default,
-                    RockButton: rockButton_1.default
+                    Block,
+                    SecondaryBlock,
+                    TextBox,
+                    RockButton
                 },
                 data() {
                     return {
@@ -47,7 +39,7 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                         this.receivedMessage = message;
                     },
                     doPublish() {
-                        bus_1.default.publish("PersonSecondary:Message", this.messageToPublish);
+                        bus.publish("PersonSecondary:Message", this.messageToPublish);
                         this.messageToPublish = "";
                     },
                     doThrowError() {
@@ -71,15 +63,11 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                     }
                 },
                 created() {
-                    bus_1.default.subscribe("PersonDetail:Message", this.receiveMessage);
+                    bus.subscribe("PersonDetail:Message", this.receiveMessage);
                 },
                 template: `<SecondaryBlock>
-    <PaneledBlockTemplate>
-        <template v-slot:title>
-            <i class="fa fa-flask"></i>
-            Secondary Block
-        </template>
-        <template v-slot:default>
+    <Block title="Secondary Block">
+        <template #default>
             <div class="row">
                 <div class="col-sm-6">
                     <p>
@@ -101,10 +89,10 @@ System.register(["../../Util/bus", "../../Templates/paneledBlockTemplate", "../.
                 </div>
             </div>
         </template>
-    </PaneledBlockTemplate>
+    </Block>
 </SecondaryBlock>`
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=personSecondary.js.map
+}));

@@ -47,12 +47,6 @@
             </summary>
             <param name="request">The <see cref="T:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest"/> instance.</param>
         </member>
-        <member name="M:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectExtensions.GetResources(AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest)">
-            <summary>
-            Extracts the resources from an <see cref="T:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest"/>.
-            </summary>
-            <param name="request">The <see cref="T:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest"/> instance.</param>
-        </member>
         <member name="M:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectExtensions.GetScopes(AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest)">
             <summary>
             Extracts the scopes from an <see cref="T:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest"/>.
@@ -749,6 +743,11 @@
             Gets or sets the "assertion" parameter.
             </summary>
         </member>
+        <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest.Audiences">
+            <summary>
+            Gets or sets the "audience" parameters.
+            </summary>
+        </member>
         <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest.Claims">
             <summary>
             Gets or sets the "claims" parameter.
@@ -874,9 +873,9 @@
             Gets or sets the "request_uri" parameter.
             </summary>
         </member>
-        <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest.Resource">
+        <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest.Resources">
             <summary>
-            Gets or sets the "resource" parameter.
+            Gets or sets the "resource" parameters.
             </summary>
         </member>
         <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectRequest.ResponseMode">
@@ -1007,11 +1006,6 @@
         <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectResponse.RefreshToken">
             <summary>
             Gets or sets the "refresh_token" parameter.
-            </summary>
-        </member>
-        <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectResponse.Resource">
-            <summary>
-            Gets or sets the "resource" parameter.
             </summary>
         </member>
         <member name="P:AspNet.Security.OpenIdConnect.Primitives.OpenIdConnectResponse.Scope">

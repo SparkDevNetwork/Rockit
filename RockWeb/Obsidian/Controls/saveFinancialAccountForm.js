@@ -1,50 +1,37 @@
-System.register(["vue", "../Elements/alert", "../Elements/inlineCheckBox", "../Elements/rockButton", "../Elements/textBox", "./rockForm", "../Store/index"], function (exports_1, context_1) {
-    "use strict";
-    var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-    var vue_1, alert_1, inlineCheckBox_1, rockButton_1, textBox_1, rockForm_1, index_1, store, SaveFinancialAccountForm;
-    var __moduleName = context_1 && context_1.id;
+System.register(['tslib', 'vue', './alert.js', './inlineCheckBox.js', './rockButton.js', './textBox.js', './rockForm.js', '@Obsidian/PageState', '@Obsidian/Utility/http', '@Obsidian/Utility/promiseUtils', '@Obsidian/Utility/component', './rockFormField.js', '@Obsidian/Utility/form', '@Obsidian/Utility/guid', '@Obsidian/ValidationRules', './rockLabel.js', './helpBlock.js', './javaScriptAnchor.js', './rockValidation.js'], (function (exports) {
+    'use strict';
+    var __awaiter, defineComponent, Alert, InlineCheckBox, RockButton, TextBox, RockForm, useStore, useHttp;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (alert_1_1) {
-                alert_1 = alert_1_1;
-            },
-            function (inlineCheckBox_1_1) {
-                inlineCheckBox_1 = inlineCheckBox_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (textBox_1_1) {
-                textBox_1 = textBox_1_1;
-            },
-            function (rockForm_1_1) {
-                rockForm_1 = rockForm_1_1;
-            },
-            function (index_1_1) {
-                index_1 = index_1_1;
-            }
-        ],
-        execute: function () {
-            store = index_1.useStore();
-            SaveFinancialAccountForm = vue_1.defineComponent({
+        setters: [function (module) {
+            __awaiter = module.__awaiter;
+        }, function (module) {
+            defineComponent = module.defineComponent;
+        }, function (module) {
+            Alert = module["default"];
+        }, function (module) {
+            InlineCheckBox = module["default"];
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            TextBox = module["default"];
+        }, function (module) {
+            RockForm = module["default"];
+        }, function (module) {
+            useStore = module.useStore;
+        }, function (module) {
+            useHttp = module.useHttp;
+        }, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            const store = useStore();
+            const SaveFinancialAccountForm = exports('default', defineComponent({
                 name: "SaveFinancialAccountForm",
                 components: {
-                    InlineCheckBox: inlineCheckBox_1.default,
-                    TextBox: textBox_1.default,
-                    Alert: alert_1.default,
-                    RockButton: rockButton_1.default,
-                    RockForm: rockForm_1.default
+                    InlineCheckBox,
+                    TextBox,
+                    Alert,
+                    RockButton,
+                    RockForm
                 },
                 props: {
                     gatewayGuid: {
@@ -61,8 +48,9 @@ System.register(["vue", "../Elements/alert", "../Elements/inlineCheckBox", "../E
                     }
                 },
                 setup() {
+                    const http = useHttp();
                     return {
-                        http: vue_1.inject("http")
+                        http
                     };
                 },
                 data() {
@@ -99,15 +87,17 @@ System.register(["vue", "../Elements/alert", "../Elements/inlineCheckBox", "../E
                                 return;
                             }
                             this.isLoading = true;
-                            const result = yield this.http.post(`/api/v2/controls/savefinancialaccountforms/${this.gatewayGuid}`, null, {
-                                Password: this.password,
-                                SavedAccountName: this.savedAccountName,
-                                TransactionCode: this.transactionCode,
-                                Username: this.username,
-                                GatewayPersonIdentifier: this.gatewayPersonIdentifier
-                            });
-                            if ((_a = result === null || result === void 0 ? void 0 : result.data) === null || _a === void 0 ? void 0 : _a.isSuccess) {
-                                this.successTitle = result.data.title;
+                            const options = {
+                                gatewayGuid: this.gatewayGuid,
+                                password: this.password,
+                                savedAccountName: this.savedAccountName,
+                                transactionCode: this.transactionCode,
+                                username: this.username,
+                                gatewayPersonIdentifier: this.gatewayPersonIdentifier
+                            };
+                            const result = yield this.http.post("/api/v2/Controls/SaveFinancialAccountFormSaveAccount", null, options);
+                            if (result.isSuccess && ((_a = result.data) === null || _a === void 0 ? void 0 : _a.isSuccess)) {
+                                this.successTitle = result.data.title || "";
                                 this.successMessage = result.data.detail || "Success";
                             }
                             else {
@@ -150,9 +140,8 @@ System.register(["vue", "../Elements/alert", "../Elements/inlineCheckBox", "../E
         </RockForm>
     </template>
 </div>`
-            });
-            exports_1("default", SaveFinancialAccountForm);
-        }
+            }));
+
+        })
     };
-});
-//# sourceMappingURL=saveFinancialAccountForm.js.map
+}));

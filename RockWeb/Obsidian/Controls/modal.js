@@ -1,24 +1,28 @@
-System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exports_1, context_1) {
-    "use strict";
-    var vue_1, rockButton_1, page_1;
-    var __moduleName = context_1 && context_1.id;
+System.register(['vue', './rockForm.js', './rockButton.js', './rockValidation.js', '@Obsidian/Utility/page', '@Obsidian/Utility/form', '@Obsidian/Utility/component', './alert.js', 'tslib', '@Obsidian/Utility/promiseUtils'], (function (exports) {
+    'use strict';
+    var defineComponent, ref, watch, RockForm, RockButton, RockValidation, trackModalState;
     return {
-        setters: [
-            function (vue_1_1) {
-                vue_1 = vue_1_1;
-            },
-            function (rockButton_1_1) {
-                rockButton_1 = rockButton_1_1;
-            },
-            function (page_1_1) {
-                page_1 = page_1_1;
-            }
-        ],
-        execute: function () {
-            exports_1("default", vue_1.defineComponent({
+        setters: [function (module) {
+            defineComponent = module.defineComponent;
+            ref = module.ref;
+            watch = module.watch;
+        }, function (module) {
+            RockForm = module["default"];
+        }, function (module) {
+            RockButton = module["default"];
+        }, function (module) {
+            RockValidation = module["default"];
+        }, function (module) {
+            trackModalState = module.trackModalState;
+        }, function () {}, function () {}, function () {}, function () {}, function () {}],
+        execute: (function () {
+
+            var modal = exports('default', defineComponent({
                 name: "Modal",
                 components: {
-                    RockButton: rockButton_1.default
+                    RockButton,
+                    RockForm,
+                    RockValidation
                 },
                 props: {
                     modelValue: {
@@ -32,10 +36,26 @@ System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exp
                     subtitle: {
                         type: String,
                         default: ""
+                    },
+                    cancelText: {
+                        type: String,
+                        default: "Cancel"
+                    },
+                    saveText: {
+                        type: String,
+                        default: ""
                     }
                 },
+                emits: {
+                    "update:modelValue": (_value) => true,
+                    save: () => true
+                },
                 setup(props, { emit }) {
-                    const isShaking = vue_1.ref(false);
+                    var _a;
+                    const internalModalVisible = ref(props.modelValue);
+                    const container = ref((_a = document.fullscreenElement) !== null && _a !== void 0 ? _a : document.body);
+                    const validationErrors = ref([]);
+                    const isShaking = ref(false);
                     const onClose = () => {
                         emit("update:modelValue", false);
                     };
@@ -45,21 +65,37 @@ System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exp
                             setTimeout(() => isShaking.value = false, 1000);
                         }
                     };
-                    if (props.modelValue) {
-                        page_1.trackModalState(true);
+                    const onSubmit = () => {
+                        emit("save");
+                    };
+                    const onVisibleValidationChanged = (errors) => {
+                        validationErrors.value = errors;
+                    };
+                    if (internalModalVisible.value) {
+                        trackModalState(true);
                     }
-                    vue_1.watch(() => props.modelValue, () => page_1.trackModalState(props.modelValue));
+                    watch(() => props.modelValue, () => {
+                        if (props.modelValue) {
+                            container.value = document.fullscreenElement || document.body;
+                            validationErrors.value = [];
+                        }
+                        internalModalVisible.value = props.modelValue;
+                        trackModalState(internalModalVisible.value);
+                    });
                     return {
+                        container,
+                        internalModalVisible,
                         isShaking,
+                        onClose,
                         onScrollableClick,
-                        onClose
+                        onSubmit,
+                        onVisibleValidationChanged,
+                        validationErrors
                     };
                 },
                 template: `
-<teleport to="body" v-if="modelValue">
+<teleport :to="container" v-if="modelValue">
     <div>
-        <div class="modal-backdrop" style="z-index: 1060;"></div>
-
         <div @click.stop="onScrollableClick" class="modal-scrollable" style="z-index: 1060;">
             <div @click.stop
                 class="modal container modal-content rock-modal rock-modal-frame modal-overflow"
@@ -77,21 +113,28 @@ System.register(["vue", "../Elements/rockButton", "../Util/page"], function (exp
                     <slot v-else name="header" />
                 </div>
 
-                <div class="modal-body">
-                    <slot />
-                </div>
+                <RockForm @submit="onSubmit" hideErrors @visibleValidationChanged="onVisibleValidationChanged">
+                    <div class="modal-body">
+                        <RockValidation :errors="validationErrors" />
 
-                <div class="modal-footer">
-                    <a @click.prevent="onClose" class="btn btn-link">Cancel</a>
-                    <slot name="customButtons" />
-                </div>
+                        <slot />
+                    </div>
+
+                    <div class="modal-footer">
+                        <RockButton @click="onClose" btnType="link">{{ cancelText }}</RockButton>
+                        <RockButton v-if="saveText" type="submit" btnType="primary">{{ saveText }}</RockButton>
+                        <slot name="customButtons" />
+                    </div>
+                </RockForm>
             </div>
         </div>
+
+        <div class="modal-backdrop" style="z-index: 1050;"></div>
     </div>
 </teleport>
 `
             }));
-        }
+
+        })
     };
-});
-//# sourceMappingURL=modal.js.map
+}));
